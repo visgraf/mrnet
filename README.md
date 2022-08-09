@@ -3,8 +3,8 @@
 ## Installation Instructions
 
 cd [parent_dir]  
-git clone https://github.com/visgraf/mrimaging.git   
-cd mrimaging  
+git clone https://github.com/visgraf/mrimg.git   
+cd mrimg
 mkdir models  
 
 mkdir venv  
