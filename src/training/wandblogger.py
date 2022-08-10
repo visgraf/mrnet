@@ -121,6 +121,7 @@ class WandBLogger2D(WandBLogger):
         compute_grads = self.hyper.get('useattributes', False)
         compute_grads = False
         for X, _ in test_loader:
+            # (1) mudar todas as inferencias com o modelo para esquema abaixo
             output_dict = model(test_loader.dataset.coordinates.to(device))
             batch_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
             batch_grads = gradient(batch_out, output_dict['model_in']).detach()
