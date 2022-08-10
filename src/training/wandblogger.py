@@ -122,7 +122,6 @@ class WandBLogger2D(WandBLogger):
     def log_prediction(self, model, test_loader, device):
         model_out = pred_grads = None
         compute_grads = self.hyper.get('useattributes', False)
-        compute_grads = False
         for X, _ in test_loader:
             # (1) mudar todas as inferencias com o modelo para esquema abaixo
             # study to include as a functio of the Model 
@@ -137,6 +136,7 @@ class WandBLogger2D(WandBLogger):
                             else torch.concat([pred_grads, batch_grads]))
 
         pred_pixels = self.as_imagetensor(model_out)
+        # this test probably can be eliminated
         if pred_pixels.shape[1] <= 1:
             side = np.sqrt(pred_pixels.shape[2]).astype(int)
             pred_pixels = torch.reshape(pred_pixels, (side, side)) 
