@@ -6,6 +6,8 @@ from scipy.ndimage import gaussian_filter1d
 from scipy import interpolate
 from .constants import Sampling
 
+# These functions only work for Signal1D and have to be adapted to 2D
+# Left here just for reference
 
 def find_inflection_idx(signal):
     smoothed = gaussian_filter1d(signal.data, 100)

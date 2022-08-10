@@ -91,6 +91,7 @@ class ImageSignal(Dataset):
                 'd1_mask': self.d1_mask.view(-1,1),
                 } if self._useattributes else self.data.view(-1,1) )
         else:
+            # lvelho - this numpy function does not work on GPU
             # rand_idcs = np.random.choice(self.image_size, size=self.batch_pixels, replace=True)
             rand_idcs = torch.randint(self.image_size, size=(1, self.batch_pixels))
             rand_coords = self.coordinates[rand_idcs, :]
@@ -107,4 +108,5 @@ class ImageSignal(Dataset):
             else:
                 return rand_coords , rand_d0
 
-
+# OBS: in the future consider to replace the stored self.data with tensor format self.data.view(-1,1)
+#      (the same for all attributes, i.e. d1, etc...)

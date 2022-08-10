@@ -229,6 +229,7 @@ class MNet(MRNet):
         return 'M'
 
 ####
+# Not used. left here for future reference
 
 class M1Net(MRNet):
 

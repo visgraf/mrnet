@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from .imagesignal import ImageSignal
 from .constants import Sampling
 
+# In the future change this to use OpenCV
 
 def convsignal2d(signal, kernel, padding_mode='reflect'):
     # padding is always 'same'

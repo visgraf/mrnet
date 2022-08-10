@@ -21,6 +21,8 @@ from networks.mrnet import MRNet, MRFactory
 MODELS_DIR = 'models'
 
 # TODO: find a better place for this function (not repeat it)
+#       (replace the one in imagesignal and import it)
+
 def make2Dcoords(width, height, start=-1, end=1):
     xs = torch.linspace(start, end, width)
     ys = torch.linspace(start, end, height)
@@ -53,8 +55,9 @@ class WandBLogger(Logger):
         wandb.finish()
         print(f'Training finished after {total_epochs} epochs')
 
-
-
+#
+# (2) major rewrite - visualization format for images, etc
+#
 class WandBLogger2D(WandBLogger):
     
     def on_stage_start(self, current_model, stage_number, updated_hyper=None):
@@ -122,6 +125,7 @@ class WandBLogger2D(WandBLogger):
         compute_grads = False
         for X, _ in test_loader:
             # (1) mudar todas as inferencias com o modelo para esquema abaixo
+            # study to include as a functio of the Model 
             output_dict = model(test_loader.dataset.coordinates.to(device))
             batch_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
             batch_grads = gradient(batch_out, output_dict['model_in']).detach()
