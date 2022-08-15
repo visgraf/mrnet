@@ -50,13 +50,14 @@ class ImageSignal(Dataset):
         elif self._useattributes:
             self.compute_attributes()      
 
-    def init_fromfile(imagepath, useattributes=False):
+    def init_fromfile(imagepath, useattributes=False,batch_pixels=None):
         transf = Compose([ToTensor()])
         img = Image.open(imagepath).convert('L')
         return ImageSignal(torch.flatten(transf(img)),
                             img.width,
                             img.height,
-                            useattributes=useattributes)
+                            useattributes=useattributes,
+                            batch_pixels=batch_pixels)
 
     def compute_attributes(self):
         self._useattributes = True
