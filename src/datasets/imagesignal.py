@@ -50,9 +50,22 @@ class ImageSignal(Dataset):
         elif self._useattributes:
             self.compute_attributes()      
 
-    def init_fromfile(imagepath, useattributes=False,batch_pixels=None):
+    def init_fromfile(imagepath, useattributes=False,batch_pixels=None,width=None,height=None):
         transf = Compose([ToTensor()])
         img = Image.open(imagepath).convert('L')
+
+        if width is not None or height is not None:
+            
+            if height is None:
+                height = img.height
+            
+            if width is None:
+                width = img.width
+
+            img = img.resize((width,height))
+
+
+
         return ImageSignal(torch.flatten(transf(img)),
                             img.width,
                             img.height,
