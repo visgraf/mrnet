@@ -238,10 +238,7 @@ class MRTrainer:
                     optimizer.zero_grad()
                     # not all model's parameters are updated by the optimizer
                     self.model.zero_grad()
-                    output_dict = self.model(trainX.to(device))
-                    if not self._useattributes:
-                        trainY = {'d0': trainY,
-                                    'd0_mask': torch.ones_like(trainY, dtype=torch.bool)}
+                    output_dict = self.model(trainX['coords'].to(device))
                     train_dict = {k: v.to(device) for k, v in trainY.items()}
                     loss_dict = self.loss_function(output_dict, train_dict)
                     loss = sum(loss_dict.values())
