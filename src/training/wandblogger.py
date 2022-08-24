@@ -13,21 +13,13 @@ from pathlib import Path
 
 import warnings
 from training.loss import gradient
-from datasets.imagesignal import ImageSignal
+from datasets.imagesignal import make2Dcoords
 
 from .logger import Logger
 from networks.mrnet import MRNet, MRFactory
 
 MODELS_DIR = 'models'
 
-# TODO: find a better place for this function (not repeat it)
-#       (replace the one in imagesignal and import it)
-
-def make2Dcoords(width, height, start=-1, end=1):
-    xs = torch.linspace(start, end, width)
-    ys = torch.linspace(start, end, height)
-    xs, ys = torch.meshgrid(xs, ys, indexing='xy')
-    return torch.stack([xs, ys], 2).view(-1, 2)
 
 class WandBLogger(Logger):
     def __init__(self, project: str, 

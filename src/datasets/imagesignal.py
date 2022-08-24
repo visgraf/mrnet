@@ -9,9 +9,9 @@ from torchvision.transforms import Resize, Compose, ToTensor, Normalize
 from .constants import Sampling
 
 
-def make2Dcoords(width, height):
-    xs = torch.linspace(-1, 1, width)
-    ys = torch.linspace(-1, 1, height)
+def make2Dcoords(width, height, start=-1, end=1):
+    xs = torch.linspace(start, end, width)
+    ys = torch.linspace(start, end, height)
     xs, ys = torch.meshgrid(xs, ys, indexing='xy')
     return torch.stack([xs, ys], 2).view(-1, 2)
 
