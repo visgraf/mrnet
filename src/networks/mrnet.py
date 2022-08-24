@@ -228,55 +228,6 @@ class MNet(MRNet):
     def class_code(self):
         return 'M'
 
-####
-# Not used. left here for future reference
-
-class M1Net(MRNet):
-
-    def init_from_dict(hyper):
-        omega0, hidden_omega0 = hyper['omega_0'], hyper['hidden_omega_0']
-        return  M1Net(
-            hyper.get('in_features', 1),
-            hyper['hidden_features'],
-            hyper['hidden_layers'],
-            hyper.get('out_features', 1),
-            omega0[0] if isinstance(omega0, Sequence) else omega0,
-            hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
-            bias=hyper.get('bias', False),
-            superposition_w0=hyper.get('superposition_w0', True)
-        )
-
-    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0):
-        prev = self.top_stage.hidden_features
-        return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, prev)
-
-    def forward(self, coords, mrweights=None):
-        # allows to take derivative w.r.t. input
-        coords = coords.clone().detach().requires_grad_(True) 
-        
-        mroutputs = []
-        basis = None
-        for mrstage in self.stages:
-            out, basis = mrstage(coords, basis)
-            mroutputs.append(out)
-
-        if self.training: 
-            warnings.warn(
-            "Using custom weights during training is discouraged. Make sure you know what you're doing")
-        
-        if mrweights is None:
-            mrweights = torch.zeros(self.n_stages(), 
-                                        device=self.current_device())
-            mrweights[-1] = 1.0
-        
-        y = self._aggregate_resolutions(mroutputs, mrweights)
-        return {"model_in": coords, "model_out": y}
-
-    def class_code(self):
-        return 'M1'
-
-####
-
 class LNet(MRNet):
 
     def init_from_dict(hyper):
