@@ -1,13 +1,23 @@
 import torch
 import numpy as np
 import random
-from .signal1d import Signal1D
 from scipy.ndimage import gaussian_filter1d
 from scipy import interpolate
 from .constants import Sampling
 
+
+def make2Dcoords(width, height, start=-1, end=1):
+    xs = torch.linspace(start, end, width)
+    ys = torch.linspace(start, end, height)
+    xs, ys = torch.meshgrid(xs, ys, indexing='xy')
+    return torch.stack([xs, ys], 2).view(-1, 2)
+
+
 # These functions only work for Signal1D and have to be adapted to 2D
 # Left here just for reference
+#from .signal1d import Signal1D danperazzo - This import will probably come back, taken also from Signal1D
+
+
 
 def find_inflection_idx(signal):
     smoothed = gaussian_filter1d(signal.data, 100)

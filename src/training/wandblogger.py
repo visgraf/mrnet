@@ -13,7 +13,7 @@ from pathlib import Path
 
 import warnings
 from training.loss import gradient
-from datasets.imagesignal import make2Dcoords
+from datasets.sampling import make2Dcoords
 
 from .logger import Logger
 from networks.mrnet import MRNet, MRFactory
