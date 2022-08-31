@@ -4,7 +4,7 @@ import scipy.ndimage
 from torch.utils.data import Dataset
 from PIL import Image
 import skimage
-from torchvision.transforms import Compose, ToTensor,ToPILImage
+from torchvision.transforms import ToTensor,ToPILImage
 from .constants import Sampling
 from datasets.sampling import make2Dcoords
 
@@ -19,6 +19,7 @@ class ImageSignal(Dataset):
                         useattributes=False,
                         attributes={}):
         self.image_t = data
+
         self.data = torch.flatten(data)
         self._width = width
         self._height = height
@@ -42,7 +43,7 @@ class ImageSignal(Dataset):
             self.d1 = attributes.get('d1', None)
             self.d1_mask = attributes.get('d1_mask', None)
         else:
-            self.compute_attributes()      
+            self.compute_attributes()
 
     def init_fromfile(imagepath, useattributes=False,batch_pixels=None,width=None,height=None):
         img = Image.open(imagepath).convert('L')
@@ -58,8 +59,9 @@ class ImageSignal(Dataset):
             img = img.resize((width,height))
 
         transf = ToTensor()
+        img_tensor = transf(img)
 
-        return ImageSignal(transf(img),
+        return ImageSignal(img_tensor,
                             img.width,
                             img.height,
                             useattributes=useattributes,

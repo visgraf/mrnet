@@ -1,7 +1,7 @@
 from decimal import InvalidOperation
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as T
+from torchvision.transforms import ToTensor
 from .imagesignal import ImageSignal
 from .constants import Sampling
 import cv2
@@ -11,16 +11,14 @@ from PIL import Image
 
 def pil2opencv(pil_image):
     
-    pil_image = pil_image.convert('RGB') 
+    pil_image = pil_image
     open_cv_image = np.array(pil_image) 
     # Convert RGB to BGR 
-    open_cv_image = open_cv_image[:, :, ::-1]
 
     return open_cv_image
 
 def opencv2pil(numpy_image):
     
-    numpy_image = cv2.cvtColor(numpy_image, cv2.COLOR_BGR2RGB)
     im_pil = Image.fromarray(numpy_image)
     
     return im_pil
@@ -94,27 +92,39 @@ def conv_gauss(img, kernel):
     out = torch.nn.functional.conv2d(img, kernel, groups=img.shape[1])
     return out
 
-def pyrdown2D(signal, kernel, decimate=True):    
-    filtered = conv_gauss(signal.image_tensor(), kernel).squeeze(0)
+def pyrdown2D(signal, decimate=True):
+
+    img_pil = signal.image_pil()
+    img_npy = pil2opencv(img_pil)
+    transf = ToTensor()
+
+    
+
     w, h = signal.dimensions()
     if decimate:
-        return ImageSignal(filtered[:, ::2, ::2],
+        filtered_decimated = cv2.pyrDown(img_npy)
+        pil_filtered_decimated = opencv2pil(filtered_decimated)
+        tensor_filt_decimated = transf(pil_filtered_decimated)
+        return ImageSignal(tensor_filt_decimated,
                             w // 2 + 1, h // 2 + 1,
                             None,
                             signal.channels,
                             useattributes=signal._useattributes)
-
-    return ImageSignal(filtered,
-                        w, h,
-                        signal.coordinates,
-                        signal.channels,
-                        useattributes=signal._useattributes)
+    
+    else:
+        gauss_blur = cv2.GaussianBlur(img_npy,(5,5),0)
+        pil_gauss_blur = opencv2pil(gauss_blur)
+        tensor_gauss_blur = transf(pil_gauss_blur)
+        return ImageSignal(tensor_gauss_blur,
+                            w, h,
+                            signal.coordinates,
+                            signal.channels,
+                            useattributes=signal._useattributes)
 
 def gaussian_pyramid2D(signal, levels):
-    kernel = gaussian_kernel()
     pyramid = [signal]
     for s in range(levels-1):
-        signal = pyrdown2D(signal, kernel)
+        signal = pyrdown2D(signal)
         pyramid.append(signal)
     return pyramid
 
@@ -126,6 +136,6 @@ def gaussian_tower2D(signal, levels):
     base_size = kernel.shape[-1]
     for s in range(levels-1):
         kernel = box_kernel2D(base_size * 2**s)
-        signal = pyrdown2D(signal, kernel, decimate=False)
+        signal = pyrdown2D(signal, decimate=False)
         tower.append(signal)
     return tower
