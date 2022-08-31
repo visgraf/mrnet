@@ -55,3 +55,4 @@ urllib3==1.26.9
 wandb==0.12.21
 wcwidth==0.2.5
 scikit-image==0.19.3
+opencv-python==4.6.*
