@@ -1,11 +1,10 @@
 import torch
 import numpy as np
 import scipy.ndimage
-import torchvision.transforms as TF
 from torch.utils.data import Dataset
 from PIL import Image
 import skimage
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+from torchvision.transforms import Compose, ToTensor,ToPILImage
 from .constants import Sampling
 from datasets.sampling import make2Dcoords
 
@@ -19,11 +18,7 @@ class ImageSignal(Dataset):
                         batch_pixels=None,
                         useattributes=False,
                         attributes={}):
-        
-        if not torch.is_tensor(data):
-            transf = Compose([ToTensor()])
-            data = transf(data)
-            
+        self.image_t = data
         self.data = torch.flatten(data)
         self._width = width
         self._height = height
@@ -62,7 +57,9 @@ class ImageSignal(Dataset):
 
             img = img.resize((width,height))
 
-        return ImageSignal(img,
+        transf = ToTensor()
+
+        return ImageSignal(transf(img),
                             img.width,
                             img.height,
                             useattributes=useattributes,
@@ -84,6 +81,10 @@ class ImageSignal(Dataset):
 
     def dimensions(self):
         return self._width, self._height
+
+    def image_pil(self):
+        transf = ToPILImage()
+        return transf(self.image_t)
 
     def image_tensor(self):
         return self.data.unsqueeze(0).unflatten(-1, (self._width, self._height))
