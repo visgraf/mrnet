@@ -16,7 +16,7 @@ def make2Dcoords(width, height, start=-1, end=1):
 # These functions only work for Signal1D and have to be adapted to 2D
 # Left here just for reference
 #from .signal1d import Signal1D danperazzo - This import will probably come back, taken also from Signal1D
-
+'''
 
 
 def find_inflection_idx(signal):
@@ -188,3 +188,5 @@ def sample_random_shake(signal: Signal1D, n_samples, minratio):
                     data=torch.tensor(ynew, dtype=torch.float32), 
                     timepoints=torch.tensor(xnew, dtype=torch.float32), 
                     sampling_scheme=Sampling.RANDOM_SHAKE)
+
+'''
