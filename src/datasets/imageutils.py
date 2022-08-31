@@ -11,9 +11,7 @@ from PIL import Image
 
 def pil2opencv(pil_image):
     
-    pil_image = pil_image
     open_cv_image = np.array(pil_image) 
-    # Convert RGB to BGR 
 
     return open_cv_image
 
