@@ -3,6 +3,26 @@ import torch
 import torch.nn.functional as F
 from .imagesignal import ImageSignal
 from .constants import Sampling
+import cv2
+import numpy as np
+from PIL import Image
+
+
+def pil2opencv(pil_image):
+    
+    pil_image = pil_image.convert('RGB') 
+    open_cv_image = np.array(pil_image) 
+    # Convert RGB to BGR 
+    open_cv_image = open_cv_image[:, :, ::-1]
+
+    return open_cv_image
+
+def opencv2pil(numpy_image):
+    
+    numpy_image = cv2.cvtColor(numpy_image, cv2.COLOR_BGR2RGB)
+    im_pil = Image.fromarray(numpy_image)
+    
+    return im_pil
 
 # In the future change this to use OpenCV
 
@@ -77,31 +97,30 @@ def pyrdown2D(signal, kernel, decimate=True):
     filtered = conv_gauss(signal.image_tensor(), kernel).squeeze(0)
     w, h = signal.dimensions()
     if decimate:
-        return ImageSignal(torch.flatten(filtered[:, ::2, ::2]),
+        return ImageSignal(filtered[:, ::2, ::2],
                             w // 2 + 1, h // 2 + 1,
                             None,
                             signal.channels,
                             useattributes=signal._useattributes)
 
-    return ImageSignal(torch.flatten(filtered),
+    return ImageSignal(filtered,
                         w, h,
                         signal.coordinates,
                         signal.channels,
                         useattributes=signal._useattributes)
 
-def gaussian_pyramid2D(signal, levels, 
-                        kernel=None, padding_mode='reflect'):
-    if kernel is None:
-        kernel = gaussian_kernel()
+def gaussian_pyramid2D(signal, levels):
+    kernel = gaussian_kernel()
     pyramid = [signal]
     for s in range(levels-1):
         signal = pyrdown2D(signal, kernel)
         pyramid.append(signal)
     return pyramid
 
-def gaussian_tower2D(signal, levels, kernel, padding_mode='reflect'):
+def gaussian_tower2D(signal, levels):
     '''Only works with box filter for now'''
     
+    kernel = gaussian_kernel()
     tower = [signal]
     base_size = kernel.shape[-1]
     for s in range(levels-1):
