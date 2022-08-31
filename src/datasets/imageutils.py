@@ -104,9 +104,11 @@ def pyrdown2D(signal, decimate=True):
     if decimate:
         filtered_decimated = cv2.pyrDown(img_npy)
         pil_filtered_decimated = opencv2pil(filtered_decimated)
+        w_new, h_new = pil_filtered_decimated.size
+
         tensor_filt_decimated = transf(pil_filtered_decimated)
         return ImageSignal(tensor_filt_decimated,
-                            w // 2 + 1, h // 2 + 1,
+                            w_new, h_new,
                             None,
                             signal.channels,
                             useattributes=signal._useattributes)
