@@ -9,7 +9,7 @@ sampling_scheme: uniform
 multiresolution: pyramid
 max_epochs_per_stage: [500, 450, 350, 250, 150, 100]
 opt_method: Adam
-loss_function: ['d1']
+loss_function: ['d0']
 lr: 0.0001
 loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
