@@ -29,11 +29,13 @@ def hermite_MSE(output_dict, train_dict, orders):
         loss_dict['d0'] = F.mse_loss(pred, gt)
 
     # commented this part because is not working correctly - lvelho  
+    if 'd1' in orders:
+        model_d1 = gradient(model_out, coords)
+        pred, gt = filter_active_values(model_d1.view(1,-1,1), train_dict, 'd1')
+        loss_dict['d1'] = F.mse_loss(pred, gt)
+        
 
-    # if 'd1' in orders:
-    #     model_d1 = gradient(model_out, coords)
-    #     pred, gt = filter_active_values(model_d1, train_dict, 'd1')
-    #     loss_dict['d1'] = F.mse_loss(pred, gt) * 0.0000001
+    
     # if 'd2' in orders:
     #     if model_d1 is None:
     #         model_d1 = gradient(model_out, coords)
