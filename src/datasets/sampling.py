@@ -7,10 +7,10 @@ from .constants import Sampling
 
 
 def make2Dcoords(width, height, start=-1, end=1):
-    xs = torch.linspace(start, end, width)
-    ys = torch.linspace(start, end, height)
-    xs, ys = torch.meshgrid(xs, ys, indexing='xy')
-    return torch.stack([xs, ys], 2).view(-1, 2)
+    lx = torch.linspace(-1, 1, steps=width)
+    ly = torch.linspace(-1, 1, steps=height)
+    xs, ys = torch.meshgrid(lx,ly)
+    return torch.stack([xs, ys], -1).view(-1, 2)
 
 
 # These functions only work for Signal1D and have to be adapted to 2D
