@@ -23,7 +23,7 @@ stage: 1
 max_stages: 6
 model: M
 useattributes: True
-device: cuda 
+device: cuda
 eval_device: cuda
 
 #  'extrapolate': [-3, 3], 
