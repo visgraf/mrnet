@@ -1,9 +1,7 @@
 import torch
-import numpy as np
 import scipy.ndimage
 from torch.utils.data import Dataset
 from PIL import Image
-import skimage
 from torchvision.transforms import ToTensor,ToPILImage
 from .constants import Sampling
 from datasets.sampling import make2Dcoords
