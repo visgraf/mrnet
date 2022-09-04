@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from PIL import Image
-import torchvision.transforms as TF
+from torchvision.transforms.functional import to_tensor
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import scipy.ndimage
@@ -10,8 +10,7 @@ from src.datasets.imagesignal import make2Dcoords
 
 def load_image(path:str):
     img = Image.open(path).convert('L')
-    transf = TF.Compose([TF.ToTensor()])
-    return torch.flatten(transf(img))
+    return torch.flatten(to_tensor(img))
 
 def as_imagetensor(tensor):
     w = int(np.sqrt(len(tensor)))
@@ -37,8 +36,7 @@ def log_fft(pixels:torch.Tensor, label:str):
     
 def luminance_tensor(path):
     img = Image.open(path)
-    transf = TF.Compose([TF.ToTensor()])
-    return torch.flatten(transf(img))
+    return torch.flatten(to_tensor(img))
 
 def gradient_tensor(img):
     grads_x = scipy.ndimage.sobel(img.numpy(), axis=0)[..., None]

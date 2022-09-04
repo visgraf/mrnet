@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torchvision.transforms import ToTensor
+from torchvision.transforms.functional import to_tensor
 from .imagesignal import ImageSignal
 import cv2
 import numpy as np
@@ -22,10 +22,7 @@ def opencv2pil(numpy_image):
 def pyrdown2D(signal, decimate=True):
 
     img_pil = signal.image_pil()
-    img_npy = pil2opencv(img_pil)
-    transf = ToTensor()
-
-    
+    img_npy = pil2opencv(img_pil)    
 
     w, h = signal.dimensions()
     if decimate:
@@ -33,7 +30,7 @@ def pyrdown2D(signal, decimate=True):
         pil_filtered_decimated = opencv2pil(filtered_decimated)
         w_new, h_new = pil_filtered_decimated.size
 
-        tensor_filt_decimated = transf(pil_filtered_decimated)
+        tensor_filt_decimated = to_tensor(pil_filtered_decimated)
         return ImageSignal(tensor_filt_decimated,
                             w_new, h_new,
                             None,
@@ -43,7 +40,7 @@ def pyrdown2D(signal, decimate=True):
     else:
         gauss_blur = cv2.GaussianBlur(img_npy,(5,5),0)
         pil_gauss_blur = opencv2pil(gauss_blur)
-        tensor_gauss_blur = transf(pil_gauss_blur)
+        tensor_gauss_blur = to_tensor(pil_gauss_blur)
         return ImageSignal(tensor_gauss_blur,
                             w, h,
                             signal.coordinates,
