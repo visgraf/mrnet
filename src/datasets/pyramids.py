@@ -5,18 +5,15 @@ import cv2
 import numpy as np
 from PIL import Image
 
-def pil2opencv(pil_image):
-        
+def pil2opencv(pil_image): 
         open_cv_image = np.array(pil_image) 
         return open_cv_image
 
 def opencv2pil(numpy_image):
-        
         im_pil = Image.fromarray(numpy_image)
         return im_pil
 
 def pyrdown2D(signal):
-
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
@@ -32,17 +29,16 @@ def pyrdown2D(signal):
                         batch_pixels_perc=signal.batch_pixels_perc,
                         useattributes=signal._useattributes)
 
-def pyrup2d_opencv(image,num_times,dims_to_upscale):
+def pyrup2d_opencv(image,num_times, dims_to_upscale):
     img_scale = image
     for level in range(num_times):
         img_scale = cv2.pyrUp(img_scale,dstsize=dims_to_upscale[level])
 
-    img_scale = cv2.pyrUp(img_scale,dstsize=dims_to_upscale[-1])
+    img_scale = cv2.pyrUp(img_scale, dstsize=dims_to_upscale[-1])
     
     return img_scale
 
-def pyrup2D_imagesignal(signal,num_times,dims_to_upscale):
-
+def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
@@ -65,7 +61,6 @@ def construct_gaussian_pyramid2D(signal, num_levels):
         pyramid.append(signal)
     return pyramid
 
-
 def construct_gaussian_tower(gaussian_pyramid):
     pyramid_dimensions = [signal_dims.dimensions() for signal_dims in gaussian_pyramid[:-1] ]
     gauss_tower=[gaussian_pyramid[0]]
@@ -77,19 +72,18 @@ def construct_gaussian_tower(gaussian_pyramid):
     return gauss_tower
 
 def construct_laplacian_tower(gaussian_tower):
-    laplacian_tower = [upper_gauss-lower_gauss for upper_gauss, lower_gauss in zip(gaussian_tower[:-1], gaussian_tower[1:])]
+    laplacian_tower = [upper_gauss - lower_gauss for upper_gauss, lower_gauss in zip(gaussian_tower[:-1], gaussian_tower[1:])]
     laplacian_tower.append(gaussian_tower[-1])
     return laplacian_tower
 
 def construct_laplacian_pyramid(gaussian_pyramid):
-    laplacian_pyramid = [upper_gauss- pyrup2D_imagesignal(lower_gauss,num_times=0,dims_to_upscale=[upper_gauss.dimensions()]) 
+    laplacian_pyramid = [upper_gauss - pyrup2D_imagesignal(lower_gauss,num_times=0,dims_to_upscale=[upper_gauss.dimensions()]) 
                             for upper_gauss, lower_gauss 
                             in zip(gaussian_pyramid[:-1], gaussian_pyramid[1:])]
     laplacian_pyramid.append(gaussian_pyramid[-1])
     return laplacian_pyramid
 
-def create_MR_structure(img_signal,num_levels,type_pyr="pyramid"):
-
+def create_MR_structure(img_signal, num_levels, type_pyr="pyramid"):
     gaussian_pyramid = construct_gaussian_pyramid2D(img_signal,num_levels)
 
     if type_pyr=="pyramid":

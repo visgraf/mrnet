@@ -14,8 +14,6 @@ def filter_active_values(model_val, train_dict, d_code):
     gt = train_dict[d_code][mask]
     return pred, gt
 
-    
-
 def hermite_MSE(output_dict, train_dict, orders):
     model_out, coords = output_dict['model_out'], output_dict['model_in']
     loss_dict = {}

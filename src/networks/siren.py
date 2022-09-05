@@ -51,8 +51,8 @@ class Siren(nn.Module):
     This SIREN version comes from:
     https://colab.research.google.com/github/vsitzmann/siren/blob/master/explore_siren.ipynb
     """
-    def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False,
-                 first_omega_0=30, hidden_omega_0=30., bias=True):
+    def __init__(self, in_features, hidden_features, hidden_layers, out_features, first_omega_0, hidden_omega_0,
+                  bias=True, outermost_linear=False, superposition_w0=True):
         super().__init__()
 
         self.net = []

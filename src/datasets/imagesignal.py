@@ -48,15 +48,11 @@ class ImageSignal(Dataset):
         img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
-            
             if height is None:
                 height = img.height
-            
             if width is None:
                 width = img.width
-
             img = img.resize((width,height))
-
         img_tensor = to_tensor(img)
 
         return ImageSignal(img_tensor,
@@ -115,7 +111,6 @@ class ImageSignal(Dataset):
                     }
             return  (in_dict, gt_dict)
         else:
-            # lvelho - this numpy function does not work on GPU
             # rand_idcs = np.random.choice(self.image_size, size=self.batch_pixels, replace=True)
             rand_idcs = torch.randint(self.image_size, size=(1, self.batch_pixels))
             rand_coords = self.coordinates[rand_idcs, :]
@@ -130,7 +125,6 @@ class ImageSignal(Dataset):
 
             in_dict = {'idx':idx,'coords':rand_coords}
             gt_dict = {'d0': rand_d0, 'd1': rand_d1, 'd0_mask': rand_d0_mask, 'd1_mask': rand_d1_mask}
-
 
             return  (in_dict,gt_dict)
 

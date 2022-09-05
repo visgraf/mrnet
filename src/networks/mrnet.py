@@ -261,7 +261,16 @@ class LNet(MRNet):
     def class_code(self):
         return 'L'
 
+class SNet(MRNet):
+
+    def init_from_dict(hyper):
+        raise NotImplementedError
+
+    def class_code(self):
+        return 'S'
+
 class MRFactory:
+
     def from_dict(hyper):
         omega0, hidden_omega0 = hyper['omega_0'], hyper['hidden_omega_0']
         if hyper['model'] == 'M':

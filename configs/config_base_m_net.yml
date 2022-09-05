@@ -15,9 +15,9 @@ loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
 batch_pixels_perc: 1.0
 batch_size: 1
-image_name: lena257.png
-width: 129
-height: 129
+image_name: lena.png
+width: 128
+height: 128
 channels: 1
 stage: 1
 max_stages: 6
@@ -26,6 +26,7 @@ useattributes: True
 device: cuda
 eval_device: cuda
 
-#  'extrapolate': [-3, 3], 
-#  'save_format': 'general',
+#save_format: 'general'
+#extrapolate: [-3, 3] 
+
 

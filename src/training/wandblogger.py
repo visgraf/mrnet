@@ -20,7 +20,6 @@ from networks.mrnet import MRNet, MRFactory
 
 MODELS_DIR = 'models'
 
-
 class WandBLogger(Logger):
     def __init__(self, project: str, 
                         name: str, 
@@ -47,8 +46,6 @@ class WandBLogger(Logger):
         wandb.finish()
         print(f'Training finished after {total_epochs} epochs')
 
-#
-# (2) major rewrite - visualization format for images, etc
 #
 class WandBLogger2D(WandBLogger):
     
