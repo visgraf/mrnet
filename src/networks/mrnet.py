@@ -22,18 +22,20 @@ class MRModule(nn.Module):
                     bias=False, 
                     prevknowledge=0):
         super().__init__()
+
+        self.bias = bias
         
         self.first_layer = SineLayer(in_features, hidden_features, bias=bias,
                                   is_first=True, omega_0=first_omega_0)
 
         middle = []
         middle.append(
-            SineLayer(prevknowledge + hidden_features, hidden_features,
+            SineLayer(prevknowledge + hidden_features, hidden_features, bias=bias,
                                 is_first=False, omega_0=hidden_omega_0)
         )
 
         for i in range(hidden_layers - 1):
-            middle.append(SineLayer(hidden_features, hidden_features,
+            middle.append(SineLayer(hidden_features, hidden_features, bias=bias,
                                       is_first=False, omega_0=hidden_omega_0))
         
         self.middle_layers = nn.Sequential(*middle)
@@ -100,6 +102,7 @@ class MRNet(nn.Module):
         self.superposition_w0 = superposition_w0
         self.in_features = in_features
         self.out_features = out_features
+        self.bias = bias
 
         first_module = MRModule(in_features, 
                                 hidden_features, 
@@ -132,8 +135,7 @@ class MRNet(nn.Module):
 
   
     def _add_stage(self, first_omega_0, hidden_features, 
-                        hidden_layers, hidden_omega_0,
-                        prevknowledge):
+                        hidden_layers, hidden_omega_0, bias, prevknowledge):
        
         newstage = MRModule(self.in_features, 
                             hidden_features, 
@@ -141,6 +143,7 @@ class MRNet(nn.Module):
                             self.out_features,
                             first_omega_0, 
                             hidden_omega_0,
+                            bias=bias,
                             prevknowledge=prevknowledge
                             ).to(self.current_device())
         if not self.superposition_w0:
@@ -148,7 +151,7 @@ class MRNet(nn.Module):
         self.stages.append(newstage)
 
     def add_stage(self, first_omega_0, hidden_features, 
-                        hidden_layers, hidden_omega_0=1):
+                        hidden_layers, hidden_omega_0=1, bias=False):
         raise NotImplementedError
 
     def n_stages(self):
@@ -158,7 +161,7 @@ class MRNet(nn.Module):
     def top_stage(self)-> MRModule:
         return self.stages[-1]
 
-    def _aggregate_resolutions(self, mroutputs, mrweights):
+    def _aggregate_resolutions(self, mroutputs, mrweights, bias=False):
         device = self.current_device()
         if mrweights is None:
             mrweights = torch.ones(self.n_stages(), device=device)
@@ -169,7 +172,7 @@ class MRNet(nn.Module):
             return torch.sum(weighted, 1).unsqueeze(-1)
         # Same weights for all samples
         aggr_layer = nn.Linear(self.n_stages(), self.out_features, 
-                                bias=False, device=device)
+                                bias=bias, device=device)
         for i in range(self.out_features):
             with torch.no_grad():
                 aggr_layer.weight[i] = mrweights
@@ -203,9 +206,9 @@ class MNet(MRNet):
             bias=hyper.get('bias', False),
         )
 
-    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0):
+    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias):
         prev = self.top_stage.hidden_features
-        return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, prev)
+        return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias, prev)
     
     def forward(self, coords, mrweights=None):
         # allows to take derivative w.r.t. input
@@ -243,8 +246,8 @@ class LNet(MRNet):
             superposition_w0=hyper.get('superposition_w0', True)
         )
 
-    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0):
-        return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, 0)
+    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias):
+        return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias, 0)
 
     def forward(self, coords, mrweights=None):
         # allows to take derivative w.r.t. input
@@ -277,8 +280,8 @@ class MRFactory:
             MRClass = MNet
         elif hyper['model'] == 'L': 
             MRClass = LNet
-        elif hyper['model'] == 'M1':
-            MRClass = M1Net
+        elif hyper['model'] == 'S':
+            MRClass = SNet
         else:
             raise ValueError("model should be in ['M','L','M1']")
 
@@ -298,14 +301,14 @@ class MRFactory:
         if idx == 0:
             prevknowledge = False
         else:
-            prevknowledge = True if hyper['model'] in ['M', 'M1'] else False
+            prevknowledge = True if hyper['model'] in ['M', 'S'] else False
         return MRModule(hyper['in_features'],
                         hyper['hidden_features'],
                         hyper['hidden_layers'],
                         hyper['out_features'],
                         hyper['omega_0'],
                         hyper['hidden_omega_0'],
-                        hyper.get('bias', False),
+                        hyper['bias'],
                         prevknowledge
         )
 
@@ -316,6 +319,7 @@ class MRFactory:
         hidden_omega_0 = [mod.omega_G for mod in model.stages]
         hidden_layers = [mod.hidden_layers for mod in model.stages]
         hidden_features = [mod.hidden_features for mod in model.stages]
+        bias = [mod.bias for mod in model.stages]
         mdict = {
                 'omega_0': omega_0,
                 'hidden_omega_0': hidden_omega_0,
@@ -325,6 +329,7 @@ class MRFactory:
                 'out_features': firstmodule.out_features,
                 'hidden_layers': hidden_layers,
                 'hidden_features': hidden_features,
+                'bias': bias,
             }
         for stg in range(model.n_stages()):
             mdict[f'module{stg}_state_dict'] = model.stages[stg].state_dict()
@@ -333,7 +338,7 @@ class MRFactory:
     def load_state_dict(filepath):
         checkpoint = torch.load(filepath)
         singledict = deepcopy(checkpoint)
-        module_keys = ['omega_0', 'hidden_omega_0', 'hidden_features', 'hidden_layers']
+        module_keys = ['omega_0', 'hidden_omega_0', 'hidden_features', 'hidden_layers', 'bias']
         updict = {k: checkpoint[k][0] for k in module_keys}
         singledict.update(updict)
         model = MRFactory.from_dict(singledict)

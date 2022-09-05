@@ -30,7 +30,8 @@ class MRTrainer:
                         learning_rate: Union[float, Sequence[float]],
                         opt_method=torch.optim.Adam,
                         loss_function=F.mse_loss,
-                        useattributes=False):
+                        useattributes=False,
+                        bias=False):
         
         if model.n_stages() > 1:
             raise ValueError("Must initialize with untrained model")
@@ -58,9 +59,10 @@ class MRTrainer:
         self._hidden_features = hidden_features
         self._hidden_layers = hidden_layers
         
-        
         self._learning_rate = learning_rate
         self.hidden_omega0 = hidden_omega0
+
+        self.bias=bias
 
         if isinstance(omega0, Sequence):
             self.omega0 = omega0
@@ -104,7 +106,8 @@ class MRTrainer:
                         diff_tol=hyper.get('diff_tol', 1e-7),
                         learning_rate=lr,
                         loss_function=loss_func,
-                        useattributes=hyper.get('useattributes', False))
+                        useattributes=hyper.get('useattributes', False), 
+                        bias=hyper.get('bias',False))
 
     @property
     def current_dataloader(self)-> DataLoader:
@@ -168,6 +171,9 @@ class MRTrainer:
     def next_hidden_layers(self):
         return self._get_hidden_layers(True)
 
+    def _get_bias(self):
+        return self.bias
+    
     def _get_omega0(self, next=False):
         idx = self.n_stages if next else (self.n_stages - 1)
         return self.omega0[idx]
@@ -221,6 +227,7 @@ class MRTrainer:
                     self.next_hidden_features(),
                     self.next_hidden_layers(),
                     self.next_hidden_omega0(),
+                    self._get_bias(),
                 )
 
             self.n_stages = stage
