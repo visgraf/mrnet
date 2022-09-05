@@ -1,4 +1,3 @@
-import torch
 import torch.nn.functional as F
 from torchvision.transforms.functional import to_tensor
 from .imagesignal import ImageSignal
@@ -25,7 +24,6 @@ def pyrdown2D(signal):
     pil_filtered_decimated = opencv2pil(filtered_decimated)
 
     w_new, h_new = pil_filtered_decimated.size
-    print(f'pyrdown result: w:{w_new},h:{h_new}')
     tensor_filt_decimated = to_tensor(pil_filtered_decimated)
     return ImageSignal(tensor_filt_decimated,
                         w_new, h_new,
@@ -33,25 +31,24 @@ def pyrdown2D(signal):
                         signal.channels,
                         useattributes=signal._useattributes)
 
-def pyrup2d_opencv(image,num_times,orig_w,orig_h):
+def pyrup2d_opencv(image,num_times,dims_to_upscale):
     img_scale = image
-    for _ in range(num_times):
-        img_scale = cv2.pyrUp(img_scale)
+    for level in range(num_times):
+        img_scale = cv2.pyrUp(img_scale,dstsize=dims_to_upscale[level])
 
     img_scale = cv2.pyrUp(img_scale)
     
     return img_scale
 
-def pyrup2D_imagesignal(signal,num_times,orig_w,orig_h):
+def pyrup2D_imagesignal(signal,num_times,dims_to_upscale):
 
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
-    scaled_up_image = pyrup2d_opencv(img_npy,num_times,orig_w,orig_h)
+    scaled_up_image = pyrup2d_opencv(img_npy,num_times,dims_to_upscale)
     pil_scaled_up_image = opencv2pil(scaled_up_image)
 
     w_new, h_new = pil_scaled_up_image.size
-    print(f'pyrup result: w:{w_new},h:{h_new}')
     tensor_scaled_up_image = to_tensor(pil_scaled_up_image)
     return ImageSignal(tensor_scaled_up_image,
                         w_new, h_new,
@@ -66,10 +63,14 @@ def construct_gaussian_pyramid2D(signal, num_levels):
         pyramid.append(signal)
     return pyramid
 
-def construct_gaussian_tower(gaussian_pyramid,orig_w,orig_h):
+
+def construct_gaussian_tower(gaussian_pyramid):
+    pyramid_dimensions = [signal_dims.dimensions() for signal_dims in gaussian_pyramid[:-1] ]
     gauss_tower=[gaussian_pyramid[0]]
     for level,signal in enumerate(gaussian_pyramid[1:]):
-        signal = pyrup2D_imagesignal(signal,level,orig_w,orig_h)
+        dims_to_upscale = pyramid_dimensions[:(level+1)]
+        dims_to_upscale.reverse()
+        signal = pyrup2D_imagesignal(signal,level,dims_to_upscale)
         gauss_tower.append(signal)
     return gauss_tower
 
@@ -80,8 +81,7 @@ def create_MR_structure(img_signal,num_levels,type_pyr="pyramid"):
     if type_pyr=="pyramid":
         return gaussian_pyramid
 
-    orig_w, orig_h = img_signal.dimensions()
-    gaussian_tower = construct_gaussian_tower(gaussian_pyramid,orig_w,orig_h)
+    gaussian_tower = construct_gaussian_tower(gaussian_pyramid)
 
     if type_pyr=="tower":
         return gaussian_tower
