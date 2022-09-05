@@ -93,7 +93,7 @@ class ImageSignal(Dataset):
         data_other = other.data
         subtract_data = data_self - data_other
         width,height = self.dimensions()
-        ImageSignal(subtract_data,
+        return ImageSignal(subtract_data,
                     width,
                     height,
                     None,

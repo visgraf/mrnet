@@ -93,7 +93,7 @@ def create_MR_structure(img_signal,num_levels,type_pyr="pyramid"):
     if type_pyr=="tower":
         return gaussian_tower
 
-    if type_pyr=="laplace":
+    if type_pyr=="laplace_tower":
         laplace_tower = construct_laplacian_tower(gaussian_tower)
         return laplace_tower
 
