@@ -13,19 +13,20 @@ class ImageSignal(Dataset):
                         coordinates=None,
                         channels=1,
                         sampling_scheme=Sampling.UNIFORM,
-                        batch_pixels=None,
+                        batch_pixels_perc=None,
                         useattributes=False,
                         attributes={}):
         self.image_t = data
+        self.batch_pixels_perc = batch_pixels_perc
 
         self.data = torch.flatten(data)
         self._width = width
         self._height = height
         self.image_size = width * height
-        if batch_pixels is None:
-            self.batch_pixels = (int)(self.image_size)
+        if batch_pixels_perc is None:
+            self.batch_pixels = int(self.image_size)
         else:
-            self.batch_pixels = (int)(batch_pixels)
+            self.batch_pixels = int(batch_pixels_perc*self.image_size)
         if coordinates is None:
             self.coordinates = make2Dcoords(width, height)
         else:
@@ -43,7 +44,7 @@ class ImageSignal(Dataset):
         else:
             self.compute_attributes()
 
-    def init_fromfile(imagepath, useattributes=False,batch_pixels=None,width=None,height=None):
+    def init_fromfile(imagepath, useattributes=False,batch_pixels_perc=None,width=None,height=None):
         img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
@@ -62,7 +63,7 @@ class ImageSignal(Dataset):
                             img.width,
                             img.height,
                             useattributes=useattributes,
-                            batch_pixels=batch_pixels)
+                            batch_pixels_perc=batch_pixels_perc)
 
     def compute_attributes(self):
         self.d0_mask = torch.ones_like(self.data, dtype=torch.bool)
@@ -97,6 +98,7 @@ class ImageSignal(Dataset):
                     height,
                     None,
                     self.channels,
+                    batch_pixels_perc = self.batch_pixels_perc,
                     useattributes=self._useattributes)
                     
     def __len__(self):
