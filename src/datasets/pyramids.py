@@ -58,10 +58,8 @@ def pyrup2D_imagesignal(signal,num_times,dims_to_upscale):
 
 def construct_gaussian_pyramid2D(signal, num_levels):
     pyramid = [signal]
-    print(signal.dimensions())
     for _ in range(num_levels-1):
         signal = pyrdown2D(signal)
-        print(signal.dimensions())
         pyramid.append(signal)
     return pyramid
 
@@ -73,9 +71,13 @@ def construct_gaussian_tower(gaussian_pyramid):
         dims_to_upscale = pyramid_dimensions[:(level+1)]
         dims_to_upscale.reverse()
         signal = pyrup2D_imagesignal(signal,level,dims_to_upscale)
-        print(signal.dimensions())
         gauss_tower.append(signal)
     return gauss_tower
+
+def construct_laplacian_tower(gaussian_tower):
+    laplacian_tower = [upper_gauss-lower_gauss for upper_gauss, lower_gauss in zip(gaussian_tower[:-1], gaussian_tower[1:])]
+    laplacian_tower.append(gaussian_tower[-1])
+    return laplacian_tower
 
 def create_MR_structure(img_signal,num_levels,type_pyr="pyramid"):
 
@@ -88,6 +90,10 @@ def create_MR_structure(img_signal,num_levels,type_pyr="pyramid"):
 
     if type_pyr=="tower":
         return gaussian_tower
+
+    if type_pyr=="laplace":
+        laplace_tower = construct_laplacian_tower(gaussian_tower)
+        return laplace_tower
 
 
 

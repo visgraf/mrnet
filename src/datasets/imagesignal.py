@@ -87,6 +87,18 @@ class ImageSignal(Dataset):
     def image_tensor(self):
         return self.data.unsqueeze(0).unflatten(-1, (self._width, self._height))
 
+    def __sub__(self,other):
+        data_self = self.data
+        data_other = other.data
+        subtract_data = data_self - data_other
+        width,height = self.dimensions()
+        ImageSignal(subtract_data,
+                    width,
+                    height,
+                    None,
+                    self.channels,
+                    useattributes=self._useattributes)
+                    
     def __len__(self):
         return self.image_size // self.batch_pixels
 
