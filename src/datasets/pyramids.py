@@ -36,7 +36,7 @@ def pyrup2d_opencv(image,num_times,dims_to_upscale):
     for level in range(num_times):
         img_scale = cv2.pyrUp(img_scale,dstsize=dims_to_upscale[level])
 
-    img_scale = cv2.pyrUp(img_scale)
+    img_scale = cv2.pyrUp(img_scale,dstsize=dims_to_upscale[-1])
     
     return img_scale
 
@@ -58,8 +58,10 @@ def pyrup2D_imagesignal(signal,num_times,dims_to_upscale):
 
 def construct_gaussian_pyramid2D(signal, num_levels):
     pyramid = [signal]
+    print(signal.dimensions())
     for _ in range(num_levels-1):
         signal = pyrdown2D(signal)
+        print(signal.dimensions())
         pyramid.append(signal)
     return pyramid
 
@@ -71,6 +73,7 @@ def construct_gaussian_tower(gaussian_pyramid):
         dims_to_upscale = pyramid_dimensions[:(level+1)]
         dims_to_upscale.reverse()
         signal = pyrup2D_imagesignal(signal,level,dims_to_upscale)
+        print(signal.dimensions())
         gauss_tower.append(signal)
     return gauss_tower
 
