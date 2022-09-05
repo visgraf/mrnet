@@ -16,15 +16,15 @@ diff_tol: 0.00000000001
 batch_pixels: 16641
 batch_size: 1
 image_name: lena257.png
-width: 129
-height: 129
+width: 256
+height: 256
 channels: 1
 stage: 1
 max_stages: 6
 model: M
 useattributes: True
-device: cuda
-eval_device: cuda
+device: cpu
+eval_device: cpu
 
 #  'extrapolate': [-3, 3], 
 #  'save_format': 'general',
