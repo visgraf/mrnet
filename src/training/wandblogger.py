@@ -130,7 +130,7 @@ class WandBLogger2D(WandBLogger):
         return pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
-        # pixels = pixels / torch.max(pixels) 
+        # pixels = pixels / torch.max(pixels) # for D1
         image = wandb.Image(pixels.numpy())    
         wandb.log({label: image})
 
@@ -161,7 +161,6 @@ class WandBLogger2D(WandBLogger):
                                     title="PSNR for reconstruction")})
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
-        # TODO: make it work for non-square images
         w, h = dims
         space = 2.0 / w
         start, end = interval[0], interval[1]

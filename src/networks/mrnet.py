@@ -299,7 +299,7 @@ class MRFactory:
 
     def module_from_dict(hyper, idx=None):
         prevknowledge = 0
-        if (idx > 0) and hyper['model'] in ['M', 'S']:
+        if (idx > 0) and hyper['model'] in ['M']:
             prevknowledge = hyper['prevknowledge']
                             
         return MRModule(hyper['in_features'],

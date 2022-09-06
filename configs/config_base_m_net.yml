@@ -4,7 +4,7 @@ in_features: 2
 hidden_features: [128, 256]
 hidden_layers: 1
 superposition_w0: False
-hidden_omega_0: [70, 80]
+hidden_omega_0: [60, 80]
 sampling_scheme: uniform
 multiresolution: pyramid
 max_epochs_per_stage: [250, 150]
