@@ -298,10 +298,10 @@ class MRFactory:
         )
 
     def module_from_dict(hyper, idx=None):
-        if idx == 0:
-            prevknowledge = False
-        else:
-            prevknowledge = True if hyper['model'] in ['M', 'S'] else False
+        prevknowledge = 0
+        if (idx > 0) and hyper['model'] in ['M', 'S']:
+            prevknowledge = hyper['prevknowledge']
+                            
         return MRModule(hyper['in_features'],
                         hyper['hidden_features'],
                         hyper['hidden_layers'],
@@ -349,7 +349,8 @@ class MRFactory:
             mrmodule = MRFactory.module_from_dict(singledict, stage)
             mrmodule.load_state_dict(
                 checkpoint[f'module{stage}_state_dict'])
-            model_stages.append(mrmodule)     
+            model_stages.append(mrmodule)
+            singledict['prevknowledge'] = mrmodule.hidden_features     
         
         model.stages = nn.ModuleList(model_stages)
         model.eval()

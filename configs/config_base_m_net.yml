@@ -25,7 +25,7 @@ model: M
 useattributes: True
 device: cuda
 eval_device: cuda
-bias: False
+bias: True
 
 save_format: 'general'
 #extrapolate: [-3, 3] 
