@@ -166,16 +166,9 @@ class WandBLogger2D(WandBLogger):
         start, end = interval[0], interval[1]
         newsamplesize = abs(int((end - start) / space)) + 1
         ext_domain = make2Dcoords(newsamplesize, newsamplesize, start, end)
-        
-        data = data_utils.TensorDataset(ext_domain, ext_domain)
-        dataloader = data_utils.DataLoader(data, 
-                                batch_size=self.hyper['batch_size'])
-        model_out = None
-        for X, _ in dataloader:
-            output_dict = model(X.to(device))
-            batch_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)
-            model_out = (batch_out if model_out is None 
-                        else torch.concat([model_out, batch_out]))
+
+        output_dict = model(ext_domain.to(device))
+        model_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)
 
         pixels = self.as_imagetensor(model_out)
         self.log_imagetensor(pixels, 'Extrapolation')

@@ -1,5 +1,5 @@
 
-omega_0: [64, 128] 
+omega_0: [32, 64] 
 in_features: 2
 hidden_features: [128, 256]
 hidden_layers: 1
@@ -28,6 +28,6 @@ eval_device: cuda
 bias: True
 
 save_format: 'general'
-#extrapolate: [-3, 3] 
+extrapolate: [-3, 3] 
 
 
