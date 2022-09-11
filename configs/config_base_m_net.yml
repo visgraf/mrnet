@@ -1,33 +1,32 @@
 
-omega_0: [32, 64] 
+omega_0: [4, 8, 16, 32, 64, 128, 250] 
 in_features: 2
-hidden_features: [128, 256]
+hidden_features: [32, 32, 64, 64, 96, 96, 128]
 hidden_layers: 1
-superposition_w0: False
-hidden_omega_0: [60, 80]
+superposition_w0: True
+hidden_omega_0: [10, 20, 30, 40, 50, 60, 70]
 sampling_scheme: uniform
 multiresolution: pyramid
-max_epochs_per_stage: [250, 150]
+max_epochs_per_stage: [500, 500, 500, 500, 600, 600, 600]
 opt_method: Adam
 loss_function: ['d0']
 lr: 0.0001
-loss_tol: 0.00000000000001
-diff_tol: 0.00000000001
-batch_pixels_perc: 1.0
+loss_tol: 0.0000000000000001
+diff_tol: 0.00001
+batch_pixels_perc: 1
 batch_size: 1
 image_name: lena.png
-width: 128
-height: 128
+width: 512
+height: 512
 channels: 1
-stage: 1
-max_stages: 2
+max_stages: 7
 model: M
 useattributes: True
 device: cuda
-eval_device: cuda
-bias: True
+eval_device: cpu
+bias: False
 
-save_format: 'general'
-extrapolate: [-3, 3] 
+#save_format: 'general'
+#extrapolate: [-3, 3] 
 
 

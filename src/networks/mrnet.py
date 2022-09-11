@@ -30,12 +30,12 @@ class MRModule(nn.Module):
 
         middle = []
         middle.append(
-            SineLayer(prevknowledge + hidden_features, hidden_features, bias=bias,
+            SineLayer(prevknowledge + hidden_features, hidden_features, bias=True,
                                 is_first=False, omega_0=hidden_omega_0)
         )
 
         for i in range(hidden_layers - 1):
-            middle.append(SineLayer(hidden_features, hidden_features, bias=bias,
+            middle.append(SineLayer(hidden_features, hidden_features, bias=True,
                                       is_first=False, omega_0=hidden_omega_0))
         
         self.middle_layers = nn.Sequential(*middle)
@@ -219,11 +219,6 @@ class MNet(MRNet):
         for mrstage in self.stages:
             out, basis = mrstage(coords, basis)
             mroutputs.append(out)
-
-        if self.training and mrweights is not None:
-            warnings.warn(
-                "Using custom weights during training is discouraged. Make sure you know what you're doing"
-            )
         
         y = self._aggregate_resolutions(mroutputs, mrweights)
         return {"model_in": coords, "model_out": y}

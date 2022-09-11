@@ -130,7 +130,7 @@ class WandBLogger2D(WandBLogger):
         return pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
-        # pixels = pixels / torch.max(pixels) # for D1
+        # pixels = pixels / (torch.max(pixels) + 1e-10) # for D1
         image = wandb.Image(pixels.numpy())    
         wandb.log({label: image})
 

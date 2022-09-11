@@ -257,7 +257,6 @@ class MRTrainer:
                         running_loss[key] = (running_loss.get(key, 0.0) 
                                                 + value.item())
                     
-                    # TODO: is anyone using the raw running loss?
                     self.logger.on_batch_finish(running_loss)
 
                 epoch_loss = {key: value / len(self.current_dataloader)
@@ -270,7 +269,6 @@ class MRTrainer:
                 or (loss_gain < self.current_diff_tol)
                 or (epoch == self.current_limit_for_epochs - 1)):
                     self.epochs_per_stage.append(epoch + 1)
-                    # self.stages_losses.append(epoch_loss)
                     tolerance_reached = True
                 
                 last_epoch_loss = total_epoch_loss

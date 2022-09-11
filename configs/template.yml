@@ -7,7 +7,6 @@ hidden_layers: 1
 hidden_features: [128, 256]
 bias: True
 max_stages: 2
-stage: 1
 
 # Frequency Initialization
 omega_0: [64, 128] 
