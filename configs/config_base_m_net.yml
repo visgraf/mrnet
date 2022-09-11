@@ -16,8 +16,8 @@ diff_tol: 0.00001
 batch_pixels_perc: 1
 batch_size: 1
 image_name: lena.png
-width: 512
-height: 512
+width: 256
+height: 256
 channels: 1
 max_stages: 7
 model: M
