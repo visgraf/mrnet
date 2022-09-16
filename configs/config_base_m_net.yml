@@ -6,7 +6,7 @@ hidden_layers: 1
 superposition_w0: True
 hidden_omega_0: [10, 20, 30, 40, 50, 60]
 sampling_scheme: uniform
-multiresolution: pyramid
+multiresolution: laplace_pyramid
 max_epochs_per_stage: [500, 500, 500, 500, 600, 600]
 opt_method: Adam
 loss_function: ['d0']
@@ -16,8 +16,8 @@ diff_tol: 0.00001
 batch_pixels_perc: 1
 batch_size: 1
 image_name: lena.png
-width: 128
-height: 128
+width: 256
+height: 256
 channels: 1
 max_stages: 6
 model: M
