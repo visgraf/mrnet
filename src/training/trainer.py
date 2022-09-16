@@ -161,7 +161,7 @@ class MRTrainer:
     def _get_hidden_layers(self, next:bool) -> int:
         if isinstance(self._hidden_layers, Sequence):
             idx = self.n_stages if next else (self.n_stages -1)
-            return self._hidden_layers[self.n_stages]
+            return self._hidden_layers[idx]
         return self._hidden_layers
 
     @property
