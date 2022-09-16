@@ -6,7 +6,7 @@ hidden_layers: 3
 superposition_w0: True
 hidden_omega_0: 30
 sampling_scheme: uniform
-multiresolution: capacity
+multiresolution: signal
 max_epochs_per_stage: 200
 opt_method: Adam
 loss_function: ['d0']

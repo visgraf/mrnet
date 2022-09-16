@@ -83,24 +83,25 @@ def construct_laplacian_pyramid(gaussian_pyramid):
     laplacian_pyramid.append(gaussian_pyramid[-1])
     return laplacian_pyramid
 
-def create_MR_structure(img_signal, num_levels, type_pyr="pyramid"):
+def create_MR_structure(img_signal, num_levels, type_pyr="gauss_pyramid"):
     gaussian_pyramid = construct_gaussian_pyramid2D(img_signal,num_levels)
 
-    if type_pyr=="pyramid":
+    if type_pyr=="gauss_pyramid":
         return gaussian_pyramid
 
+    if type_pyr=="laplace_pyramid":
+        laplacian_pyramid = construct_laplacian_pyramid(gaussian_pyramid)
+        return laplacian_pyramid
+    
     gaussian_tower = construct_gaussian_tower(gaussian_pyramid)
 
-    if type_pyr=="tower":
+    if type_pyr=="gauss_tower":
         return gaussian_tower
 
     if type_pyr=="laplace_tower":
         laplacian_tower = construct_laplacian_tower(gaussian_tower)
         return laplacian_tower
 
-    elif type_pyr=="laplace_pyramid":
-        laplacian_pyramid = construct_laplacian_pyramid(gaussian_pyramid)
-        return laplacian_pyramid
 
 
     
