@@ -14,6 +14,10 @@ class MRMode(Enum):
     FILTERING = auto()
     CAPACITY = auto()
 
+class MRTrainType(Enum):
+    STACK = auto()
+    STAGES = auto()
+
 class MRTrainer:
     def __init__(self, model: MRNet, 
                         datasource: Union[DataLoader, Sequence[DataLoader]], 
@@ -31,7 +35,8 @@ class MRTrainer:
                         opt_method=torch.optim.Adam,
                         loss_function=F.mse_loss,
                         useattributes=False,
-                        bias=False):
+                        bias=False,
+                        mr_train_type=MRTrainType):
         
         if model.n_stages() > 1:
             raise ValueError("Must initialize with untrained model")
@@ -46,6 +51,8 @@ class MRTrainer:
         if self.mode == MRMode.FILTERING and len(datasource) != len(testsource):
             raise ValueError("Number of Train and Test signals must match ")
         
+        self.train_type = mr_train_type
+
         self.model = model
         self.max_stages = max_stages
         self.logger = logger
@@ -88,7 +95,13 @@ class MRTrainer:
                         hyper: dict):
         lr = hyper.get('lr', 1e-4)
         # TODO: think of strategy to use string or objects for these hyperparameters:
-        # hyper['opt_method']
+
+        if hyper.get('type_mr',None) == 'laplace':
+            mr_train_type = MRTrainType.STAGES
+        else:
+            mr_train_type = MRTrainType.STACK
+
+        
         
         loss_func = mrloss.get_loss_from_map(hyper['loss_function'])
 
@@ -107,7 +120,8 @@ class MRTrainer:
                         learning_rate=lr,
                         loss_function=loss_func,
                         useattributes=hyper.get('useattributes', False), 
-                        bias=hyper.get('bias',False))
+                        bias=hyper.get('bias',False),
+                        mr_train_type=mr_train_type)
 
     @property
     def current_dataloader(self)-> DataLoader:
@@ -220,7 +234,14 @@ class MRTrainer:
         self.model.train()
 
         self.logger.on_train_start()
-        for stage in range(1, self.max_stages + 1):        
+        for stage in range(1, self.max_stages + 1):
+
+            if self.train_type == MRTrainType.STAGES:
+                mrweights = torch.zeros(stage)
+                mrweights[stage-1]=1
+            else:
+                mrweights = None
+
             if stage > 1:
                 self.model.add_stage(
                     self.next_omega0(),
@@ -245,7 +266,7 @@ class MRTrainer:
                     optimizer.zero_grad()
                     # not all model's parameters are updated by the optimizer
                     self.model.zero_grad()
-                    output_dict = self.model(trainX['coords'].to(device))
+                    output_dict = self.model(trainX['coords'].to(device),mrweights=mrweights)
                     train_dict = {k: v.to(device) for k, v in trainY.items()}
                     loss_dict = self.loss_function(output_dict, train_dict)
                     loss = sum(loss_dict.values())
