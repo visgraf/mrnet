@@ -186,6 +186,9 @@ class MRNet(nn.Module):
         
         return self.top_stage.parameters()
 
+    def total_parameters(self):
+        return sum(p.numel() for p in self.parameters()) - self.n_stages()
+
     def current_device(self) -> str:
         return next(self.parameters()).device
 

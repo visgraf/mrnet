@@ -48,6 +48,7 @@ class WandBLogger(Logger):
             self.log_model(trained_model, save_format)
         
         wandb.finish()
+        print(f'Total model parameters = ', trained_model.total_parameters())
         print(f'Training finished after {total_epochs} epochs')
 
 ##
