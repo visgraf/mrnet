@@ -1,6 +1,7 @@
 import wandb
 import torch
 import os
+import re
 import numpy as np
 import torch.utils.data as data_utils
 
@@ -90,19 +91,27 @@ class WandBLogger2D(WandBLogger):
         current_model.train()
         current_model.to(self.hyper['device'])
        
-
 ##
-
     def log_traindata(self, train_loader):
         traindata = train_loader.dataset.data.view(-1, self.hyper['channels'])
         pixels = self.as_imagetensor(torch.clamp(traindata, 0, 1))
-        self.log_imagetensor(pixels, 'Train Data')
+
+        if re.match('laplace_*', self.hyper['multiresolution']) and self.hyper['stage'] > 1:
+            self.log_detailtensor(pixels, 'Train Data')
+        else:
+            self.log_imagetensor(pixels, 'Train Data')
     
     def log_groundtruth(self, test_loader):
         gtdata = test_loader.dataset.data.view(-1, self.hyper['channels'])
         pixels = self.as_imagetensor(torch.clamp(gtdata, 0, 1))
-        self.log_imagetensor(pixels, 'Ground Truth')
+        
+        if re.match('laplace_*', self.hyper['multiresolution']) and self.hyper['stage'] > 1:
+            self.log_detailtensor(pixels, 'Ground Truth')
+        else:
+            self.log_imagetensor(pixels, 'Ground Truth')
+        
         self.log_fft(pixels, 'FFT Ground Truth')
+
         if self.hyper.get('useattributes', False):
             gt_grads = test_loader.dataset.d1
             self.log_gradmagnitude(gt_grads, 'Ground Truth')
@@ -131,19 +140,23 @@ class WandBLogger2D(WandBLogger):
         return pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
-        # pixels = pixels / (torch.max(pixels) + 1e-10) # for D1
         image = wandb.Image(pixels.numpy())    
         wandb.log({label: image})
 
+    def log_detailtensor(self, pixels:torch.Tensor, label:str):
+        #imin, imax = torch.min(pixels), torch.max(pixels)
+        pixels = (pixels + 1.0) / (2.0)
+        image = wandb.Image(pixels.numpy())    
+        wandb.log({label: image})
+    
     def log_gradmagnitude(self, grads:torch.Tensor, label: str):
         grads = self.as_imagetensor(grads)
         mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
                         grads[:, :, 1].squeeze(-1).numpy())
         gmin, gmax = np.min(mag), np.max(mag)
-        
         img = Image.fromarray(255 * (mag - gmin) / gmax).convert('L')
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
-
+    
     def log_fft(self, pixels:torch.Tensor, label:str):
         fourier_tensor = torch.fft.fftshift(
                         torch.fft.fft2(pixels.squeeze(-1)))
