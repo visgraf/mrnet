@@ -28,7 +28,7 @@ class ImageSignal(Dataset):
         self.sampler.make_samples(self.image_t,width,height)
 
 
-    def init_fromfile(imagepath, sampling_scheme='regular', batch_pixels_perc=None, width=None, height=None):
+    def init_fromfile(imagepath, batch_pixels_perc=None,sampling_scheme='regular', width=None, height=None):
         img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
@@ -70,29 +70,9 @@ class ImageSignal(Dataset):
         return int(1 / self.batch_pixels_perc)
 
     def __getitem__(self, idx):
-        if self.batch_pixels_perc == 1:
-
-            in_dict = {'coords': self.sampler.coords}
-            gt_dict = {'d0': self.sampler.img_data.view(-1,1),
-                        'd1': self.sampler.img_grad.view(-1,1)
-                    }
-            return  (in_dict, gt_dict)
-
-        else:
-            im_size = self._width*self._height
-            rand_idcs = torch.randint(im_size, size=(1, int(self.batch_pixels_perc*im_size)))
-            rand_coords = self.sampler.coords[rand_idcs, :]
-            
-            d0 = self.sampler.img_data.view(-1,1)
-            rand_d0 = d0[rand_idcs, :]
-            
-            d1 = self.sampler.img_grad.view(-1,1)
-            rand_d1 = d1[rand_idcs, :]
-
-            in_dict = {'idx':idx,'coords':rand_coords}
-            gt_dict = {'d0': rand_d0, 'd1': rand_d1}
-
-            return  (in_dict,gt_dict)
+        
+        item = self.sampler.get_samples(idx,self.batch_pixels_perc)
+        return  item
 
 # OBS: in the future consider to replace the stored self.data with tensor format self.data.view(-1,1)
 #      (the same for all attributes, i.e. d1, etc...)

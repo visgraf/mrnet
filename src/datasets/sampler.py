@@ -1,5 +1,6 @@
 import torch
 import scipy
+import numpy as np
 
 from .constants import Sampling
 
@@ -42,12 +43,21 @@ class RegularSampler(Sampler):
         self.compute_attributes()
 
     def total_size(self):
-        return self.img_data.size() + self.img_grad.size()
+        return self.img_data.size() 
 
-    def get_samples(self, idx):
-        in_dict = {'ídx': idx, 'coords': self.coords}
-        out_dict = {'d0': self.img_data.view(-1,1),
-                     'd1': self.img_grad.view(-1,1),
+    def get_samples(self, idx, batch_pixel_perc):
+
+        num_of_elements=self.img_grad.shape[0]
+        rand_idcs = np.random.choice(num_of_elements , size=int(batch_pixel_perc*num_of_elements))
+
+        coords_sel = self.coords[rand_idcs]
+        img_data_sel = self.img_data[rand_idcs]
+        img_grad_sel = self.img_grad[rand_idcs]
+        
+        
+        in_dict = {'ídx': idx, 'coords': coords_sel}
+        out_dict = {'d0': img_data_sel.view(-1,1),
+                     'd1': img_grad_sel.view(-1,1),
                     }
         samples = (in_dict, out_dict)
         return samples
