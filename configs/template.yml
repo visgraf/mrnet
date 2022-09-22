@@ -14,7 +14,7 @@ hidden_omega_0: [60, 80]
 superposition_w0: False
 
 # Sampling
-sampling_scheme: uniform
+sampling_scheme: regular
 multiresolution: pyramid
 
 # Loss

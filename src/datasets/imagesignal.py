@@ -12,7 +12,7 @@ class ImageSignal(Dataset):
                         height,
                         coordinates=None,
                         channels=1,
-                        sampling_scheme=Sampling.UNIFORM,
+                        sampling_scheme=Sampling.REGULAR,
                         batch_pixels_perc=None,
                         useattributes=False,
                         attributes={}):
