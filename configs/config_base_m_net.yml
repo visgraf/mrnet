@@ -5,7 +5,7 @@ hidden_features: [64, 64, 96, 96]
 hidden_layers: 1
 superposition_w0: True
 hidden_omega_0: [30, 30, 30, 30]
-sampling_scheme: uniform
+sampling_scheme: regular
 multiresolution: gauss_pyramid
 max_epochs_per_stage: [500, 500, 600, 600]
 opt_method: Adam
@@ -21,7 +21,6 @@ height: 256
 channels: 1
 max_stages: 4
 model: L
-useattributes: True
 device: cuda
 eval_device: cpu
 bias: False

@@ -9,9 +9,8 @@ def gradient(y, x, grad_outputs=None):
     return grad
 
 def filter_active_values(model_val, train_dict, d_code):
-    mask = train_dict[f'{d_code}_mask']
-    pred = model_val[mask]
-    gt = train_dict[d_code][mask]
+    pred = model_val
+    gt = train_dict[d_code]
     return pred, gt
 
 def hermite_MSE(output_dict, train_dict, orders):

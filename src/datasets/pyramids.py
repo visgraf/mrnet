@@ -22,12 +22,13 @@ def pyrdown2D(signal):
 
     w_new, h_new = pil_filtered_decimated.size
     tensor_filt_decimated = to_tensor(pil_filtered_decimated)
+
     return ImageSignal(tensor_filt_decimated,
-                        w_new, h_new,
-                        None,
-                        signal.channels,
-                        batch_pixels_perc=signal.batch_pixels_perc,
-                        useattributes=signal._useattributes)
+                        w_new, 
+                        h_new,
+                        channels=signal.channels,
+                        sampling_scheme=signal.sampling_scheme,
+                        batch_pixels_perc=signal.batch_pixels_perc)
 
 def pyrup2d_opencv(image,num_times, dims_to_upscale):
     img_scale = image
@@ -47,12 +48,13 @@ def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
 
     w_new, h_new = pil_scaled_up_image.size
     tensor_scaled_up_image = to_tensor(pil_scaled_up_image)
+
     return ImageSignal(tensor_scaled_up_image,
-                        w_new, h_new,
-                        None,
-                        signal.channels,
-                        batch_pixels_perc=signal.batch_pixels_perc,
-                        useattributes=signal._useattributes)
+                        w_new,
+                        h_new,
+                        channels=signal.channels,
+                        sampling_scheme=signal.sampling_scheme,
+                        batch_pixels_perc=signal.batch_pixels_perc)
 
 def construct_gaussian_pyramid2D(signal, num_levels):
     pyramid = [signal]

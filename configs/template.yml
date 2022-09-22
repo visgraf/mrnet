@@ -19,7 +19,6 @@ multiresolution: pyramid
 
 # Loss
 loss_function: ['d0']
-useattributes: True
 
 # Training
 opt_method: Adam

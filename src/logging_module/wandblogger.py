@@ -14,7 +14,7 @@ from pathlib import Path
 
 import warnings
 from training.loss import gradient
-from datasets.sampling import make2Dcoords
+from datasets.sampler import make2Dcoords
 
 from .logger import Logger
 from networks.mrnet import MRNet, MRFactory
@@ -112,23 +112,22 @@ class WandBLogger2D(WandBLogger):
         
         self.log_fft(pixels, 'FFT Ground Truth')
 
-        if self.hyper.get('useattributes', False):
-            gt_grads = test_loader.dataset.d1
-            self.log_gradmagnitude(gt_grads, 'Ground Truth')
+        gt_grads = test_loader.dataset.sampler.img_grad
+        self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
+        
         return gtdata
 
     def log_prediction(self, model, test_loader, device):
-        output_dict = model(test_loader.dataset.coordinates.to(device))
+        output_dict = model(test_loader.dataset.sampler.coords.to(device))
         model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
 
         pred_pixels = self.as_imagetensor(model_out)
         self.log_imagetensor(pred_pixels, 'Prediction')
         self.log_fft(pred_pixels, 'FFT Prediction')
 
-        if self.hyper.get('useattributes', False):
-            model_grads = gradient(model_out, output_dict['model_in'])
-            pred_grads = torch.reshape(model_grads, (-1, 2))
-            self.log_gradmagnitude(pred_grads, 'Prediction')
+        model_grads = gradient(model_out, output_dict['model_in'])
+        pred_grads = torch.reshape(model_grads, (-1, 2))
+        self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
         
         return model_out
     
