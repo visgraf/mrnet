@@ -28,7 +28,7 @@ class ImageSignal(Dataset):
         self.sampler.make_samples(self.image_t,width,height)
 
 
-    def init_fromfile(imagepath, batch_pixels_perc=None,sampling_scheme='regular', width=None, height=None):
+    def init_fromfile(imagepath, batch_pixels_perc=None, sampling_scheme='regular', width=None, height=None):
         img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
@@ -36,7 +36,7 @@ class ImageSignal(Dataset):
                 height = img.height
             if width is None:
                 width = img.width
-            img = img.resize((width,height))
+            img = img.resize((width, height))
         img_tensor = to_tensor(img)
 
         return ImageSignal(img_tensor,
@@ -67,12 +67,9 @@ class ImageSignal(Dataset):
                             batch_pixels_perc=self.batch_pixels_perc)
                     
     def __len__(self):
-        return int(1 / self.batch_pixels_perc)
+        return int(1.0 / self.batch_pixels_perc)
 
     def __getitem__(self, idx):
-        
-        item = self.sampler.get_samples(idx,self.batch_pixels_perc)
+        item = self.sampler.get_samples(idx, self.batch_pixels_perc)
         return  item
 
-# OBS: in the future consider to replace the stored self.data with tensor format self.data.view(-1,1)
-#      (the same for all attributes, i.e. d1, etc...)

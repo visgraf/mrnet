@@ -7,7 +7,7 @@ from typing import Sequence, Union
 
 from networks.mrnet import MRNet
 import training.loss as mrloss
-from logging_module.logger import Logger
+from logs.logger import Logger
 
 
 class MRMode(Enum):
