@@ -16,9 +16,10 @@ superposition_w0: False
 # Sampling
 sampling_scheme: regular
 multiresolution: pyramid
+attributes: ['d1']
 
 # Loss
-loss_function: ['d0']
+loss_function: 'mse'
 
 # Training
 opt_method: Adam

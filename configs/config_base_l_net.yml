@@ -9,11 +9,12 @@ sampling_scheme: regular
 multiresolution: signal
 max_epochs_per_stage: 600
 opt_method: Adam
-loss_function: ['d0']
+attributes: ['d1']
+loss_function: 'mse'
 lr: 0.0001
 loss_tol: 0.000001
 diff_tol: 0.000000000001
-batch_samples_perc: 0.5
+batch_samples_perc: 1.0
 batch_size: 1
 image_name: lena.png
 width: 512
