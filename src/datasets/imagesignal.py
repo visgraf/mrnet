@@ -13,12 +13,12 @@ class ImageSignal(Dataset):
                         height,
                         channels=1,
                         sampling_scheme=Sampling.REGULAR,
-                        batch_pixels_perc=None):
+                        batch_samples_perc=None):
         
         self.image_t = data
         self.data = torch.flatten(data)
 
-        self.batch_pixels_perc = batch_pixels_perc
+        self.batch_samples_perc = batch_samples_perc
         self._width = width
         self._height = height
         self.channels = channels
@@ -28,7 +28,7 @@ class ImageSignal(Dataset):
         self.sampler.make_samples(self.image_t,width,height)
 
 
-    def init_fromfile(imagepath, batch_pixels_perc=None, sampling_scheme='regular', width=None, height=None):
+    def init_fromfile(imagepath, batch_samples_perc=None, sampling_scheme='regular', width=None, height=None):
         img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
@@ -43,7 +43,7 @@ class ImageSignal(Dataset):
                             img.width,
                             img.height,
                             sampling_scheme=SAMPLING_DICT[sampling_scheme],
-                            batch_pixels_perc=batch_pixels_perc)
+                            batch_samples_perc=batch_samples_perc)
     
 
     def dimensions(self):
@@ -64,12 +64,12 @@ class ImageSignal(Dataset):
                             width,
                             height,
                             sampling_scheme=self.sampling_scheme,
-                            batch_pixels_perc=self.batch_pixels_perc)
+                            batch_samples_perc=self.batch_samples_perc)
                     
     def __len__(self):
-        return int(1.0 / self.batch_pixels_perc)
+        return int(1.0 / self.batch_samples_perc)
 
     def __getitem__(self, idx):
-        item = self.sampler.get_samples(idx, self.batch_pixels_perc)
+        item = self.sampler.get_samples(idx, self.batch_samples_perc)
         return  item
 

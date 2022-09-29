@@ -13,7 +13,7 @@ loss_function: ['d0']
 lr: 0.0001
 loss_tol: 0.000001
 diff_tol: 0.000000000001
-batch_pixels_perc: 0.5
+batch_samples_perc: 0.5
 batch_size: 1
 image_name: lena.png
 width: 512

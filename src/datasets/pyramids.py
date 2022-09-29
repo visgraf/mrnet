@@ -28,7 +28,7 @@ def pyrdown2D(signal):
                         h_new,
                         channels=signal.channels,
                         sampling_scheme=signal.sampling_scheme,
-                        batch_pixels_perc=signal.batch_pixels_perc)
+                        batch_samples_perc=signal.batch_samples_perc)
 
 def pyrup2d_opencv(image,num_times, dims_to_upscale):
     img_scale = image
@@ -54,7 +54,7 @@ def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
                         h_new,
                         channels=signal.channels,
                         sampling_scheme=signal.sampling_scheme,
-                        batch_pixels_perc=signal.batch_pixels_perc)
+                        batch_samples_perc=signal.batch_samples_perc)
 
 def construct_gaussian_pyramid2D(signal, num_levels):
     pyramid = [signal]

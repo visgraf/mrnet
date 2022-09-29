@@ -27,7 +27,7 @@ loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
 max_epochs_per_stage: [250, 150]
 batch_size: 1
-batch_pixels_perc: 1.0
+batch_samples_perc: 1.0
 
 # Image
 image_name: lena.png
