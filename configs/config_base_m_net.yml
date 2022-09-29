@@ -10,7 +10,7 @@ multiresolution: gauss_pyramid
 max_epochs_per_stage: [500, 500, 600, 600]
 opt_method: Adam
 attributes: ['d1']
-loss_function: 'hermite'
+loss_function: 'mse'
 lr: 0.0001
 loss_tol: 0.000001
 diff_tol: 0.0000000000001

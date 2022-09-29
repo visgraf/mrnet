@@ -13,10 +13,12 @@ class ImageSignal(Dataset):
                         height,
                         channels=1,
                         sampling_scheme=Sampling.REGULAR,
-                        batch_samples_perc=None):
+                        batch_samples_perc=None,
+                        attributes=[]):
         
         self.image_t = data
         self.data = torch.flatten(data)
+        self.attributes = attributes
 
         self.batch_samples_perc = batch_samples_perc
         self._width = width
@@ -24,11 +26,11 @@ class ImageSignal(Dataset):
         self.channels = channels
 
         self.sampling_scheme=sampling_scheme
-        self.sampler = samplerFactory(sampling_scheme,data)
+        self.sampler = samplerFactory(sampling_scheme, data, attributes)
         self.sampler.make_samples(self.image_t,width,height)
 
 
-    def init_fromfile(imagepath, batch_samples_perc=None, sampling_scheme='regular', width=None, height=None):
+    def init_fromfile(imagepath, batch_samples_perc=None, sampling_scheme='regular', width=None, height=None, attributes=[]):
         img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
@@ -43,7 +45,8 @@ class ImageSignal(Dataset):
                             img.width,
                             img.height,
                             sampling_scheme=SAMPLING_DICT[sampling_scheme],
-                            batch_samples_perc=batch_samples_perc)
+                            batch_samples_perc=batch_samples_perc,
+                            attributes=attributes)
     
 
     def dimensions(self):
@@ -64,7 +67,8 @@ class ImageSignal(Dataset):
                             width,
                             height,
                             sampling_scheme=self.sampling_scheme,
-                            batch_samples_perc=self.batch_samples_perc)
+                            batch_samples_perc=self.batch_samples_perc,
+                            attributes=self.attributes)
                     
     def __len__(self):
         return int(1.0 / self.batch_samples_perc)
