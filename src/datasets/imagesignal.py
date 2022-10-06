@@ -27,7 +27,7 @@ class ImageSignal(Dataset):
 
         self.sampling_scheme=sampling_scheme
         self.sampler = samplerFactory(sampling_scheme, data, attributes)
-        self.sampler.make_samples(self.image_t,width,height)
+        self.sampler.make_samples(self.image_t,width,height, self.batch_samples_perc)
 
 
     def init_fromfile(imagepath, batch_samples_perc=None, sampling_scheme='regular', width=None, height=None, attributes=[]):
@@ -74,6 +74,6 @@ class ImageSignal(Dataset):
         return int(1.0 / self.batch_samples_perc)
 
     def __getitem__(self, idx):
-        item = self.sampler.get_samples(idx, self.batch_samples_perc)
+        item = self.sampler.get_samples(idx)
         return  item
 
