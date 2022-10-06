@@ -54,7 +54,13 @@ class RegularSampler(Sampler):
 
     def create_batches(self, batch_pixel_perc):
         batch_size = int(self.size*batch_pixel_perc)
-        self.batch_samples = list(BatchSampler(SequentialSampler(range(self.size)), batch_size=batch_size, drop_last=False))
+
+        if batch_pixel_perc != 1.:
+            indices_to_sample = torch.randperm(self.size)
+        else:
+            indices_to_sample = range(self.size)
+        
+        self.batch_samples = list(BatchSampler(SequentialSampler(indices_to_sample), batch_size=batch_size, drop_last=False))
         
         self.list_samples = []
 
