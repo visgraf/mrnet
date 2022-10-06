@@ -37,38 +37,50 @@ class RegularSampler(Sampler):
         grads_x, grads_y = torch.from_numpy(grads_x), torch.from_numpy(grads_y)
         self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
 
+    def get_tuple_dicts(self,sel_idxs):
+        coords_sel = self.coords[sel_idxs]
+        img_data_sel = self.img_data[sel_idxs]
+            
+        in_dict = {'coords': coords_sel}
+        out_dict = {'d0': img_data_sel.view(-1,1)}
+            
+        if 'd1' in self.attributes:
+            img_grad_sel = self.img_grad[sel_idxs]
+            out_dict['d1'] = img_grad_sel.view(-1,1)
+
+        samples = (in_dict, out_dict)
+
+        return samples
+
+    def create_batches(self, batch_pixel_perc):
+        batch_size = int(self.size*batch_pixel_perc)
+        self.batch_samples = list(BatchSampler(SequentialSampler(range(self.size)), batch_size=batch_size, drop_last=False))
+        
+        self.list_samples = []
+
+        for sel_idxs in self.batch_samples:
+
+            samples = self.get_tuple_dicts(sel_idxs)
+            self.list_samples.append(samples)
+
     def make_samples(self, data, width, height, batch_pixel_perc):
         self.img_data = torch.flatten(data)
         self.img_width = width
         self.img_height = height
         self.size = width*height
         self.coords = make2Dcoords(width, height)
-        batch_size = int(self.size*batch_pixel_perc)
-
-        self.batch_samples = list(BatchSampler(SequentialSampler(range(self.size)), batch_size=batch_size, drop_last=False))
 
         if 'd1' in self.attributes:
             self.compute_gradients()
+
+        self.create_batches(batch_pixel_perc)
 
     def total_size(self):
         return len(self.batch_samples)
 
     def get_samples(self, idx):
 
-        sel_idxs = self.batch_samples[idx]
-
-        coords_sel = self.coords[sel_idxs]
-        img_data_sel = self.img_data[sel_idxs]
-        
-        in_dict = {'ídx': idx, 'coords': coords_sel}
-        out_dict = {'d0': img_data_sel.view(-1,1)}
-        
-        if 'd1' in self.attributes:
-            img_grad_sel = self.img_grad[sel_idxs]
-            out_dict['d1'] = img_grad_sel.view(-1,1)
-
-        samples = (in_dict, out_dict)
-        return samples
+        return self.list_samples[idx]
 
 
 def samplerFactory(sampling_type:Sampling, data_to_sample, attributes):
