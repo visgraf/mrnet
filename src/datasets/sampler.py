@@ -41,7 +41,7 @@ class RegularSampler(Sampler):
         coords_sel = self.coords[sel_idxs]
         img_data_sel = self.img_data[sel_idxs]
             
-        in_dict = {'coords': coords_sel}
+        in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {'d0': img_data_sel.view(-1,1)}
             
         if 'd1' in self.attributes:
