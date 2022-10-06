@@ -46,12 +46,12 @@ class RegularSampler(Sampler):
         batch_size = int(self.size*batch_pixel_perc)
 
         self.batch_samples = list(BatchSampler(SequentialSampler(range(self.size)), batch_size=batch_size, drop_last=False))
-        
+
         if 'd1' in self.attributes:
             self.compute_gradients()
 
     def total_size(self):
-        return self.img_data.size() 
+        return len(self.batch_samples)
 
     def get_samples(self, idx):
 

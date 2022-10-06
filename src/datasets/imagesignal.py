@@ -71,7 +71,8 @@ class ImageSignal(Dataset):
                             attributes=self.attributes)
                     
     def __len__(self):
-        return int(1.0 / self.batch_samples_perc)
+        return self.sampler.total_size()
+
 
     def __getitem__(self, idx):
         item = self.sampler.get_samples(idx)
