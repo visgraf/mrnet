@@ -260,9 +260,11 @@ class MRTrainer:
                                         self.n_stages, 
                                         self.get_stage_hyper())
             last_epoch_loss = 10000000
+            list_dataloader = list(iter(self.current_dataloader))
+
             for epoch in range(self.current_limit_for_epochs):
                 running_loss = {}
-                for i, (trainX, trainY) in enumerate(self.current_dataloader):
+                for (trainX, trainY) in list_dataloader:
                     optimizer.zero_grad()
                     # not all model's parameters are updated by the optimizer
                     self.model.zero_grad()
