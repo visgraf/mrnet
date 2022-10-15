@@ -19,9 +19,11 @@ MULTIRESOLUTION_DICT = {
 class Sampling(Enum):
     REGULAR = auto()
     POISSON_DISC = auto()
+    STOCHASTIC = auto()
 
 SAMPLING_DICT = {
     'regular': Sampling.REGULAR,
-    'poisson': Sampling.POISSON_DISC
+    'poisson': Sampling.POISSON_DISC,
+    'stochastic' : Sampling.STOCHASTIC
 }
     
