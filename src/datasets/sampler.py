@@ -29,6 +29,10 @@ class RegularSampler(Sampler):
     def __init__(self, img_data, attributes=[]):   
         self.img_data = img_data
         self.attributes = attributes
+        if 'd1' in self.attributes:
+            self.key_group = 'c1'
+        else:
+            self.key_group = 'c0'
 
     def compute_gradients(self):
         img = self.img_data.unflatten(0, (self.img_width, self.img_height))
@@ -48,26 +52,27 @@ class RegularSampler(Sampler):
             img_grad_sel = self.img_grad[sel_idxs]
             out_dict['d1'] = img_grad_sel.view(-1,1)
 
-        samples = {'c0':(in_dict, out_dict)}
+        samples = {self.key_group:(in_dict, out_dict)}
 
         return samples
 
-    def create_batch_samples(self, batch_pixel_perc):
-        batch_size = int(self.size*batch_pixel_perc)
+    def create_batch_samples(self, batch_pixel_perc, indices_to_sample):
+        batch_size = int(len(indices_to_sample)*batch_pixel_perc)
 
-        indices_to_sample = torch.randperm(self.size)
-        self.batch_samples = list(BatchSampler(SequentialSampler(indices_to_sample), batch_size=batch_size, drop_last=False))
+        return (list(BatchSampler(indices_to_sample, batch_size=batch_size, drop_last=False)))
 
+    def total_size(self):
+        return len(self.list_batches)
 
-    def create_batches(self, batch_pixel_perc):
-        
-        self.create_batch_samples(batch_pixel_perc)
-        self.list_samples = []
+    
+    def create_batches(self, batch_index_samples):
+        list_samples = []
 
-        for sel_idxs in self.batch_samples:
-
+        for sel_idxs in batch_index_samples:
             samples = self.get_tuple_dicts(sel_idxs)
-            self.list_samples.append(samples)
+            list_samples.append(samples)
+        
+        return list_samples
 
     def make_samples(self, data, width, height, batch_pixel_perc):
         self.img_data = torch.flatten(data)
@@ -79,11 +84,17 @@ class RegularSampler(Sampler):
         if 'd1' in self.attributes:
             self.compute_gradients()
 
-        self.create_batches(batch_pixel_perc)
+        self.batch_index_dict = {}
+
+        self.total_idx_sample = torch.randperm(self.size)
+        
+        batch_index = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample)
+
+        self.list_batches = self.create_batches(batch_index)
 
     def get_samples(self, idx):
-
-        return self.list_samples[idx]
+        return self.list_batches[idx]
+        
 
 
 class StochasticSampler:

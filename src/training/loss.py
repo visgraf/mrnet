@@ -15,11 +15,11 @@ def gradient(y, x, grad_outputs=None):
 
 def mse_loss(batch, model, mrweights,device):
     loss_dict = {}
-    
+
     pred_list = []
     gt_list = []
 
-    for key in ['c0','c1']:
+    for key in batch.keys():
         output_dict, trainY = perform_inference(batch, model, mrweights,device, key)
 
         train_dict = {k: v.to(device) for k, v in trainY.items()}
@@ -34,7 +34,9 @@ def mse_loss(batch, model, mrweights,device):
     return loss_dict
 
 def hermite_loss(batch, model, mrweights,device):
-    (trainX, trainY) = batch['c0']
+
+
+    (trainX, trainY) = batch['c1']
     output_dict = model(trainX['coords'].to(device),mrweights=mrweights)
     train_dict = {k: v.to(device) for k, v in trainY.items()}
     coords = output_dict['model_in']

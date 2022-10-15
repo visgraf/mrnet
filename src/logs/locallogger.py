@@ -36,7 +36,6 @@ class LocalLogger2D(LocalLogger):
     def on_stage_trained(self, current_model: MRNet,
                                 train_loader: DataLoader,
                                 test_loader: DataLoader):
-        X, Y = next(iter(test_loader))
         current_model.eval()
         print(current_model.top_stage)
         current_model.train()
