@@ -264,13 +264,12 @@ class MRTrainer:
 
             for epoch in range(self.current_limit_for_epochs):
                 running_loss = {}
-                for (trainX, trainY) in list_dataloader:
+                for batch in list_dataloader:
                     optimizer.zero_grad()
                     # not all model's parameters are updated by the optimizer
                     self.model.zero_grad()
-                    output_dict = self.model(trainX['coords'].to(device),mrweights=mrweights)
-                    train_dict = {k: v.to(device) for k, v in trainY.items()}
-                    loss_dict = self.loss_function(output_dict, train_dict)
+
+                    loss_dict = self.loss_function(batch, self.model, mrweights, device)
                     loss = sum(loss_dict.values())
 
                     loss.backward()

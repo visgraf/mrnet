@@ -48,7 +48,7 @@ class RegularSampler(Sampler):
             img_grad_sel = self.img_grad[sel_idxs]
             out_dict['d1'] = img_grad_sel.view(-1,1)
 
-        samples = (in_dict, out_dict)
+        samples = {'c0':(in_dict, out_dict)}
 
         return samples
 
@@ -86,12 +86,19 @@ class RegularSampler(Sampler):
         return self.list_samples[idx]
 
 
-class StochasticSampler(RegularSampler):
+class StochasticSampler:
     def __init__(self, img_data, attributes=[]):   
         self.img_data = img_data
         self.attributes = attributes
 
-        self.perc_of_no_grads = 1.
+        self.perc_of_no_grads = .9
+
+    def compute_gradients(self):
+        img = self.img_data.unflatten(0, (self.img_width, self.img_height))
+        grads_x = scipy.ndimage.sobel(img.numpy(), axis=0)[..., None]
+        grads_y = scipy.ndimage.sobel(img.numpy(), axis=1)[..., None]
+        grads_x, grads_y = torch.from_numpy(grads_x), torch.from_numpy(grads_y)
+        self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
 
     def get_tuple_dicts(self,sel_idxs, class_points):
         coords_sel = self.coords[sel_idxs]
@@ -109,9 +116,9 @@ class StochasticSampler(RegularSampler):
         return samples
 
     def create_batch_samples(self, batch_pixel_perc, indices_to_sample):
-        batch_size = int(self.size*batch_pixel_perc)
+        batch_size = int(len(indices_to_sample)*batch_pixel_perc)
 
-        return (list(BatchSampler(SequentialSampler(indices_to_sample), batch_size=batch_size, drop_last=False)))
+        return (list(BatchSampler(indices_to_sample, batch_size=batch_size, drop_last=False)))
 
     def create_batches(self, batch_index_samples, class_points):
         list_samples = []
@@ -138,20 +145,20 @@ class StochasticSampler(RegularSampler):
         self.batch_dict = {}
         self.batch_index_dict = {}
 
-        self.total_idx_sample = torch.randperm(self.size)
+        self.total_idx_sample = list(range(self.size))
         self.total_ids_in_batch = int(self.size*self.perc_of_no_grads)
         
-        self.batch_index_dict['c0'] = self.total_idx_sample[:self.total_ids_in_batch]
-        self.batch_index_dict['c1'] = self.total_idx_sample[self.total_ids_in_batch:]
+        self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[self.total_ids_in_batch:])
+        self.batch_index_dict['c1'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[:self.total_ids_in_batch])
 
-        self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.batch_index_dict['c0'])
-        self.batch_index_dict['c1'] = self.create_batch_samples(batch_pixel_perc,self.batch_index_dict['c1'])
 
         self.batch_dict['c0'] = self.create_batches(self.batch_index_dict['c0'],'c0')
         self.batch_dict['c1'] = self.create_batches(self.batch_index_dict['c1'],'c1')
 
+        self.list_batches = [{'c0':self.batch_dict['c0'][i], 'c1':self.batch_dict['c1'][i] } for i in range(self.total_size())]
+
     def get_samples(self, idx):
-        return self.batch_dict['c0'][idx]
+        return self.list_batches[idx]
 
     
     
