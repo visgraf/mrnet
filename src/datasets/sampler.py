@@ -29,17 +29,7 @@ class RegularSampler(Sampler):
     def __init__(self, img_data, attributes=[]):   
         self.img_data = img_data
         self.attributes = attributes
-        if 'd1' in self.attributes:
-            self.key_group = 'c1'
-        else:
-            self.key_group = 'c0'
-
-    def compute_gradients(self):
-        img = self.img_data.unflatten(0, (self.img_width, self.img_height))
-        grads_x = scipy.ndimage.sobel(img.numpy(), axis=0)[..., None]
-        grads_y = scipy.ndimage.sobel(img.numpy(), axis=1)[..., None]
-        grads_x, grads_y = torch.from_numpy(grads_x), torch.from_numpy(grads_y)
-        self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
+        self.key_group = 'c0'
 
     def get_tuple_dicts(self,sel_idxs):
         coords_sel = self.coords[sel_idxs]
@@ -47,10 +37,6 @@ class RegularSampler(Sampler):
             
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {'d0': img_data_sel.view(-1,1)}
-            
-        if 'd1' in self.attributes:
-            img_grad_sel = self.img_grad[sel_idxs]
-            out_dict['d1'] = img_grad_sel.view(-1,1)
 
         samples = {self.key_group:(in_dict, out_dict)}
 
@@ -80,9 +66,6 @@ class RegularSampler(Sampler):
         self.img_height = height
         self.size = width*height
         self.coords = make2Dcoords(width, height)
-
-        if 'd1' in self.attributes:
-            self.compute_gradients()
 
         self.batch_index_dict = {}
 
