@@ -26,6 +26,7 @@ class WandBLogger(Logger):
                         name: str, 
                         hyper: dict,
                         basedir: str, 
+                        visualize_gt_grads = False,
                         entity = None, config=None, settings=None):
         self.project = project
         self.name = name
@@ -33,6 +34,7 @@ class WandBLogger(Logger):
         self.basedir = basedir
         self.entity = entity
         self.config = config
+        self.visualize_gt_grads = visualize_gt_grads
         self.settings = settings
 
     def on_epoch_finish(self, current_model, epochloss):
@@ -112,8 +114,9 @@ class WandBLogger2D(WandBLogger):
         
         self.log_fft(pixels, 'FFT Ground Truth')
 
-        gt_grads = test_loader.dataset.sampler.img_grad
-        self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
+        if self.visualize_gt_grads:
+            gt_grads = test_loader.dataset.sampler.img_grad
+            self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
         
         return gtdata
 
@@ -143,7 +146,6 @@ class WandBLogger2D(WandBLogger):
         wandb.log({label: image})
 
     def log_detailtensor(self, pixels:torch.Tensor, label:str):
-        #imin, imax = torch.min(pixels), torch.max(pixels)
         pixels = (pixels + 1.0) / (2.0)
         image = wandb.Image(pixels.numpy())    
         wandb.log({label: image})

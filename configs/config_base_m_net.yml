@@ -1,27 +1,39 @@
 
 omega_0: [8, 16, 32, 64] 
 in_features: 2
+
 hidden_features: [64, 64, 96, 96]
 hidden_layers: 1
+
 superposition_w0: True
 hidden_omega_0: [30, 30, 30, 30]
+
 sampling_scheme: regular
 multiresolution: gauss_pyramid
+
 max_epochs_per_stage: [500, 500, 600, 600]
 opt_method: Adam
-attributes: ['d0']
+
+attributes: ['d0', 'd1']
 loss_function: 'mse'
+visualize_grad: True
+
 lr: 0.0001
 loss_tol: 0.000001
 diff_tol: 0.0000000000001
+
 batch_samples_perc: 1.
 batch_size: 1
+
 image_name: lena.png
-width: 256
-height: 256
+
+width: 128
+height: 128
+
 channels: 1
 max_stages: 4
-model: L
+
+model: M
 device: cuda
 eval_device: cpu
 bias: False
