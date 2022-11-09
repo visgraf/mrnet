@@ -115,8 +115,12 @@ class WandBLogger2D(WandBLogger):
         self.log_fft(pixels, 'FFT Ground Truth')
 
         if self.visualize_gt_grads:
-            gt_grads = test_loader.dataset.sampler.img_grad
-            self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
+
+            try:
+                gt_grads = test_loader.dataset.sampler.img_grad
+                self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
+            except:
+                print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
         
         return gtdata
 
