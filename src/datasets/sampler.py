@@ -85,7 +85,7 @@ class StochasticSampler:
         self.img_data = img_data
         self.attributes = attributes
 
-        self.perc_of_no_grads = .9
+        self.perc_of_no_grads = .5
 
     def compute_gradients(self):
         img = self.img_data.unflatten(0, (self.img_width, self.img_height))
@@ -142,8 +142,8 @@ class StochasticSampler:
         self.total_idx_sample = list(range(self.size))
         self.total_ids_in_batch = int(self.size*self.perc_of_no_grads)
         
-        self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[self.total_ids_in_batch:])
-        self.batch_index_dict['c1'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[:self.total_ids_in_batch])
+        self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[:self.total_ids_in_batch])
+        self.batch_index_dict['c1'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[self.total_ids_in_batch:])
 
 
         self.batch_dict['c0'] = self.create_batches(self.batch_index_dict['c0'],'c0')
