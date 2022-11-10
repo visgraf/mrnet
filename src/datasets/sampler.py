@@ -67,7 +67,7 @@ class RegularSampler(Sampler):
         self.img_height = height
         self.size = width*height
         self.coords = make2Dcoords(width, height)
-
+        print(f'Num of samples: {self.size}')
 
         self.batch_index_dict = {}
 
@@ -82,7 +82,9 @@ class RegularSampler(Sampler):
 
 
 class PoissonDiscSampler(RegularSampler):
-    def __init__(self, img_data, attributes = [], k = 30, r = 1.7):   
+    def __init__(self, img_data, attributes = [], 
+                                                k = 30, 
+                                                r = 0.8):   
         transform_to_pil = T.ToPILImage()
         self.img_orig = transform_to_pil(img_data)
 
@@ -114,6 +116,7 @@ class PoissonDiscSampler(RegularSampler):
 
         self.coords = self.create_sample_points_poisson()
         self.size = len(self.coords)
+        print(f'Num of samples: {self.size}')
 
         self.batch_index_dict = {}
         self.total_idx_sample = torch.randperm(self.size)

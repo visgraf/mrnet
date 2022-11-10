@@ -1,0 +1,44 @@
+
+omega_0: 64
+in_features: 2
+
+hidden_features: 96
+hidden_layers: 4
+
+superposition_w0: True
+hidden_omega_0: 30
+
+sampling_scheme: poisson
+multiresolution: gauss_pyramid
+
+max_epochs_per_stage: 700
+opt_method: Adam
+
+attributes: ['d0', 'd1']
+loss_function: 'mse'
+visualize_grad: True
+
+lr: 0.0001
+loss_tol: 0.000001
+diff_tol: 0.0000000000001
+
+batch_samples_perc: 1.
+batch_size: 1
+
+image_name: lena.png
+
+width: 128
+height: 128
+
+channels: 1
+max_stages: 1
+
+model: L
+device: cpu
+eval_device: cpu
+bias: False
+
+#save_format: 'general'
+#extrapolate: [-3, 3] 
+
+
