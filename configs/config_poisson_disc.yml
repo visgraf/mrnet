@@ -8,14 +8,14 @@ hidden_layers: 4
 superposition_w0: True
 hidden_omega_0: 30
 
-sampling_scheme: poisson
+sampling_scheme: stochastic
 multiresolution: gauss_pyramid
 
 max_epochs_per_stage: 700
 opt_method: Adam
 
 attributes: ['d0', 'd1']
-loss_function: 'mse'
+loss_function: 'hermite'
 visualize_grad: True
 
 lr: 0.0001
@@ -34,7 +34,7 @@ channels: 1
 max_stages: 1
 
 model: L
-device: cpu
+device: cuda
 eval_device: cpu
 bias: False
 

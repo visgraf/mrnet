@@ -19,12 +19,11 @@ def mse_loss(batch, model, mrweights,device):
     pred_list = []
     gt_list = []
 
-    for key in batch.keys():
-        output_dict, trainY = perform_inference(batch, model, mrweights,device, key)
+    output_dict, trainY = perform_inference(batch, model, mrweights,device, 'c0')
 
-        train_dict = {k: v.to(device) for k, v in trainY.items()}
-        pred_list.append(output_dict['model_out'])
-        gt_list.append(train_dict['d0'])
+    train_dict = {k: v.to(device) for k, v in trainY.items()}
+    pred_list.append(output_dict['model_out'])
+    gt_list.append(train_dict['d0'])
     
     pred = torch.cat(pred_list, dim=1)
     gt = torch.cat(gt_list, dim=1)

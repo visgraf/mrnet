@@ -261,26 +261,40 @@ class StochasticSampler:
         self.img_data = img_data
         self.attributes = attributes
 
-        self.perc_of_no_grads = .5
+        transform_to_pil = T.ToPILImage()
+        self.img_orig = transform_to_pil(img_data)
+
+        self.perc_of_grads = .9
 
     def compute_gradients(self):
         img = self.img_data.unflatten(0, (self.img_width, self.img_height))
-        grads_x = scipy.ndimage.sobel(img.numpy(), axis=0)[..., None]
-        grads_y = scipy.ndimage.sobel(img.numpy(), axis=1)[..., None]
+        img = scipy.ndimage.zoom(img.numpy(),self.perc_of_grads)
+
+        grads_x = scipy.ndimage.sobel(img, axis=0)[..., None]
+        grads_y = scipy.ndimage.sobel(img, axis=1)[..., None]
         grads_x, grads_y = torch.from_numpy(grads_x), torch.from_numpy(grads_y)
         self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
 
     def get_tuple_dicts(self,sel_idxs, class_points):
-        coords_sel = self.coords[sel_idxs]
-        img_data_sel = self.img_data[sel_idxs]
+        coords_type_points = self.coords[class_points]
+        coords_sel = coords_type_points[sel_idxs]
+        list_coords = list(coords_sel)
+
             
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
-        out_dict = {'d0': img_data_sel.view(-1,1)}
+        out_dict = {}
             
         if class_points == 'c1':
             img_grad_sel = self.img_grad[sel_idxs]
             out_dict['d1'] = img_grad_sel.view(-1,1)
-
+        
+        elif class_points == 'c0':
+            img_data_sel = [self.img_orig.getpixel( (  self.img_height*(1 +coord[1].item())/2  ,
+                                                        self.img_width*(1 + coord[0].item() )/ 2) )/255.
+                                                        for coord in list_coords]
+            img_data_sel = torch.tensor(img_data_sel, dtype = torch.float)
+            out_dict = {'d0': img_data_sel.view(-1,1)}
+        
         samples = (in_dict, out_dict)
 
         return samples
@@ -306,22 +320,28 @@ class StochasticSampler:
         self.img_data = torch.flatten(data)
         self.img_width = width
         self.img_height = height
-        self.size = width*height
-        self.coords = make2Dcoords(width, height)
+
+        self.coords = {}
+        self.coords['c0'] = make2Dcoords(width, height, start=-0.98, end=0.98)
+        self.coords['c1'] = make2Dcoords(int(width*self.perc_of_grads), int(height*self.perc_of_grads), start=-0.98, end=0.98)
 
         if 'd1' in self.attributes:
             self.compute_gradients()
+        
+        self.total_idx_sample = {}
+        self.total_idx_sample['c0'] = list(range(len(self.coords['c0'])))
+        self.total_idx_sample['c1'] = list(range(len(self.coords['c1'])))
+
+        self.total_ids_in_batch = {}
+        self.total_ids_in_batch['c0'] = int(len(self.coords['c0']))
+        self.total_ids_in_batch['c1'] = int(len(self.coords['c1']))
+        
+        self.batch_index_dict = {}
+        self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample['c0'])
+        self.batch_index_dict['c1'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample['c1'])
+
 
         self.batch_dict = {}
-        self.batch_index_dict = {}
-
-        self.total_idx_sample = list(range(self.size))
-        self.total_ids_in_batch = int(self.size*self.perc_of_no_grads)
-        
-        self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[:self.total_ids_in_batch])
-        self.batch_index_dict['c1'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample[self.total_ids_in_batch:])
-
-
         self.batch_dict['c0'] = self.create_batches(self.batch_index_dict['c0'],'c0')
         self.batch_dict['c1'] = self.create_batches(self.batch_index_dict['c1'],'c1')
 
