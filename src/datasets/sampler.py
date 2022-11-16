@@ -264,7 +264,7 @@ class StochasticSampler:
         self.transform_to_pil = T.ToPILImage()
         self.img_orig = self.transform_to_pil(img_data)
 
-        self.perc_of_grads = .7
+        self.perc_of_grads = 1.
 
     def compute_gradients(self):
         img = self.img_data.unflatten(0, (self.img_width, self.img_height))
