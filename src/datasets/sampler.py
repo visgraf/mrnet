@@ -261,19 +261,26 @@ class StochasticSampler:
         self.img_data = img_data
         self.attributes = attributes
 
-        transform_to_pil = T.ToPILImage()
-        self.img_orig = transform_to_pil(img_data)
+        self.transform_to_pil = T.ToPILImage()
+        self.img_orig = self.transform_to_pil(img_data)
 
         self.perc_of_grads = .9
 
     def compute_gradients(self):
         img = self.img_data.unflatten(0, (self.img_width, self.img_height))
-        img = scipy.ndimage.zoom(img.numpy(),self.perc_of_grads)
 
         grads_x = scipy.ndimage.sobel(img, axis=0)[..., None]
         grads_y = scipy.ndimage.sobel(img, axis=1)[..., None]
+
         grads_x, grads_y = torch.from_numpy(grads_x), torch.from_numpy(grads_y)
-        self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
+
+        grads_x_pil = grads_x.squeeze()
+        grads_y_pil = grads_y.squeeze()
+
+        self.img_grad_x_pil = self.transform_to_pil(grads_x_pil)
+        self.img_grad_y_pil = self.transform_to_pil(grads_y_pil)
+
+        #self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
 
     def get_tuple_dicts(self,sel_idxs, class_points):
         coords_type_points = self.coords[class_points]
@@ -285,7 +292,15 @@ class StochasticSampler:
         out_dict = {}
             
         if class_points == 'c1':
-            img_grad_sel = self.img_grad[sel_idxs]
+            img_grad_sel_x = [self.img_grad_x_pil.getpixel( (  self.img_height*(1 +coord[1].item())/2.  ,
+                                                        self.img_width*(1 + coord[0].item() )/ 2) )/255.
+                                                        for coord in list_coords]
+            
+            img_grad_sel_y = [self.img_grad_y_pil.getpixel( (  self.img_height*(1 +coord[1].item())/2.  ,
+                                                        self.img_width*(1 + coord[0].item() )/ 2) )/255.
+                                                        for coord in list_coords]
+            
+            img_grad_sel = torch.stack((torch.tensor(img_grad_sel_x,dtype=torch.float), torch.tensor(img_grad_sel_y,dtype=torch.float)), dim=-1).view(-1, 2)
             out_dict['d1'] = img_grad_sel.view(-1,1)
         
         elif class_points == 'c0':

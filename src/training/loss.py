@@ -47,7 +47,7 @@ def hermite_loss(batch, model, mrweights,device):
     pred_grad_flat = pred_grad.view(1,-1,1)
 
     loss_dict = mse_loss(batch, model, mrweights,device)
-    loss_dict['d1'] = F.mse_loss(pred_grad_flat, gt_grad)
+    loss_dict['d1'] = F.mse_loss(pred_grad_flat, gt_grad)/2
 
     return loss_dict
 
