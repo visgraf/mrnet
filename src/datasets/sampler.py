@@ -132,14 +132,22 @@ class PoissonDiscSampler(RegularSampler):
 
 
 class StochasticSampler:
-    def __init__(self, img_data, attributes=[]):   
+    def __init__(self, img_data, attributes=[],
+                                            k_d0 = 30, 
+                                            r_d0 = 0.5,
+                                            k_d1 = 30, 
+                                            r_d1 = 0.5):   
         self.img_data = img_data
         self.attributes = attributes
 
         self.transform_to_pil = T.ToPILImage()
         self.img_orig = self.transform_to_pil(img_data)
 
-        self.perc_of_grads = 1.
+        self.k_d0 = k_d0
+        self.k_d1 = k_d1
+
+        self.r_d0 = r_d0
+        self.r_d1 = r_d1
 
     def compute_gradients(self):
         img = self.img_data.unflatten(0, (self.img_width, self.img_height))
@@ -151,7 +159,6 @@ class StochasticSampler:
         self.img_grad = torch.stack((grads_x, grads_y), dim=-1).view(-1, 2)
 
         self.grads_x_numpy, self.grads_y_numpy = np.copy(grads_x.squeeze()), np.copy(grads_y.squeeze())
-
 
     def get_tuple_dicts(self,sel_idxs, class_points):
         coords_type_points = self.coords[class_points]
@@ -173,10 +180,6 @@ class StochasticSampler:
             
             img_grad_sel = torch.stack((torch.tensor(img_grad_sel_x,dtype=torch.float), torch.tensor(img_grad_sel_y,dtype=torch.float)), dim=-1).view(-1, 2)
             out_dict['d1'] = img_grad_sel.view(-1,1)
-
-           # print(out_dict['d1'][:6])
-            #print(in_dict['coords'][:6])
-            #exit(0)
         
         elif class_points == 'c0':
             img_data_sel = [self.img_orig.getpixel( (  self.img_height*(1 +coord[1].item())/2  ,
@@ -212,8 +215,8 @@ class StochasticSampler:
         self.img_height = height
 
         self.coords = {}
-        self.coords['c0'] = make2Dcoords(width, height, start=-0.98, end=0.98)
-        self.coords['c1'] = make2Dcoords(int(width*self.perc_of_grads), int(height*self.perc_of_grads), start=-0.98, end=0.98)
+        self.coords['c0'] = PoissonDisc(width, height, self.r_d0, self.k_d0).sample()
+        self.coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
 
         if 'd1' in self.attributes:
             self.compute_gradients()
