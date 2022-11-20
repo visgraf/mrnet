@@ -36,7 +36,7 @@ width: 128
 height: 128
 channels: 1
 
-# Computation
+# Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
 eval_device: cuda
 

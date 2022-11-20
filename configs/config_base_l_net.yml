@@ -22,6 +22,7 @@ height: 512
 channels: 1
 max_stages: 1
 model: L
+# Remember to only vary between 'cuda' and 'cpu'
 device: cuda 
 eval_device: cpu
 bias: False
