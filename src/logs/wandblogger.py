@@ -125,7 +125,8 @@ class WandBLogger2D(WandBLogger):
         return gtdata
 
     def log_prediction(self, model, test_loader, device):
-        output_dict = model(test_loader.dataset.sampler.coords.to(device))
+
+        output_dict = model(test_loader.dataset.sampler.coords_vis.to(device))
         model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
 
         pred_pixels = self.as_imagetensor(model_out)

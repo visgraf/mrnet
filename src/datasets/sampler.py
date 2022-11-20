@@ -68,7 +68,8 @@ class RegularSampler(Sampler):
         self.img_height = height
         self.size = width*height
         self.coords = make2Dcoords(width, height)
-        print(f'Num of samples: {self.size}')
+
+        self.coords_vis = self.coords
 
         self.batch_index_dict = {}
 
@@ -103,6 +104,7 @@ class PoissonDiscSampler(RegularSampler):
 
         self.sampler_poison = PoissonDisc(width, height, self.r, self.k)
         self.coords = self.sampler_poison.sample()
+        self.coords_vis = make2Dcoords(width, height)
 
         self.size = len(self.coords)
         print(f'Num of samples: {self.size}')
@@ -216,6 +218,7 @@ class StochasticSampler:
         self.coords = {}
         self.coords['c0'] = PoissonDisc(width, height, self.r_d0, self.k_d0).sample()
         self.coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
+        self.coords_vis = make2Dcoords(width, height)
 
         if 'd1' in self.attributes:
             self.compute_gradients()
