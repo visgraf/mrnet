@@ -163,28 +163,27 @@ class StochasticSampler:
     def get_tuple_dicts(self,sel_idxs, class_points):
         coords_type_points = self.coords[class_points]
         coords_sel = coords_type_points[sel_idxs]
-        list_coords = list(coords_sel)
-
             
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {}
             
         if class_points == 'c1':
-            img_grad_sel_x = [scipy.ndimage.map_coordinates(self.grads_x_numpy,[[self.img_width*(1 +coord[0].item())/2.]  ,
+
+            img_grad_sel_x = np.array([scipy.ndimage.map_coordinates(self.grads_x_numpy,[[self.img_width*(1 +coord[0].item())/2.]  ,
                                                         [self.img_height*(1 + coord[1].item() )/ 2]] )
-                                                        for coord in list_coords]
+                                                        for coord in coords_sel])
             
-            img_grad_sel_y = [scipy.ndimage.map_coordinates(self.grads_y_numpy,[[self.img_width*(1 +coord[0].item())/2.]  ,
+            img_grad_sel_y = np.array([scipy.ndimage.map_coordinates(self.grads_y_numpy,[[self.img_width*(1 +coord[0].item())/2.]  ,
                                                         [self.img_height*(1 + coord[1].item() )/ 2]] )
-                                                        for coord in list_coords]
+                                                        for coord in coords_sel])
             
-            img_grad_sel = torch.stack((torch.tensor(img_grad_sel_x,dtype=torch.float), torch.tensor(img_grad_sel_y,dtype=torch.float)), dim=-1).view(-1, 2)
+            img_grad_sel = torch.stack( [ torch.tensor(img_grad_sel_x,dtype=torch.float), torch.tensor(img_grad_sel_y,dtype=torch.float)], dim=-1)
             out_dict['d1'] = img_grad_sel.view(-1,1)
         
         elif class_points == 'c0':
             img_data_sel = [self.img_orig.getpixel( (  self.img_height*(1 +coord[1].item())/2  ,
                                                         self.img_width*(1 + coord[0].item() )/ 2) )/255.
-                                                        for coord in list_coords]
+                                                        for coord in coords_sel]
             img_data_sel = torch.tensor(img_data_sel, dtype = torch.float)
             out_dict = {'d0': img_data_sel.view(-1,1)}
         
