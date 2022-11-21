@@ -152,7 +152,6 @@ class PoissonDisc():
     def sample(self):
 
         string_name= "poisson_h_{h}_w_{w}_r_{r:.2f}_k_{k}.npy".format(h=self.height,w=self.width, r=self.r, k=self.k)
-        print(f'Using the string: {string_name}')
 
         if os.path.isfile(string_name):
             print("We will load the poisson points")

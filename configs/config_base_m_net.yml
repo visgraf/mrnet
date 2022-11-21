@@ -15,7 +15,7 @@ max_epochs_per_stage: [500, 500, 600, 600]
 opt_method: Adam
 
 attributes: ['d0', 'd1']
-loss_function: 'mse'
+loss_function: 'hermite'
 visualize_grad: True
 
 lr: 0.0001
