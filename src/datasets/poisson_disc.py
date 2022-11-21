@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import os
 
 class PoissonDisc():
     def __init__(self, width=50, height=50, r=1, k=30):
@@ -103,7 +104,7 @@ class PoissonDisc():
         # We failed to find a suitable point in the vicinity of refpt.
         return False
 
-    def sample(self):
+    def sample_points(self):
         """Poisson disc random sampling in 2D.
 
         Draw random samples on the domain width x height such that no two
@@ -147,3 +148,18 @@ class PoissonDisc():
         tensor_samples[:,1] = 1 - 2*tensor_samples[:,1]/self.height
 
         return tensor_samples
+
+    def sample(self):
+
+        string_name= "poisson_h_{h}_w_{w}_r_{r:.2f}_k_{k}.npy".format(h=self.height,w=self.width, r=self.r, k=self.k)
+        print(f'Using the string: {string_name}')
+
+        if os.path.isfile(string_name):
+            print("We will load the poisson points")
+            points = np.load(string_name)
+        else:
+            print("We will compute the poisson points")
+            points = self.sample_points()
+            np.save(string_name,points)
+        
+        return points
