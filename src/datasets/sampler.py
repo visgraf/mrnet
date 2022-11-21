@@ -133,7 +133,7 @@ class PoissonDiscSampler(RegularSampler):
         return samples 
 
 
-class StochasticSampler:
+class StratifiedSampler:
     def __init__(self, img_data, attributes=[],
                                             k_d0 = 30, 
                                             r_d0 = 0.5,
@@ -251,8 +251,8 @@ def samplerFactory(sampling_type:Sampling, data_to_sample, attributes):
     if sampling_type==Sampling.REGULAR:
         return RegularSampler(data_to_sample, attributes)
 
-    elif sampling_type==Sampling.STOCHASTIC:
-        return StochasticSampler(data_to_sample, attributes)
+    elif sampling_type==Sampling.STRATIFIED:
+        return StratifiedSampler(data_to_sample, attributes)
 
     elif sampling_type==Sampling.POISSON_DISC:
         return PoissonDiscSampler(data_to_sample, attributes)

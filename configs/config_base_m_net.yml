@@ -8,7 +8,7 @@ hidden_layers: 1
 superposition_w0: True
 hidden_omega_0: [30, 30, 30, 30]
 
-sampling_scheme: stochastic
+sampling_scheme: stratified
 multiresolution: gauss_pyramid
 
 max_epochs_per_stage: [500, 500, 600, 600]
