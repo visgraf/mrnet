@@ -173,16 +173,15 @@ class StratifiedSampler:
             img_grad_sel_x = []
             img_grad_sel_y = []
 
-            for coord in coords_sel:
-                coord_x = self.img_width*(1 +coord[0].item())/2.
-                coord_y = self.img_height*(1 + coord[1].item() )/ 2
+            coords_sel_c0 = np.copy(coords_sel)
 
-                img_grad_sel_x.append(scipy.ndimage.map_coordinates(self.grads_x_numpy,[[coord_x]  ,
-                                                        [coord_y]] ))
-                img_grad_sel_y.append(scipy.ndimage.map_coordinates(self.grads_y_numpy,[[coord_x]  ,
-                                                        [coord_y]] ))
-            img_grad_sel_x = np.array(img_grad_sel_x)
-            img_grad_sel_y = np.array(img_grad_sel_y)
+            coords_sel_c0[:,0] = self.img_width*(1 +coords_sel_c0[:,0])/2
+            coords_sel_c0[:,1] = self.img_height*(1 +coords_sel_c0[:,1])/2
+
+            coords_sel_c0 = np.transpose(coords_sel_c0)
+
+            img_grad_sel_x= scipy.ndimage.map_coordinates(self.grads_x_numpy,coords_sel_c0)
+            img_grad_sel_y = scipy.ndimage.map_coordinates(self.grads_y_numpy,coords_sel_c0)
             
             img_grad_sel = torch.stack( [ torch.tensor(img_grad_sel_x,dtype=torch.float), torch.tensor(img_grad_sel_y,dtype=torch.float)], dim=-1)
             out_dict['d1'] = img_grad_sel.view(-1,1)
