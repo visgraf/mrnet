@@ -1,22 +1,21 @@
 
-omega_0: 64
+omega_0: 128
 in_features: 2
 
-hidden_features: 96
-hidden_layers: 4
+hidden_features: 256
+hidden_layers: 3
 
 superposition_w0: True
 hidden_omega_0: 30
 
-sampling_scheme: stochastic
-multiresolution: gauss_pyramid
+sampling_scheme: poisson
+multiresolution: signal
 
 max_epochs_per_stage: 700
 opt_method: Adam
 
-attributes: ['d0', 'd1']
-loss_function: 'hermite'
-visualize_grad: True
+attributes: ['d0']
+loss_function: 'mse'
 
 lr: 0.0001
 loss_tol: 0.000001
