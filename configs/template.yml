@@ -42,4 +42,5 @@ eval_device: cuda
 
 # Etc
 save_format: 'general'
+visualize_grad: True
 extrapolate: [-3, 3] 
