@@ -5,5 +5,5 @@ __pycache__/*
 */__pycache__/*
 */wandb/*
 */*/__pycache__/*
-models/*
+*.pth
 *.npy
