@@ -125,7 +125,7 @@ class PoissonDiscSampler(RegularSampler):
                                                     for coord in list_coords]
         img_data_sel = torch.tensor(img_data_sel, dtype = torch.float)
             
-        in_dict = {'coords': coords_sel, 'idx':sel_idxs}
+        in_dict = {'coords': torch.tensor(coords_sel), 'idx':sel_idxs}
         out_dict = {'d0': img_data_sel.view(-1,1)}
 
         samples = {self.key_group:(in_dict, out_dict)}
