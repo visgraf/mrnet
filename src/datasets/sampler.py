@@ -164,7 +164,7 @@ class StratifiedSampler:
 
     def get_tuple_dicts(self,sel_idxs, class_points):
         coords_type_points = self.coords[class_points]
-        coords_sel = coords_type_points[sel_idxs]
+        coords_sel = torch.tensor(coords_type_points[sel_idxs])
             
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {}
