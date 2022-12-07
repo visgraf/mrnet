@@ -5,7 +5,6 @@ import re
 import numpy as np
 import torch.utils.data as data_utils
 
-from torch.utils.data import DataLoader
 from scipy.fft import fft, fftfreq
 from matplotlib import cm
 from PIL import Image
@@ -74,8 +73,8 @@ class WandBLogger2D(WandBLogger):
 
 
     def on_stage_trained(self, current_model: MRNet,
-                                train_loader: DataLoader,
-                                test_loader: DataLoader):
+                                train_loader,
+                                test_loader):
         device = self.hyper.get('eval_device', 'cpu')
         current_model.eval()
         current_model.to(device)
@@ -88,14 +87,14 @@ class WandBLogger2D(WandBLogger):
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
             self.log_extrapolation(current_model, extrapolation_interval, 
-                                    test_loader.dataset.dimensions(), device)
+                                    test_loader.dimensions(), device)
 
         current_model.train()
         current_model.to(self.hyper['device'])
        
 ##
     def log_traindata(self, train_loader):
-        traindata = train_loader.dataset.data.view(-1, self.hyper['channels'])
+        traindata = train_loader.data.view(-1, self.hyper['channels'])
         pixels = self.as_imagetensor(torch.clamp(traindata, 0, 1))
 
         if re.match('laplace_*', self.hyper['multiresolution']) and self.hyper['stage'] > 1:
@@ -104,7 +103,7 @@ class WandBLogger2D(WandBLogger):
             self.log_imagetensor(pixels, 'Train Data')
     
     def log_groundtruth(self, test_loader):
-        gtdata = test_loader.dataset.data.view(-1, self.hyper['channels'])
+        gtdata = test_loader.data.view(-1, self.hyper['channels'])
         pixels = self.as_imagetensor(torch.clamp(gtdata, 0, 1))
         
         if re.match('laplace_*', self.hyper['multiresolution']) and self.hyper['stage'] > 1:
@@ -117,7 +116,7 @@ class WandBLogger2D(WandBLogger):
         if self.visualize_gt_grads:
 
             try:
-                gt_grads = test_loader.dataset.sampler.img_grad
+                gt_grads = test_loader.sampler.img_grad
                 self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
             except:
                 print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
@@ -126,7 +125,7 @@ class WandBLogger2D(WandBLogger):
 
     def log_prediction(self, model, test_loader, device):
 
-        output_dict = model(test_loader.dataset.sampler.coords_vis.to(device))
+        output_dict = model(test_loader.sampler.coords_vis.to(device))
         model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
 
         pred_pixels = self.as_imagetensor(model_out)
