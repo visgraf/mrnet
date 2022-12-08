@@ -96,7 +96,7 @@ class MRTrainer:
         lr = hyper.get('lr', 1e-4)
         # TODO: think of strategy to use string or objects for these hyperparameters:
 
-        if hyper.get('type_mr',None) == 'laplace':
+        if hyper.get('filter',None) == 'laplace':
             mr_train_type = MRTrainType.STAGES
         else:
             mr_train_type = MRTrainType.STACK

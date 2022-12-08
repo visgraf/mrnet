@@ -97,7 +97,7 @@ class WandBLogger2D(WandBLogger):
         traindata = train_loader.data.view(-1, self.hyper['channels'])
         pixels = self.as_imagetensor(torch.clamp(traindata, 0, 1))
 
-        if re.match('laplace_*', self.hyper['multiresolution']) and self.hyper['stage'] > 1:
+        if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Train Data')
         else:
             self.log_imagetensor(pixels, 'Train Data')
@@ -106,7 +106,7 @@ class WandBLogger2D(WandBLogger):
         gtdata = test_loader.data.view(-1, self.hyper['channels'])
         pixels = self.as_imagetensor(torch.clamp(gtdata, 0, 1))
         
-        if re.match('laplace_*', self.hyper['multiresolution']) and self.hyper['stage'] > 1:
+        if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Ground Truth')
         else:
             self.log_imagetensor(pixels, 'Ground Truth')

@@ -15,7 +15,8 @@ superposition_w0: False
 
 # Sampling
 sampling_scheme: regular
-multiresolution: pyramid
+decimation: pyramid
+filter: gauss
 attributes: ['d1']
 
 # Loss

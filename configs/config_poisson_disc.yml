@@ -9,7 +9,8 @@ superposition_w0: True
 hidden_omega_0: 30
 
 sampling_scheme: stratified
-multiresolution: signal
+decimation: pyramid
+filter: gauss
 
 max_epochs_per_stage: 700
 opt_method: Adam
