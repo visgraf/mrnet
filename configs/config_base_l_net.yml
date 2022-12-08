@@ -6,8 +6,8 @@ hidden_layers: 3
 superposition_w0: True
 hidden_omega_0: 30
 sampling_scheme: regular
-decimation: pyramid
-filter: gauss
+decimation: tower
+filter: none # vary between none, laplace and gauss
 max_epochs_per_stage: 600
 opt_method: Adam
 attributes: ['d1']

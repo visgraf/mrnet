@@ -5,6 +5,11 @@ import cv2
 import numpy as np
 from PIL import Image
 
+def resize_half_image(numpy_image):
+    dims = numpy_image.shape
+    resized_img = cv2.resize(numpy_image, (dims[0]//2, dims[1]//2), interpolation = cv2.INTER_AREA)
+    return resized_img
+
 def pil2opencv(pil_image): 
         open_cv_image = np.array(pil_image) 
         return open_cv_image
@@ -13,11 +18,11 @@ def opencv2pil(numpy_image):
         im_pil = Image.fromarray(numpy_image)
         return im_pil
 
-def pyrdown2D(signal):
+def pyrdown2D(signal, desired_filter):
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
-    filtered_decimated = cv2.pyrDown(img_npy)
+    filtered_decimated = desired_filter(img_npy)
     pil_filtered_decimated = opencv2pil(filtered_decimated)
 
     w_new, h_new = pil_filtered_decimated.size
@@ -59,10 +64,10 @@ def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
                         attributes=signal.attributes
                         )
 
-def construct_gaussian_pyramid2D(signal, num_levels):
+def construct_pyramid(signal, num_levels, desired_filter = cv2.pyrDown):
     pyramid = [signal]
     for _ in range(num_levels-1):
-        signal = pyrdown2D(signal)
+        signal = pyrdown2D(signal, desired_filter)
         pyramid.append(signal)
     return pyramid
 
@@ -88,22 +93,29 @@ def construct_laplacian_pyramid(gaussian_pyramid):
     laplacian_pyramid.append(gaussian_pyramid[-1])
     return laplacian_pyramid
 
-def create_MR_structure(img_signal, num_levels, type_pyr="gauss_pyramid"):
-    gaussian_pyramid = construct_gaussian_pyramid2D(img_signal,num_levels)
+def create_MR_structure(img_signal, num_levels, filter, decimation ='tower'):
 
-    if type_pyr=="gauss_pyramid":
+    if filter=='none' and decimation=='tower':
+        return [img_signal]*num_levels
+
+    if filter=='none' and decimation=='pyramid':
+        return construct_pyramid(img_signal,num_levels, desired_filter=resize_half_image)
+
+    gaussian_pyramid = construct_pyramid(img_signal,num_levels)
+
+    if filter=='gauss' and decimation=='pyramid':
         return gaussian_pyramid
 
-    if type_pyr=="laplace_pyramid":
+    if filter=='laplace' and decimation=='pyramid':
         laplacian_pyramid = construct_laplacian_pyramid(gaussian_pyramid)
         return laplacian_pyramid
     
     gaussian_tower = construct_gaussian_tower(gaussian_pyramid)
 
-    if type_pyr=="gauss_tower":
+    if filter=='gauss' and decimation=='tower':
         return gaussian_tower
 
-    if type_pyr=="laplace_tower":
+    if filter=='laplace' and decimation=='tower':
         laplacian_tower = construct_laplacian_tower(gaussian_tower)
         return laplacian_tower
 

@@ -10,7 +10,7 @@ hidden_omega_0: [30, 30, 30, 30]
 
 sampling_scheme: stratified
 decimation: pyramid
-filter: gauss
+filter: none # vary between none, laplace and gauss
 
 max_epochs_per_stage: [500, 500, 600, 600]
 opt_method: Adam
