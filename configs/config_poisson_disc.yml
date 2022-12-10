@@ -1,47 +1,55 @@
-
-omega_0: 128
-in_features: 2
-
-hidden_features: 256
-hidden_layers: 3
-
-superposition_w0: True
-hidden_omega_0: 30
-
-sampling_scheme: stratified
-decimation: pyramid
-filter: gauss # vary between none, laplace and gauss
-
-max_epochs_per_stage: 700
-opt_method: Adam
-
-attributes: ['d0', 'd1']
-loss_function: 'hermite'
-
-lr: 0.0001
-loss_tol: 0.000001
-diff_tol: 0.0000000000001
-
-batch_samples_perc: 1.
-batch_size: 1
-
-image_name: lena.png
-
-width: 128
-height: 128
-
-channels: 1
-max_stages: 1
-
+# Model Variant (S, L, M)
 model: L
 
-# Remember to only vary between 'cuda' and 'cpu'
+# Network
+in_features: 2
+hidden_layers: 1
+hidden_features: [128, 128, 128, 128]
+bias: True
+max_stages: 4
+
+# Frequency Initialization
+omega_0: [16, 32, 64, 64] 
+hidden_omega_0: [20, 20, 20, 20]
+superposition_w0: True
+
+# Sampling
+sampling_scheme: poisson
+decimation: True
+filter: gauss # vary between none, laplace and gauss
+attributes: ['d0', 'd1']
+
+# Loss
+loss_function: 'mse'
+
+# Training
+opt_method: Adam
+lr: 0.0001
+loss_tol: 0.00000000000001
+diff_tol: 0.00000000001
+max_epochs_per_stage: [1000, 1000, 1000, 1000]
+batch_size: 1
+batch_samples_perc: 1.0
+
+# Image
+image_name: lena.png
+width: 128
+height: 128
+channels: 1
+
+# Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
-eval_device: cpu
+eval_device: cuda
 
-bias: False
+# Etc
+save_format: 'general'
+visualize_grad: True
+extrapolate: [-3, 3] 
 
-#save_format: 'general'
-#extrapolate: [-3, 3] 
+
+
+
+
+
 
 

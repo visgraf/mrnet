@@ -93,29 +93,29 @@ def construct_laplacian_pyramid(gaussian_pyramid):
     laplacian_pyramid.append(gaussian_pyramid[-1])
     return laplacian_pyramid
 
-def create_MR_structure(img_signal, num_levels, filter, decimation ='tower'):
+def create_MR_structure(img_signal, num_levels, filter, decimation = False):
 
-    if filter=='none' and decimation=='tower':
+    if filter=='none' and not decimation:
         return [img_signal]*num_levels
 
-    if filter=='none' and decimation=='pyramid':
+    if filter=='none' and decimation:
         return construct_pyramid(img_signal,num_levels, desired_filter=resize_half_image)
 
     gaussian_pyramid = construct_pyramid(img_signal,num_levels)
 
-    if filter=='gauss' and decimation=='pyramid':
+    if filter=='gauss' and decimation:
         return gaussian_pyramid
 
-    if filter=='laplace' and decimation=='pyramid':
+    if filter=='laplace' and decimation:
         laplacian_pyramid = construct_laplacian_pyramid(gaussian_pyramid)
         return laplacian_pyramid
     
     gaussian_tower = construct_gaussian_tower(gaussian_pyramid)
 
-    if filter=='gauss' and decimation=='tower':
+    if filter=='gauss' and not decimation:
         return gaussian_tower
 
-    if filter=='laplace' and decimation=='tower':
+    if filter=='laplace' and not decimation:
         laplacian_tower = construct_laplacian_tower(gaussian_tower)
         return laplacian_tower
 
