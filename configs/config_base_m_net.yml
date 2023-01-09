@@ -1,5 +1,5 @@
 # Model Variant (S, L, M)
-model: L
+model: M
 
 # Network
 in_features: 2
