@@ -6,7 +6,7 @@ in_features: 2
 hidden_layers: 1
 hidden_features: [128, 128, 128, 128]
 bias: True
-max_stages: 4
+max_stages: 2
 
 # Frequency Initialization
 omega_0: [16, 32, 64, 64] 
@@ -17,7 +17,7 @@ superposition_w0: True
 sampling_scheme: regular
 decimation: True
 filter: gauss # vary between none, laplace and gauss
-attributes: ['d0', 'd1']
+attributes: ['d0']
 
 # Loss
 loss_function: 'mse'

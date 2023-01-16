@@ -1,3 +1,4 @@
+import warnings
 import torch
 import scipy.ndimage
 from torch.utils.data import Dataset
@@ -30,14 +31,20 @@ class ImageSignal(Dataset):
         self.sampler.make_samples(self.image_t,width,height, self.batch_samples_perc)
 
 
-    def init_fromfile(imagepath, batch_samples_perc=None, sampling_scheme='regular', width=None, height=None, attributes=[]):
-        img = Image.open(imagepath).convert('L')
+    def init_fromfile(imagepath, 
+                      batch_samples_perc=None, sampling_scheme='regular',
+                      width=None, height=None, 
+                      attributes=[], channels=3):
+        if channels == 1:
+            img = Image.open(imagepath).convert('L')
 
         if width is not None or height is not None:
             if height is None:
                 height = img.height
             if width is None:
                 width = img.width
+            if width > img.width or height > img.height:
+                warnings.warn(f"Resizing to a higher resolution ({width}x{height})", RuntimeWarning)
             img = img.resize((width, height))
         img_tensor = to_tensor(img)
 
