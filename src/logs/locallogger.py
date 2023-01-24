@@ -67,7 +67,7 @@ class LocalLogger2D(LocalLogger):
         pred = self.log_prediction(test_loader, current_model, 
                             device, stage_number)
                             
-        self.log_PSNR(gt.to(device), pred, stage_number)
+        self.log_PSNR(gt, pred, stage_number)
         
     def on_train_finish(self, trained_model, total_epochs):
         if self.to_file:
@@ -102,7 +102,7 @@ class LocalLogger2D(LocalLogger):
 
     def log_prediction(self, test_loader, model, device, stage_number):
         output_dict = model(test_loader.sampler.coords_vis.to(device))
-        model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
+        model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0).cpu()
 
         img = self.tensor_to_img(model_out)
         if self.to_file:
@@ -110,10 +110,9 @@ class LocalLogger2D(LocalLogger):
             img.save(filename)
         else:
             self.logs[stage_number]['pred'] = img
-        
         return model_out
 
     def log_PSNR(self, gt, pred, stage_number):
         psnr = 10*torch.log10(1 / (torch.mean(gt - pred)**2 + 1e-10))
         print(self.logs)
-        self.logs[stage_number]['psnr'] = psnr
+        self.logs[stage_number]['psnr'] = psnr.item()
