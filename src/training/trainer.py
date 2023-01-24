@@ -41,6 +41,7 @@ class MRTrainer:
         if model.n_stages() > 1:
             raise ValueError("Must initialize with untrained model")
 
+        # TODO: It's broken in current architecture; discuss removal of DataLoader from pipeline; sampler could be inside dataloader
         if isinstance(datasource, DataLoader):      
             self.mode = MRMode.CAPACITY
         else:
@@ -260,11 +261,18 @@ class MRTrainer:
                                         self.n_stages, 
                                         self.get_stage_hyper())
             last_epoch_loss = 10000000
-            list_dataloader = list(iter(self.current_dataloader))
+            # list_dataloader = list(iter(self.current_dataloader))
+
+            # for i, source in enumerate(self._datasource):
+            #     # print(source)
+            #     listsamples = list(iter(source))
+            #     for j, sample in enumerate(listsamples):
+            #         X, Y = sample['c0']
+            #         print(f"[DATALOADER] {i} [SAMPLE] {j} {X['coords'].is_cuda}, {Y['d0'].is_cuda}")
 
             for epoch in range(self.current_limit_for_epochs):
                 running_loss = {}
-                for batch in list_dataloader:
+                for batch in self.current_dataloader:
                     optimizer.zero_grad()
                     # not all model's parameters are updated by the optimizer
                     self.model.zero_grad()
@@ -301,6 +309,12 @@ class MRTrainer:
             self.logger.on_stage_trained(self.get_model(), 
                                         self.current_dataloader,
                                         self.current_testloader)
+            # TODO: REMOVE
+            # for i, source in enumerate(self._datasource):
+            #     listsamples = list(iter(source))
+            #     for j, sample in enumerate(listsamples):
+            #         X, Y = sample['c0']
+            #         print(f"[DATALOADER] {i} [SAMPLE] {j} {X['coords'].is_cuda}, {Y['d0'].is_cuda}")
         
         self.logger.on_train_finish(self.get_model(), 
                                     self._total_epochs_trained)

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 def perform_inference(batch, model, mrweights,device, class_points):
     (trainX, trainY) = batch[class_points]
-    output_dict = model(trainX['coords'].to(device),mrweights=mrweights)
+    output_dict = model(trainX['coords'].to(device), mrweights=mrweights)
 
     return output_dict, trainY
 
@@ -13,13 +13,13 @@ def gradient(y, x, grad_outputs=None):
     grad = torch.autograd.grad(y, [x], grad_outputs=grad_outputs, create_graph=True)[0]
     return grad
 
-def mse_loss(batch, model, mrweights,device):
+def mse_loss(batch, model, mrweights, device):
     loss_dict = {}
 
     pred_list = []
     gt_list = []
 
-    output_dict, trainY = perform_inference(batch, model, mrweights,device, 'c0')
+    output_dict, trainY = perform_inference(batch, model, mrweights, device, 'c0')
 
     train_dict = {k: v.to(device) for k, v in trainY.items()}
     pred_list.append(output_dict['model_out'])
@@ -36,7 +36,7 @@ def hermite_loss(batch, model, mrweights,device):
 
 
     (trainX, trainY) = batch['c1']
-    output_dict = model(trainX['coords'].to(device),mrweights=mrweights)
+    output_dict = model(trainX['coords'].to(device), mrweights=mrweights)
     train_dict = {k: v.to(device) for k, v in trainY.items()}
     coords = output_dict['model_in']
     
@@ -46,7 +46,7 @@ def hermite_loss(batch, model, mrweights,device):
     pred_grad = gradient(pred, coords)
     pred_grad_flat = pred_grad.view(1,-1,1)
 
-    loss_dict = mse_loss(batch, model, mrweights,device)
+    loss_dict = mse_loss(batch, model, mrweights, device)
     loss_dict['d1'] = F.mse_loss(pred_grad_flat, gt_grad)/2
 
     return loss_dict

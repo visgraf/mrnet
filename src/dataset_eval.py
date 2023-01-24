@@ -1,7 +1,7 @@
 import torch
 import os
 from pathlib import Path
-from logs.locallogger import LocalLogger2D
+from logs.locallogger import LocalLogger2D, LocalLogger
 from training.trainer import MRTrainer
 from datasets.imagesignal import ImageSignal
 from networks.mrnet import MRFactory
@@ -10,6 +10,7 @@ from datasets.sampler import make2Dcoords
 import yaml
 from yaml.loader import SafeLoader
 import matplotlib.pyplot as plt
+from PIL import Image
 
 def get_base_dir():
     base = Path('.').absolute()
@@ -27,19 +28,27 @@ def center_crop(img, newsize):
     # Crop the center of the image
     return img.crop((left, top, right, bottom))
 
-if __name__ == '__main__':
+def prepare_dataset(datapath, newsize):
+    filenames = os.listdir(datapath)
+    for i, name in enumerate(filenames):
+        filepath = os.path.join(datapath, name)
+        img = Image.open(filepath)
+        img = center_crop(img, newsize)
+        img.save(filepath)
+        print(f"{i}. Processed: ", filepath)
+
+def run_experiment(project_name, dataset_relpath, configfile):
     base_dir = get_base_dir()
     logs_path = base_dir.joinpath('logs')
-    DATASET_PATH = os.path.join(base_dir, 'img/kodak')
+    models_path = os.path.join(logs_path, project_name, 'models')
+    DATASET_PATH = os.path.join(base_dir, dataset_relpath)
 
-    project_name = "kodak"
-    config_file = os.path.join(base_dir, 'configs', 'config_kodak_m_net.yml')
+    config_file = os.path.join(base_dir, 'configs', configfile)
     with open(config_file) as f:
         hyper = yaml.load(f, Loader=SafeLoader)
         print(hyper)
 
     filenames = os.listdir(DATASET_PATH)
-    models_path = os.path.join(logs_path, project_name, 'models')
     os.makedirs(models_path, exist_ok=True)
 
     for name in filenames:
@@ -72,3 +81,9 @@ if __name__ == '__main__':
         path = os.path.join(models_path, filename)
 
         MRFactory.save(mrmodel, path)
+        
+
+if __name__ == '__main__':
+    # prepare_dataset('E:\Workspace\impa\mrimg\img\kodak512', 512)
+    run_experiment('kodak512', 'img/kodak512', 'config_kodak_m_net.yml')
+    # run_experiment('kodak512', 'img/kodak512', 'config_kodak_siren.yml')
