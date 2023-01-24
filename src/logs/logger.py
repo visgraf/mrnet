@@ -16,7 +16,7 @@ class Logger:
     def on_batch_finish(self, batchloss):
         pass
 
-    def on_stage_start(self, current_model, stage_number):
+    def on_stage_start(self, current_model, stage_number, updated_hyper=None):
         pass
     
     def on_stage_trained(self, current_model, train_loader, test_loader):
