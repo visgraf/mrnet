@@ -85,5 +85,5 @@ def run_experiment(project_name, dataset_relpath, configfile):
 
 if __name__ == '__main__':
     # prepare_dataset('E:\Workspace\impa\mrimg\img\kodak512', 512)
-    run_experiment('kodak512', 'img/kodak512', 'config_kodak_m_net.yml')
-    # run_experiment('kodak512', 'img/kodak512', 'config_kodak_siren.yml')
+    run_experiment('kodak512', 'img/kodak512', 'config_kodak_m_net_capacity.yml')
+    # run_experiment('kodak512', 'img/kodak512', 'config_kodak_siren.yml') 

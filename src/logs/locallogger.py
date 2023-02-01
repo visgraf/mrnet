@@ -10,6 +10,7 @@ from training.loss import gradient
 from datasets.imagesignal import ImageSignal
 from typing import Sequence, Tuple
 import yaml
+import skimage
 
 from IPython import embed
 
@@ -68,13 +69,32 @@ class LocalLogger2D(LocalLogger):
                             device, stage_number)
                             
         self.log_PSNR(gt, pred, stage_number)
+        #if stage_number == self.hyper['max_stages']:
+        self.log_SSIM(gt, pred, stage_number)
         
     def on_train_finish(self, trained_model, total_epochs):
         if self.to_file:
-            filename = os.path.join(self.savedir, "psnr.csv")
+            filename = os.path.join(self.savedir, "evalmetrics.csv")
             psnr = self.logs[self.hyper['max_stages']]['psnr']
+            ssim = self.logs[self.hyper['max_stages']]['ssim']
+            mse = self.logs[self.hyper['max_stages']]['mse']
             with open(filename, "a") as psnrfile:
-                psnrfile.write(f"{os.path.basename(self.hyper['image_name'])}, {psnr}\n")
+                psnrfile.write(f"{os.path.basename(self.hyper['image_name'])}, {psnr}, {ssim}, {mse}\n")
+
+            filename = os.path.join(self.savedir, "parameters.csv")
+            param_size = 0
+            for param in trained_model.parameters():
+                param_size += param.nelement()
+            buffer_size = 0
+            for buffer in trained_model.buffers():
+                buffer_size += buffer.nelement()
+            first_write = False
+            if not os.path.isfile(filename):
+                first_write = True
+            with open(filename, "a") as paramfile:
+                if first_write:
+                    paramfile.write("n_parameters, n_buffers, n_epochs\n")
+                paramfile.write(f"{param_size}, {buffer_size}, {total_epochs}\n")
         print(f'Training finished after {total_epochs} epochs')
 
     def tensor_to_img(self, tensor):
@@ -113,6 +133,14 @@ class LocalLogger2D(LocalLogger):
         return model_out
 
     def log_PSNR(self, gt, pred, stage_number):
-        psnr = 10*torch.log10(1 / (torch.mean(gt - pred)**2 + 1e-10))
+        mse = torch.mean(gt - pred)**2
+        psnr = 10*torch.log10(1 / (mse + 1e-10))
         print(self.logs)
         self.logs[stage_number]['psnr'] = psnr.item()
+        self.logs[stage_number]['mse'] = mse.item()
+
+    def log_SSIM(self, gt, pred, stage_number):
+        ssim = skimage.metrics.structural_similarity(gt.detach().cpu().numpy(), 
+                                                    pred.detach().cpu().numpy(),
+                                                    data_range=1, channel_axis=-1)
+        self.logs[stage_number]['ssim'] = ssim

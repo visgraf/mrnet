@@ -9,8 +9,8 @@ bias: True
 max_stages: 1
 
 # Frequency Initialization
-omega_0: [120] 
-hidden_omega_0: [120]
+omega_0: [30] 
+hidden_omega_0: [30]
 superposition_w0: True
 
 # Sampling
