@@ -4,7 +4,7 @@ model: M
 # Network
 in_features: 2
 hidden_layers: 3
-hidden_features: [256]
+hidden_features: [512]
 bias: True
 max_stages: 1
 
@@ -15,8 +15,8 @@ superposition_w0: True
 
 # Sampling
 sampling_scheme: regular
-decimation: True
-filter: gauss # vary between none, laplace and gauss
+decimation: False
+filter: none # vary between none, laplace and gauss
 attributes: ['d0']
 
 # Loss

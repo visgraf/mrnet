@@ -4,12 +4,12 @@ model: M
 # Network
 in_features: 2
 hidden_layers: 1
-hidden_features: [96, 96, 96, 96]
+hidden_features: [256, 256, 256]
 bias: True
-max_stages: 4
+max_stages: 3
 
 # Frequency Initialization
-omega_0: [32, 64, 128, 256] 
+omega_0: [64, 128, 256] 
 hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: True
 
