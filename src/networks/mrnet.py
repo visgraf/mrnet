@@ -19,6 +19,7 @@ class MRModule(nn.Module):
                     out_features: int, 
                     first_omega_0: int, 
                     hidden_omega_0=1, 
+                    periodic=False,
                     bias=False, 
                     prevknowledge=0):
         super().__init__()
@@ -27,6 +28,8 @@ class MRModule(nn.Module):
         
         self.first_layer = SineLayer(in_features, hidden_features, bias=bias,
                                   is_first=True, omega_0=first_omega_0)
+        if periodic:
+            self.first_layer.init_integer_weights()
 
         middle = []
         middle.append(
@@ -94,7 +97,8 @@ class MRNet(nn.Module):
                     hidden_layers, 
                     out_features,
                     first_omega_0, 
-                    hidden_omega_0=1, 
+                    hidden_omega_0=1,
+                    periodic=False, 
                     bias=False, 
                     superposition_w0=True):
         super().__init__()
@@ -103,6 +107,7 @@ class MRNet(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.bias = bias
+        self.periodic = periodic
 
         first_module = MRModule(in_features, 
                                 hidden_features, 
@@ -110,6 +115,7 @@ class MRNet(nn.Module):
                                 out_features,
                                 first_omega_0, 
                                 hidden_omega_0,
+                                periodic,
                                 bias=bias)
 
         self.stages = nn.ModuleList([first_module])
@@ -143,6 +149,7 @@ class MRNet(nn.Module):
                             self.out_features,
                             first_omega_0, 
                             hidden_omega_0,
+                            self.periodic,
                             bias=bias,
                             prevknowledge=prevknowledge
                             ).to(self.current_device())
@@ -291,6 +298,7 @@ class MRFactory:
             hyper.get('out_features', 1),
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
+            periodic=hyper.get('periodic', False),
             bias=hyper.get('bias', False),
             superposition_w0=hyper.get('superposition_w0', True)
         )
@@ -306,6 +314,7 @@ class MRFactory:
                         hyper['out_features'],
                         hyper['omega_0'],
                         hyper['hidden_omega_0'],
+                        hyper['periodic'],
                         hyper['bias'],
                         prevknowledge
         )
@@ -327,6 +336,7 @@ class MRFactory:
                 'out_features': firstmodule.out_features,
                 'hidden_layers': hidden_layers,
                 'hidden_features': hidden_features,
+                'periodic': model.periodic,
                 'bias': bias,
             }
         for stg in range(model.n_stages()):

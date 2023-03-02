@@ -6,6 +6,14 @@ from torch import nn
 from collections import OrderedDict
 
 
+def cartesian_product(*arrays):
+    la = len(arrays)
+    dtype = np.result_type(*arrays)
+    arr = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
+    for i, a in enumerate(np.ix_(*arrays)):
+        arr[...,i] = a
+    return arr.reshape(-1, la)
+
 class SineLayer(nn.Module):
     # See paper sec. 3.2, final paragraph, and supplement Sec. 1.5 for discussion of omega_0.
 
@@ -29,15 +37,41 @@ class SineLayer(nn.Module):
         self.init_weights()
 
     def init_weights(self):
+        self.periodic = False
         with torch.no_grad():
             if self.is_first:
-                self.linear.weight.uniform_(-1, 1)
+                self.linear.weight.uniform_(-1, 1) #* self.omega_0
             else:
                 self.linear.weight.uniform_(-np.sqrt(6 / self.in_features) / self.omega_0,
                                              np.sqrt(6 / self.in_features) / self.omega_0)
+    def init_integer_weights(self):
+        self.periodic = True
+        with torch.no_grad():
+            if self.is_first:
+                # self.linear.weight.uniform_(-1, 1) 
+                rng = np.random.default_rng(777)
+                # discrete_uniform = torch.from_numpy(
+                #     rng.integers(-self.omega_0, self.omega_0, 
+                #                  self.linear.weight.shape, endpoint=True)
+                # )
+                possible_frequencies = cartesian_product(
+                    *(self.in_features * [np.array(range(-self.omega_0, self.omega_0 + 1))])
+                )
+                chosen_frequencies = torch.from_numpy(
+                    rng.choice(possible_frequencies, self.out_features, False)
+                )
+
+                self.linear.weight = nn.Parameter(chosen_frequencies.float() * torch.pi)
+                self.linear.weight.requires_grad = False
+
 
     def forward(self, input):
-        return torch.sin(self.omega_0 * self.linear(input))
+        # factor = 1.0 if self.is_first else self.omega_0
+        if self.periodic and self.is_first:
+            x = self.linear(input)
+        else:
+            x = self.omega_0 * self.linear(input)
+        return torch.sin(x)
 
     def forward_with_intermediate(self, input):
         # For visualization of activation distributions
@@ -117,3 +151,10 @@ class Siren(nn.Module):
             activation_count += 1
 
         return activations
+
+
+if __name__ == '__main__':
+    a = SineLayer(2, 8, bias=True,
+                 is_first=True, omega_0=30)
+    print(a.linear.weight.shape, a.linear.weight.dtype)
+    print(a.linear.weight)

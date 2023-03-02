@@ -35,8 +35,9 @@ class ImageSignal(Dataset):
                       batch_samples_perc=None, sampling_scheme='regular',
                       width=None, height=None, 
                       attributes=[], channels=3):
+        img = Image.open(imagepath)
         if channels == 1:
-            img = Image.open(imagepath).convert('L')
+            img = img.convert('L')
 
         if width is not None or height is not None:
             if height is None:

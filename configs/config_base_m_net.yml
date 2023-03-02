@@ -4,13 +4,14 @@ model: M
 # Network
 in_features: 2
 hidden_layers: 1
-hidden_features: [128, 128, 128, 128]
+hidden_features: [25, 81, 289]
 bias: True
-max_stages: 2
+periodic: True
+max_stages: 3
 
 # Frequency Initialization
-omega_0: [16, 32, 64, 64] 
-hidden_omega_0: [20, 20, 20, 20]
+omega_0: [4, 8, 16] 
+hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: True
 
 # Sampling
@@ -24,22 +25,22 @@ loss_function: 'mse'
 
 # Training
 opt_method: Adam
-lr: 0.0001
+lr: 0.0005
 loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
-max_epochs_per_stage: [1000, 1000, 1000, 1000]
+max_epochs_per_stage: [8001, 4001, 2001, 1000]
 batch_size: 1
 batch_samples_perc: 1.0
 
 # Image
-image_name: lena.png
-width: 128
-height: 128
+image_name: periodic.png
+width: 256
+height: 256
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
-device: cuda
-eval_device: cuda
+device: cpu
+eval_device: cpu
 
 # Etc
 save_format: 'general'
