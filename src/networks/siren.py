@@ -55,13 +55,15 @@ class SineLayer(nn.Module):
                 #                  self.linear.weight.shape, endpoint=True)
                 # )
                 possible_frequencies = cartesian_product(
-                    *(self.in_features * [np.array(range(-self.omega_0, self.omega_0 + 1))])
+                    *(self.in_features * [np.array(range(-self.omega_0, 
+                                                         self.omega_0 + 1))])
                 )
                 chosen_frequencies = torch.from_numpy(
                     rng.choice(possible_frequencies, self.out_features, False)
                 )
 
-                self.linear.weight = nn.Parameter(chosen_frequencies.float() * torch.pi)
+                self.linear.weight = nn.Parameter(
+                    chosen_frequencies.float() * torch.pi)
                 self.linear.weight.requires_grad = False
 
 

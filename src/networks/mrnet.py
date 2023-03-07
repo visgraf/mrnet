@@ -314,7 +314,7 @@ class MRFactory:
                         hyper['out_features'],
                         hyper['omega_0'],
                         hyper['hidden_omega_0'],
-                        hyper['periodic'],
+                        hyper.get('periodic', False),
                         hyper['bias'],
                         prevknowledge
         )
