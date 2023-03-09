@@ -92,7 +92,7 @@ class WandBLogger2D(WandBLogger):
         current_model.train()
         current_model.to(self.hyper['device'])
         
-        if current_model.n_stages < self.hyper['max_stages']:
+        if current_model.n_stages() < self.hyper['max_stages']:
             # apparently, we need to finish the run when running on script
             wandb.finish()
        
