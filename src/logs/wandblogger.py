@@ -91,6 +91,10 @@ class WandBLogger2D(WandBLogger):
 
         current_model.train()
         current_model.to(self.hyper['device'])
+        
+        if current_model.n_stages < self.hyper['max_stages']:
+            # apparently, we need to finish the run when running on script
+            wandb.finish()
        
 ##
     def log_traindata(self, train_loader):
@@ -181,10 +185,11 @@ class WandBLogger2D(WandBLogger):
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
         w, h = dims
-        space = 2.0 / w
         start, end = interval[0], interval[1]
-        newsamplesize = abs(int((end - start) / space)) + 1
-        ext_domain = make2Dcoords(newsamplesize, newsamplesize, start, end)
+        scale = (end - start) // 2
+        neww, newh = int(scale * w), int(scale * h)
+        
+        ext_domain = make2Dcoords(neww, newh, start, end)
 
         output_dict = model(ext_domain.to(device))
         model_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)

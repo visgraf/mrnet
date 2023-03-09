@@ -344,7 +344,7 @@ class MRFactory:
         torch.save(mdict, path)
 
     def load_state_dict(filepath):
-        checkpoint = torch.load(filepath)
+        checkpoint = torch.load(filepath, map_location=torch.device('cpu'))
         singledict = deepcopy(checkpoint)
         module_keys = ['omega_0', 'hidden_omega_0', 'hidden_features', 'hidden_layers', 'bias']
         updict = {k: checkpoint[k][0] for k in module_keys}
