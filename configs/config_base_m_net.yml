@@ -4,15 +4,15 @@ model: M
 # Network
 in_features: 2
 hidden_layers: 1
-hidden_features: [25, 81, 289]
+hidden_features: [40, 60, 80]
 bias: True
-periodic: True
-max_stages: 1
+period: 0.8
+max_stages: 3
 
 # Frequency Initialization
-omega_0: [16, 4, 8, 16] 
+omega_0: [4, 8, 16]
 hidden_omega_0: [30, 30, 30]
-superposition_w0: True
+superposition_w0: False
 
 # Sampling
 sampling_scheme: regular
@@ -28,18 +28,18 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
-max_epochs_per_stage: [2000, 1000, 1000]
+max_epochs_per_stage: [1001, 400, 300]
 batch_size: 1
 batch_samples_perc: 1.0
 
 # Image
-image_name: samples/tex7.png
+image_name: checkerboard.png
 width: 256
 height: 256
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
-device: cpu
+device: cuda
 eval_device: cpu
 
 # Etc
