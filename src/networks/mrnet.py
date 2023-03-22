@@ -11,7 +11,7 @@ from copy import deepcopy
 
 class MRModule(nn.Module):
     """
-    Build upon SIREN code
+    Built upon SIREN code
     """
     def __init__(self, in_features: int, 
                     hidden_features: int, 
@@ -19,17 +19,16 @@ class MRModule(nn.Module):
                     out_features: int, 
                     first_omega_0: int, 
                     hidden_omega_0=1, 
-                    periodic=False,
                     bias=False, 
+                    period=0,
                     prevknowledge=0):
         super().__init__()
 
         self.bias = bias
+        self.period = period
         
         self.first_layer = SineLayer(in_features, hidden_features, bias=bias,
-                                  is_first=True, omega_0=first_omega_0)
-        if periodic:
-            self.first_layer.init_integer_weights()
+                                  is_first=True, omega_0=first_omega_0, period=period)
 
         middle = []
         middle.append(
@@ -98,8 +97,8 @@ class MRNet(nn.Module):
                     out_features,
                     first_omega_0, 
                     hidden_omega_0=1,
-                    periodic=False, 
                     bias=False, 
+                    period=0,
                     superposition_w0=True):
         super().__init__()
 
@@ -107,7 +106,7 @@ class MRNet(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.bias = bias
-        self.periodic = periodic
+        self.period = period
 
         first_module = MRModule(in_features, 
                                 hidden_features, 
@@ -115,29 +114,37 @@ class MRNet(nn.Module):
                                 out_features,
                                 first_omega_0, 
                                 hidden_omega_0,
-                                periodic,
-                                bias=bias)
+                                bias=bias,
+                                period=period)
 
         self.stages = nn.ModuleList([first_module])
 
-    def init_module_weights(self, mrmodule: MRModule):
-        w0 = mrmodule.first_layer.omega_0
-        prev_w0 = self.top_stage.first_layer.omega_0
-        
-        layer_shape = mrmodule.first_layer.linear.weight.shape
-        hidden_feat, in_feat = layer_shape[0], layer_shape[1]          
+    def init_lean_weights(self, mrmodule: MRModule):
+        if self.period > 0:
+            old_frequencies = []
+            for stage in self.stages:
+                old_frequencies.append(stage.first_layer.linear.weight.numpy())
+            old_frequencies = np.concatenate(old_frequencies)
+            
+            mrmodule.first_layer.init_periodic_weights(
+                tuple(map(tuple, (old_frequencies * self.period / (2 * torch.pi)).astype(np.int32)))
+            )
+        else:
+            raise NotImplementedError("superposition_w0 'False' only implemented for periodic signals")
+            # w0 = mrmodule.first_layer.omega_0
+            # prev_w0 = self.top_stage.first_layer.omega_0
+            # layer_shape = mrmodule.first_layer.linear.weight.shape
+            # hidden_feat, in_feat = layer_shape[0], layer_shape[1]
+            # c = prev_w0/w0
+            # p = torch.zeros(hidden_feat, in_feat).uniform_(-1, 1)
+            # # transform the interval (0, 1] --> ( c, 1]
+            # # and                    [-1,0] --> [-1,-c]
+            # ca = (1-c)*p + c
+            # cb = (1-c)*p - c
+            # p = torch.where(p > 0, ca, cb)
 
-        c = prev_w0/w0
-        p = torch.zeros(hidden_feat, in_feat).uniform_(-1, 1)
-
-        # transform the interval (0, 1] --> ( c, 1]
-        # and                    [-1,0] --> [-1,-c]
-        ca = (1-c)*p + c
-        cb = (1-c)*p - c
-        p = torch.where(p > 0, ca, cb)
-
-        with torch.no_grad():
-            mrmodule.first_layer.linear.weight.copy_(p)
+            # with torch.no_grad():
+            #     mrmodule.first_layer.linear.weight.copy_(p)
 
   
     def _add_stage(self, first_omega_0, hidden_features, 
@@ -149,12 +156,12 @@ class MRNet(nn.Module):
                             self.out_features,
                             first_omega_0, 
                             hidden_omega_0,
-                            self.periodic,
                             bias=bias,
+                            period=self.period,
                             prevknowledge=prevknowledge
                             ).to(self.current_device())
         if not self.superposition_w0:
-            self.init_module_weights(newstage)
+            self.init_lean_weights(newstage)
         self.stages.append(newstage)
 
     def add_stage(self, first_omega_0, hidden_features, 
@@ -248,6 +255,7 @@ class LNet(MRNet):
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
             bias=hyper.get('bias', False),
+            period=hyper.get('period', 0),
             superposition_w0=hyper.get('superposition_w0', True)
         )
 
@@ -291,6 +299,9 @@ class MRFactory:
             raise ValueError("model should be in ['M','L','M1']")
 
         hfeat, hlayers = hyper['hidden_features'], hyper['hidden_layers']
+        # TODO: remove in future versions; for compatibility only (periodic->period).
+        period = 2 if hyper.get('periodic', False) else 0
+        
         return  MRClass(
             hyper.get('in_features', 1),
             hfeat[0] if isinstance(hfeat, Sequence) else hfeat,
@@ -298,8 +309,8 @@ class MRFactory:
             hyper.get('out_features', 1),
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
-            periodic=hyper.get('periodic', False),
             bias=hyper.get('bias', False),
+            period=hyper.get('period', period),
             superposition_w0=hyper.get('superposition_w0', True)
         )
 
@@ -314,8 +325,8 @@ class MRFactory:
                         hyper['out_features'],
                         hyper['omega_0'],
                         hyper['hidden_omega_0'],
-                        hyper.get('periodic', False),
                         hyper['bias'],
+                        hyper.get('period', 0),
                         prevknowledge
         )
 
@@ -336,8 +347,8 @@ class MRFactory:
                 'out_features': firstmodule.out_features,
                 'hidden_layers': hidden_layers,
                 'hidden_features': hidden_features,
-                'periodic': model.periodic,
                 'bias': bias,
+                'period': model.period,
             }
         for stg in range(model.n_stages()):
             mdict[f'module{stg}_state_dict'] = model.stages[stg].state_dict()
@@ -346,7 +357,8 @@ class MRFactory:
     def load_state_dict(filepath):
         checkpoint = torch.load(filepath, map_location=torch.device('cpu'))
         singledict = deepcopy(checkpoint)
-        module_keys = ['omega_0', 'hidden_omega_0', 'hidden_features', 'hidden_layers', 'bias']
+        module_keys = ['omega_0', 'hidden_omega_0', 'hidden_features', 
+                       'hidden_layers', 'bias', 'period']
         updict = {k: checkpoint[k][0] for k in module_keys}
         singledict.update(updict)
         model = MRFactory.from_dict(singledict)

@@ -5,6 +5,7 @@ import numpy as np
 from torch import nn
 from collections import OrderedDict
 
+RANDOM_SEED = 777
 
 def cartesian_product(*arrays):
     la = len(arrays)
@@ -25,7 +26,7 @@ class SineLayer(nn.Module):
     # activations constant, but boost gradients to the weight matrix (see supplement Sec. 1.5)
 
     def __init__(self, in_features, out_features, bias=True,
-                 is_first=False, omega_0=30):
+                 is_first=False, omega_0=30, period=0):
         super().__init__()
         self.omega_0 = omega_0
         self.is_first = is_first
@@ -34,42 +35,43 @@ class SineLayer(nn.Module):
         self.out_features = out_features
         self.linear = nn.Linear(in_features, out_features, bias=bias)
 
+        self.period = period
+
         self.init_weights()
 
     def init_weights(self):
-        self.periodic = False
+        if self.period > 0:
+            self.init_periodic_weights()
+        else:
+            with torch.no_grad():
+                if self.is_first:
+                    self.linear.weight.uniform_(-1, 1) #* self.omega_0
+                else:
+                    self.linear.weight.uniform_(-np.sqrt(6 / self.in_features) / self.omega_0,
+                                                np.sqrt(6 / self.in_features) / self.omega_0)
+                
+    def init_periodic_weights(self, used_weights=None):
         with torch.no_grad():
             if self.is_first:
-                self.linear.weight.uniform_(-1, 1) #* self.omega_0
-            else:
-                self.linear.weight.uniform_(-np.sqrt(6 / self.in_features) / self.omega_0,
-                                             np.sqrt(6 / self.in_features) / self.omega_0)
-    def init_integer_weights(self):
-        self.periodic = True
-        with torch.no_grad():
-            if self.is_first:
-                # self.linear.weight.uniform_(-1, 1) 
-                rng = np.random.default_rng(777)
-                # discrete_uniform = torch.from_numpy(
-                #     rng.integers(-self.omega_0, self.omega_0, 
-                #                  self.linear.weight.shape, endpoint=True)
-                # )
+                rng = np.random.default_rng(RANDOM_SEED)
                 possible_frequencies = cartesian_product(
-                    *(self.in_features * [np.array(range(-self.omega_0, 
+                    *(self.in_features * [np.array(range(-self.omega_0,
                                                          self.omega_0 + 1))])
                 )
+                if used_weights is not None:
+                    possible_frequencies = np.array(list(
+                        set(tuple(map(tuple, possible_frequencies))) - set(used_weights)
+                    ))
                 chosen_frequencies = torch.from_numpy(
                     rng.choice(possible_frequencies, self.out_features, False)
                 )
 
                 self.linear.weight = nn.Parameter(
-                    chosen_frequencies.float() * torch.pi)
+                    chosen_frequencies.float() * torch.pi * 2 / self.period)
                 self.linear.weight.requires_grad = False
 
-
     def forward(self, input):
-        # factor = 1.0 if self.is_first else self.omega_0
-        if self.periodic and self.is_first:
+        if self.period > 0 and self.is_first:
             x = self.linear(input)
         else:
             x = self.omega_0 * self.linear(input)
