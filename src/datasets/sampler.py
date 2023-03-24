@@ -1,3 +1,4 @@
+from typing import Sequence, Union
 import torch
 import scipy
 import numpy as np
@@ -7,9 +8,19 @@ from .poisson_disc import PoissonDisc
 
 from .constants import Sampling
 
-def make2Dcoords(width, height, start=-1, end=1):
-    lx = torch.linspace(start, end, steps=width)
-    ly = torch.linspace(start, end, steps=height)
+def make2Dcoords(width:int, height:int, 
+                 start:Union[float, Sequence[float]], 
+                 end:Union[float, Sequence[float]]):
+    if isinstance(start, Sequence):
+        sx, sy = start
+    else:
+        sx = sy = start
+    if isinstance(end, Sequence):
+        ex, ey = start
+    else:
+        ex = ey = end
+    lx = torch.linspace(sx, ex, steps=width)
+    ly = torch.linspace(sy, ey, steps=height)
     xs, ys = torch.meshgrid(lx, ly, indexing='ij')
     return torch.stack([xs, ys], -1).view(-1, 2)
 
@@ -62,12 +73,12 @@ class RegularSampler(Sampler):
         
         return list_samples
 
-    def make_samples(self, data, width, height, batch_pixel_perc):
+    def make_samples(self, data, width, height, domain, batch_pixel_perc):
         self.img_data = torch.flatten(data)
         self.img_width = width
         self.img_height = height
         self.size = width*height
-        self.coords = make2Dcoords(width, height)
+        self.coords = make2Dcoords(width, height, *domain)
 
         self.coords_vis = self.coords
 
@@ -96,7 +107,7 @@ class PoissonDiscSampler(RegularSampler):
         self.k = k
         self.r = r
 
-    def make_samples(self, data, width, height, batch_pixel_perc):
+    def make_samples(self, data, width, height, domain, batch_pixel_perc):
 
         self.img_data = torch.flatten(data)
         self.img_width = width
@@ -104,7 +115,7 @@ class PoissonDiscSampler(RegularSampler):
 
         self.sampler_poison = PoissonDisc(width, height, self.r, self.k)
         self.coords = self.sampler_poison.sample()
-        self.coords_vis = make2Dcoords(width, height)
+        self.coords_vis = make2Dcoords(width, height, *domain)
 
         self.size = len(self.coords)
         print(f'Num of samples: {self.size}')
@@ -214,7 +225,7 @@ class StratifiedSampler:
     def total_size(self):
         return len(self.batch_index_dict['c0'])
 
-    def make_samples(self, data, width, height, batch_pixel_perc):
+    def make_samples(self, data, width, height, domain, batch_pixel_perc):
         self.img_data = torch.flatten(data)
         self.img_width = width
         self.img_height = height
@@ -222,7 +233,7 @@ class StratifiedSampler:
         self.coords = {}
         self.coords['c0'] = PoissonDisc(width, height, self.r_d0, self.k_d0).sample()
         self.coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
-        self.coords_vis = make2Dcoords(width, height)
+        self.coords_vis = make2Dcoords(width, height, *domain)
 
         if 'd1' in self.attributes:
             self.compute_gradients()

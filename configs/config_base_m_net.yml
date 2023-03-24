@@ -6,8 +6,10 @@ in_features: 2
 hidden_layers: 1
 hidden_features: [40, 60, 80]
 bias: True
-period: 0.8
 max_stages: 3
+
+period: 1
+domain: [-0.5, 0.5]
 
 # Frequency Initialization
 omega_0: [4, 8, 16]
@@ -28,18 +30,18 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
-max_epochs_per_stage: [1001, 400, 300]
+max_epochs_per_stage: [1002, 401, 301]
 batch_size: 1
 batch_samples_perc: 1.0
 
 # Image
-image_name: checkerboard.png
+image_name: synthetic/board4.png
 width: 256
 height: 256
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
-device: cuda
+device: cpu
 eval_device: cpu
 
 # Etc

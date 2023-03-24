@@ -14,6 +14,7 @@ class ImageSignal(Dataset):
                         height,
                         channels=1,
                         sampling_scheme=Sampling.REGULAR,
+                        domain=[-1, 1],
                         batch_samples_perc=None,
                         attributes=[]):
         
@@ -25,15 +26,18 @@ class ImageSignal(Dataset):
         self._width = width
         self._height = height
         self.channels = channels
-
+        
+        self.domain = domain
         self.sampling_scheme=sampling_scheme
         self.sampler = samplerFactory(sampling_scheme, data, attributes)
-        self.sampler.make_samples(self.image_t,width,height, self.batch_samples_perc)
+        self.sampler.make_samples(self.image_t, width, height, 
+                                  domain, self.batch_samples_perc)
 
 
     def init_fromfile(imagepath, 
+                      domain=[-1, 1],
                       batch_samples_perc=None, sampling_scheme='regular',
-                      width=None, height=None, 
+                      width=None, height=None,
                       attributes=[], channels=3):
         img = Image.open(imagepath)
         if channels == 1:
@@ -52,6 +56,7 @@ class ImageSignal(Dataset):
         return ImageSignal(img_tensor,
                             img.width,
                             img.height,
+                            domain=domain,
                             sampling_scheme=SAMPLING_DICT[sampling_scheme],
                             batch_samples_perc=batch_samples_perc,
                             attributes=attributes)
@@ -67,6 +72,8 @@ class ImageSignal(Dataset):
         return self.image_t
 
     def __sub__(self,other):
+        if self.domain != other.domain:
+            raise NotImplementedError("Can only operate signals in same domain for now")
         data_self = self.image_t
         data_other = other.image_t
         subtract_data = data_self - data_other
@@ -74,6 +81,7 @@ class ImageSignal(Dataset):
         return ImageSignal(subtract_data,
                             width,
                             height,
+                            domain=self.domain,
                             sampling_scheme=self.sampling_scheme,
                             batch_samples_perc=self.batch_samples_perc,
                             attributes=self.attributes)

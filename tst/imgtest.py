@@ -51,7 +51,7 @@ def gradient_mag(img):
 
 def test_loaded_model(modelpath):
     model = MRFactory.load_state_dict(modelpath)
-    coords = make2Dcoords(513, 513)
+    coords = make2Dcoords(513, 513, -1, 1)
     output = model(coords)['model_out']
     i = 0
     for v in output:

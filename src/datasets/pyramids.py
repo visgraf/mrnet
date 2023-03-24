@@ -32,6 +32,7 @@ def pyrdown2D(signal, desired_filter):
                         w_new, 
                         h_new,
                         channels=signal.channels,
+                        domain=signal.domain,
                         sampling_scheme=signal.sampling_scheme,
                         batch_samples_perc=signal.batch_samples_perc,
                         attributes=signal.attributes)
@@ -45,7 +46,7 @@ def pyrup2d_opencv(image,num_times, dims_to_upscale):
     
     return img_scale
 
-def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
+def pyrup2D_imagesignal(signal, num_times, dims_to_upscale):
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
@@ -59,6 +60,7 @@ def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
                         w_new,
                         h_new,
                         channels=signal.channels,
+                        domain=signal.domain,
                         sampling_scheme=signal.sampling_scheme,
                         batch_samples_perc=signal.batch_samples_perc,
                         attributes=signal.attributes
@@ -77,7 +79,7 @@ def construct_gaussian_tower(gaussian_pyramid):
     for level,signal in enumerate(gaussian_pyramid[1:]):
         dims_to_upscale = pyramid_dimensions[:(level+1)]
         dims_to_upscale.reverse()
-        signal = pyrup2D_imagesignal(signal,level,dims_to_upscale)
+        signal = pyrup2D_imagesignal(signal, level, dims_to_upscale)
         gauss_tower.append(signal)
     return gauss_tower
 
