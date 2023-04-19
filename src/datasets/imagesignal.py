@@ -1,12 +1,24 @@
 import warnings
 import torch
 import scipy.ndimage
+import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision.transforms.functional import to_tensor, to_pil_image
+from pathlib import Path
 
-from .constants import SAMPLING_DICT,Sampling
+from .constants import SAMPLING_DICT, Sampling
 from datasets.sampler import samplerFactory
+
+
+
+def make_mask(srcpath, mask_color):
+    img = np.array(Image.open(srcpath))
+    mask = img != mask_color
+    path = Path(srcpath)
+    path = path.parent.absolute().joinpath("mask.png")
+    Image.fromarray(mask).save(path)
+    return str(path)
 
 class ImageSignal(Dataset):
     def __init__(self, data, 
@@ -16,10 +28,12 @@ class ImageSignal(Dataset):
                         sampling_scheme=Sampling.REGULAR,
                         domain=[-1, 1],
                         batch_samples_perc=None,
-                        attributes=[]):
+                        attributes=[],
+                        domain_mask=None):
         
         self.image_t = data
         self.data = torch.flatten(data)
+        self.domain_mask = torch.flatten(domain_mask).bool() if domain_mask else None
         self.attributes = attributes
 
         self.batch_samples_perc = batch_samples_perc
@@ -31,14 +45,17 @@ class ImageSignal(Dataset):
         self.sampling_scheme=sampling_scheme
         self.sampler = samplerFactory(sampling_scheme, data, attributes)
         self.sampler.make_samples(self.image_t, width, height, 
-                                  domain, self.batch_samples_perc)
+                                  domain, self.batch_samples_perc, 
+                                  domain_mask=self.domain_mask)
 
 
     def init_fromfile(imagepath, 
                       domain=[-1, 1],
-                      batch_samples_perc=None, sampling_scheme='regular',
+                      batch_samples_perc=None, 
+                      sampling_scheme='regular',
                       width=None, height=None,
-                      attributes=[], channels=3):
+                      attributes=[], channels=3,
+                      maskpath=None):
         img = Image.open(imagepath)
         if channels == 1:
             img = img.convert('L')
@@ -52,6 +69,8 @@ class ImageSignal(Dataset):
                 warnings.warn(f"Resizing to a higher resolution ({width}x{height})", RuntimeWarning)
             img = img.resize((width, height))
         img_tensor = to_tensor(img)
+        
+        mask = to_tensor(Image.open(maskpath).resize((width, height))) if maskpath else None
 
         return ImageSignal(img_tensor,
                             img.width,
@@ -59,7 +78,8 @@ class ImageSignal(Dataset):
                             domain=domain,
                             sampling_scheme=SAMPLING_DICT[sampling_scheme],
                             batch_samples_perc=batch_samples_perc,
-                            attributes=attributes)
+                            attributes=attributes,
+                            domain_mask=mask)
     
 
     def dimensions(self):

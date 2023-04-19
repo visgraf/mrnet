@@ -221,6 +221,8 @@ class MNet(MRNet):
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
             bias=hyper.get('bias', False),
+            period=hyper.get('period', 0),
+            superposition_w0=hyper['superposition_w0']
         )
 
     def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias):
@@ -256,7 +258,7 @@ class LNet(MRNet):
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
             bias=hyper.get('bias', False),
             period=hyper.get('period', 0),
-            superposition_w0=hyper.get('superposition_w0', True)
+            superposition_w0=hyper['superposition_w0']
         )
 
     def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias):
@@ -318,6 +320,8 @@ class MRFactory:
         prevknowledge = 0
         if (idx > 0) and hyper['model'] in ['M']:
             prevknowledge = hyper['prevknowledge']
+        # TODO: remove in future versions; for compatibility only (periodic->period).
+        period = 2 if hyper.get('periodic', False) else 0
                             
         return MRModule(hyper['in_features'],
                         hyper['hidden_features'],
@@ -326,7 +330,7 @@ class MRFactory:
                         hyper['omega_0'],
                         hyper['hidden_omega_0'],
                         hyper['bias'],
-                        hyper.get('period', 0),
+                        hyper.get('period', period),
                         prevknowledge
         )
 
@@ -349,6 +353,7 @@ class MRFactory:
                 'hidden_features': hidden_features,
                 'bias': bias,
                 'period': model.period,
+                'superposition_w0': model.superposition_w0
             }
         for stg in range(model.n_stages()):
             mdict[f'module{stg}_state_dict'] = model.stages[stg].state_dict()
@@ -358,7 +363,7 @@ class MRFactory:
         checkpoint = torch.load(filepath, map_location=torch.device('cpu'))
         singledict = deepcopy(checkpoint)
         module_keys = ['omega_0', 'hidden_omega_0', 'hidden_features', 
-                       'hidden_layers', 'bias', 'period']
+                       'hidden_layers', 'bias']
         updict = {k: checkpoint[k][0] for k in module_keys}
         singledict.update(updict)
         model = MRFactory.from_dict(singledict)

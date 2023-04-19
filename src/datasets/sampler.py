@@ -44,7 +44,7 @@ class RegularSampler(Sampler):
         self.attributes = attributes
         self.key_group = 'c0'
 
-    def get_tuple_dicts(self,sel_idxs):
+    def get_tuple_dicts(self, sel_idxs):
         coords_sel = self.coords[sel_idxs]
         img_data_sel = self.img_data[sel_idxs]
             
@@ -73,20 +73,25 @@ class RegularSampler(Sampler):
         
         return list_samples
 
-    def make_samples(self, data, width, height, domain, batch_pixel_perc):
+    def make_samples(self, data, width, height, domain, batch_pixel_perc, domain_mask=None):
         self.img_data = torch.flatten(data)
         self.img_width = width
         self.img_height = height
-        self.size = width*height
         self.coords = make2Dcoords(width, height, *domain)
-
+        
         self.coords_vis = self.coords
 
         self.batch_index_dict = {}
-
-        self.total_idx_sample = torch.randperm(self.size)
         
-        batch_index = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample)
+        if domain_mask is None:
+            self.size = len(self.coords)
+            self.total_idx_sample = torch.randperm(self.size)
+        else:
+            # TODO: permute
+            self.total_idx_sample = torch.tensor(range(len(self.coords)))[domain_mask]
+            self.size = len(self.total_idx_sample)
+        
+        batch_index = self.create_batch_samples(batch_pixel_perc, self.total_idx_sample)
 
         self.list_batches = self.create_batches(batch_index)
 
