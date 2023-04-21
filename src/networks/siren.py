@@ -67,7 +67,8 @@ class SineLayer(nn.Module):
                 )
 
                 self.linear.weight = nn.Parameter(
-                    chosen_frequencies.float() * torch.pi * 2 / self.period)
+                    chosen_frequencies.float() * 2 * torch.pi / self.period)
+                # first layer will not be updated during training
                 self.linear.weight.requires_grad = False
 
     def forward(self, input):

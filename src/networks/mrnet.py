@@ -180,6 +180,7 @@ class MRNet(nn.Module):
         if mrweights is None:
             mrweights = torch.ones(self.n_stages(), device=device)
         # Different weights per sample
+        # TODO: understand why this if was added
         if len(mrweights.shape) == len(mroutputs[0].shape):
             concatenated = torch.concat(mroutputs, 1)
             weighted = torch.mul(concatenated, mrweights)
@@ -214,10 +215,10 @@ class MNet(MRNet):
     def init_from_dict(hyper):
         omega0, hidden_omega0 = hyper['omega_0'], hyper['hidden_omega_0']
         return MNet(
-            hyper.get('in_features', 1),
+            hyper['in_features'],
             hyper['hidden_features'],
             hyper['hidden_layers'],
-            hyper.get('out_features', 1),
+            hyper['out_features'],
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
             bias=hyper.get('bias', False),
@@ -225,7 +226,8 @@ class MNet(MRNet):
             superposition_w0=hyper['superposition_w0']
         )
 
-    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias):
+    def add_stage(self, first_omega_0, hidden_features, 
+                  hidden_layers, hidden_omega_0, bias):
         prev = self.top_stage.hidden_features
         return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias, prev)
     
@@ -250,10 +252,10 @@ class LNet(MRNet):
     def init_from_dict(hyper):
         omega0, hidden_omega0 = hyper['omega_0'], hyper['hidden_omega_0']
         return  LNet(
-            hyper.get('in_features', 1),
+            hyper['in_features'],
             hyper['hidden_features'],
             hyper['hidden_layers'],
-            hyper.get('out_features', 1),
+            hyper['out_features'],
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
             bias=hyper.get('bias', False),
@@ -261,7 +263,8 @@ class LNet(MRNet):
             superposition_w0=hyper['superposition_w0']
         )
 
-    def add_stage(self, first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias):
+    def add_stage(self, first_omega_0, hidden_features, 
+                  hidden_layers, hidden_omega_0, bias):
         return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias, 0)
 
     def forward(self, coords, mrweights=None):
