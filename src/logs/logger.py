@@ -1,8 +1,21 @@
 
 
 class Logger:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, project: str,
+                        name: str, 
+                        hyper: dict,
+                        basedir: str, 
+                        entity=None, 
+                        config=None, 
+                        settings=None):
+        
+        self.project = project
+        self.name = name
+        self.hyper = hyper
+        self.basedir = basedir
+        self.entity = entity
+        self.config = config
+        self.settings = settings
 
     def on_train_start(self):
         pass
@@ -20,6 +33,5 @@ class Logger:
         pass
     
     def on_stage_trained(self, current_model, train_loader, test_loader):
-        pass
-
-    
+        current_model.to(self.hyper.get('eval_device', 'cpu'))
+        current_model.eval()
