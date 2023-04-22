@@ -1,9 +1,9 @@
-# Multiresolution Neural Networks for Imaging
+# MR-Net - Multiresolution Sinusoidal Neural Networks
 
 ## Installation Instructions
 
 cd [parent_dir]  
-git clone https://github.com/visgraf/mrimg.git   
+git clone https://github.com/visgraf/mrnet.git   
 cd mrimg
 mkdir models  
 
