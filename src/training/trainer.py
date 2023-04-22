@@ -251,6 +251,7 @@ class MRTrainer:
                     self.next_hidden_omega0(),
                     self._get_bias(),
                 )
+                self.model.to(device)
 
             self.n_stages = stage
             optimizer = self.opt_method(lr=self.current_learning_rate, 

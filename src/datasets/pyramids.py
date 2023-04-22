@@ -1,6 +1,7 @@
 import torch.nn.functional as F
 from torchvision.transforms.functional import to_tensor
-from .imagesignal import ImageSignal
+# from .imagesignal import ImageSignal
+from .signals import ImageSignal
 import cv2
 import numpy as np
 from PIL import Image
@@ -32,9 +33,9 @@ def pyrdown2D(signal, desired_filter):
                         w_new, 
                         h_new,
                         channels=signal.channels,
-                        domain=signal.domain,
                         sampling_scheme=signal.sampling_scheme,
-                        batch_samples_perc=signal.batch_samples_perc,
+                        domain=signal.domain,
+                        batch_size=signal.batch_size,
                         attributes=signal.attributes)
 
 def pyrup2d_opencv(image,num_times, dims_to_upscale):
@@ -50,7 +51,7 @@ def pyrup2D_imagesignal(signal, num_times, dims_to_upscale):
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
-    scaled_up_image = pyrup2d_opencv(img_npy,num_times,dims_to_upscale)
+    scaled_up_image = pyrup2d_opencv(img_npy,num_times, dims_to_upscale)
     pil_scaled_up_image = opencv2pil(scaled_up_image)
 
     w_new, h_new = pil_scaled_up_image.size
@@ -62,7 +63,7 @@ def pyrup2D_imagesignal(signal, num_times, dims_to_upscale):
                         channels=signal.channels,
                         domain=signal.domain,
                         sampling_scheme=signal.sampling_scheme,
-                        batch_samples_perc=signal.batch_samples_perc,
+                        batch_size=signal.batch_size,
                         attributes=signal.attributes
                         )
 

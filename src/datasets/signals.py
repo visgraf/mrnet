@@ -16,7 +16,7 @@ class Signal1D(Dataset):
                  domain=[-1, 1],
                  attributes=[], 
                  sampling_scheme=Sampling.REGULAR,
-                 batch_size=-1) -> None:
+                 batch_size=0) -> None:
         
         self.data = data
         self.shape = shape
@@ -24,8 +24,8 @@ class Signal1D(Dataset):
 
         self.attributes = attributes
         self.sampler = SamplerFactory.init(sampling_scheme,
-                                           self.shape,
                                            self.data,
+                                           self.shape,
                                            self.domain,
                                            self.attributes,
                                            batch_size)
@@ -59,35 +59,38 @@ class ImageSignal(Dataset):
                         channels=1,
                         sampling_scheme=Sampling.REGULAR,
                         domain=[-1, 1],
-                        batch_samples_perc=None,
+                        batch_size=0,
                         attributes=[],
                         domain_mask=None):
         
-        self.image_t = data
-        self.data = torch.flatten(data)
+        # self.image_t = data
+        # self.data = torch.flatten(data)
+        self.data = data
         self.domain_mask = torch.flatten(domain_mask).bool() if domain_mask else None
         self.attributes = attributes
 
-        self.batch_samples_perc = batch_samples_perc
         self._width = width
         self._height = height
         self.channels = channels
         
         self.domain = domain
         self.sampling_scheme=sampling_scheme
-        self.sampler = SamplerFactory(sampling_scheme, data, attributes)
-        self.sampler.make_samples(self.image_t, width, height, 
-                                  domain, self.batch_samples_perc, 
-                                  domain_mask=self.domain_mask)
+        self.sampler = SamplerFactory.init(sampling_scheme, 
+                                           data, 
+                                           (width, height),
+                                           domain,  attributes,
+                                           batch_size)
+        self.sampler.make_samples(domain_mask=self.domain_mask)
 
 
     def init_fromfile(imagepath, 
                       domain=[-1, 1],
-                      batch_samples_perc=None, 
+                      channels=3,
                       sampling_scheme='regular',
                       width=None, height=None,
-                      attributes=[], channels=3,
-                      maskpath=None):
+                      attributes=[], 
+                      maskpath=None,
+                      batch_size=0):
         img = Image.open(imagepath)
         if channels == 1:
             img = img.convert('L')
@@ -109,8 +112,8 @@ class ImageSignal(Dataset):
                             img.height,
                             domain=domain,
                             sampling_scheme=SAMPLING_DICT[sampling_scheme],
-                            batch_samples_perc=batch_samples_perc,
                             attributes=attributes,
+                            batch_size=batch_size,
                             domain_mask=mask)
     
 
@@ -118,10 +121,10 @@ class ImageSignal(Dataset):
         return self._width, self._height
 
     def image_pil(self):
-        return to_pil_image(self.image_t)
+        return to_pil_image(self.data)
 
     def image_tensor(self):
-        return self.image_t
+        return self.data
 
     def __sub__(self,other):
         if self.domain != other.domain:
@@ -137,11 +140,13 @@ class ImageSignal(Dataset):
                             sampling_scheme=self.sampling_scheme,
                             batch_samples_perc=self.batch_samples_perc,
                             attributes=self.attributes)
+    @property
+    def batch_size(self):
+        return self.sampler.batch_size
                     
     def __len__(self):
-        return self.sampler.total_size()
+        return len(self.sampler)
 
 
     def __getitem__(self, idx):
-        item = self.sampler.get_samples(idx)
-        return  item
+        return self.sampler[idx]

@@ -123,7 +123,10 @@ class MRNet(nn.Module):
         if self.period > 0:
             old_frequencies = []
             for stage in self.stages:
-                old_frequencies.append(stage.first_layer.linear.weight.numpy())
+                device = self.current_device()
+                last_stage_frequencies = stage.first_layer.linear.weight.cpu()
+                old_frequencies.append(last_stage_frequencies.numpy())
+                stage.first_layer.linear.weight.to(device)
             old_frequencies = np.concatenate(old_frequencies)
             
             mrmodule.first_layer.init_periodic_weights(

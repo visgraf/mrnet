@@ -13,11 +13,9 @@ def make_grid_coords(nsamples, start, end, dim):
     if not isinstance(nsamples, Sequence):
         nsamples = dim * [nsamples]
     if not isinstance(start, Sequence):
-        if not len(start, Sequence):
-            start = dim * [start]
+        start = dim * [start]
     if not isinstance(end, Sequence):
-        if not len(end, Sequence):
-            end = dim * [start]
+        end = dim * [end]
     if len(nsamples) != dim or len(start) != dim or len(end) != dim:
         raise ValueError("'nsamples'; 'start'; and 'end' should be a single value or have same  length as 'dim'")
     
@@ -32,7 +30,8 @@ class Sampler:
         self.data_shape = shape
         self.domain = domain
         self.attributes = attributes
-        self.batch_size = batch_size
+        self.batch_size = (batch_size if batch_size > 0 
+                           else len(torch.flatten(data)))
         self.batches = []
         self.make_samples()
 
@@ -51,20 +50,17 @@ class Sampler:
 
 class RegularSampler(Sampler):
 
-    def __init__(self, data, shape, domain, attributes, batch_size):
-        super().__init__(data, shape, domain, attributes, batch_size)
-        self.key_group = 'c0'
-
     def make_samples(self, domain_mask=None):
-        self.coords = make_grid_coords(self.shape, 
-                                       *self.domain, dim=len(self.shape))
+        self.key_group = 'c0'
+        self.coords = make_grid_coords(self.data_shape, 
+                                       *self.domain, dim=len(self.data_shape))
         
         if domain_mask is None:
             sampled_indices = torch.randperm(len(self.coords))
         else:
-            # TODO: permute; flatten?
+            # TODO: permute; flatten domain_mask?
             sampled_indices = torch.tensor(range(len(self.coords)))[domain_mask]
-
+        
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
@@ -72,19 +68,17 @@ class RegularSampler(Sampler):
         self.batches = [self.get_tuple_dicts(idx_batch, flatdata) 
                         for idx_batch in index_batches]
 
-
     def get_tuple_dicts(self, sel_idxs, flatdata):
-        channels = 1 if len(self.data) == self.data_shape else len(self.data[0])
+        channels = (1 if len(self.data.shape) == self.data_shape 
+                      else len(self.data))
         coords_sel = self.coords[sel_idxs]
-        img_data_sel = self.flatdata[sel_idxs]
-        
+        img_data_sel = flatdata[sel_idxs]
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {'d0': img_data_sel.view(-1, channels)}
         samples = {self.key_group:(in_dict, out_dict)}
-
         return samples
 
-
+# TODO: refactor and extend to work with multiple dimensions
 class PoissonDiscSampler(RegularSampler):
     def __init__(self, img_data, attributes = [], 
                                                 k = 30, 
@@ -134,7 +128,7 @@ class PoissonDiscSampler(RegularSampler):
 
         return samples 
 
-
+# TODO: refactor and extend to work with multiple dimensions
 class StratifiedSampler:
     def __init__(self, img_data, attributes=[],
                                             k_d0 = 30, 
@@ -254,16 +248,19 @@ class StratifiedSampler:
     
     
 class SamplerFactory:
-    def init(sampling_type:Sampling, data, shape, domain, 
+    def init(sampling_type:Sampling, 
+             data, shape, domain, 
              attributes, batch_size):
         if sampling_type==Sampling.REGULAR:
             return RegularSampler(data, shape, domain, attributes, batch_size)
 
         elif sampling_type==Sampling.STRATIFIED:
-            return StratifiedSampler(data, attributes)
+            return StratifiedSampler(data, shape, domain, 
+                                     attributes, batch_size)
 
         elif sampling_type==Sampling.POISSON_DISC:
-            return PoissonDiscSampler(data, attributes)
+            return PoissonDiscSampler(data, shape, domain, 
+                                      attributes, batch_size)
         
 
 
