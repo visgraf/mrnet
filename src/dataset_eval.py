@@ -6,7 +6,7 @@ from training.trainer import MRTrainer
 from datasets.imagesignal import ImageSignal
 from networks.mrnet import MRFactory
 from datasets.pyramids import create_MR_structure
-from datasets.sampler import make2Dcoords
+from datasets.sampler import make_grid_coords
 import yaml
 from yaml.loader import SafeLoader
 import matplotlib.pyplot as plt

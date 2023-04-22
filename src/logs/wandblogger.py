@@ -13,7 +13,7 @@ from pathlib import Path
 
 import warnings
 from training.loss import gradient
-from datasets.sampler import make2Dcoords
+from datasets.sampler import make_grid_coords
 
 from .logger import Logger
 from networks.mrnet import MRNet, MRFactory
@@ -189,7 +189,7 @@ class WandBLogger2D(WandBLogger):
         scale = (end - start) // 2
         neww, newh = int(scale * w), int(scale * h)
         
-        ext_domain = make2Dcoords(neww, newh, start, end)
+        ext_domain = make_grid_coords((neww, newh), start, end, dim=2)
 
         output_dict = model(ext_domain.to(device))
         model_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import scipy.ndimage
 from src.networks.mrnet import MRFactory
-from src.datasets.imagesignal import make2Dcoords
+from src.datasets.imagesignal import make_grid_coords
 
 def load_image(path:str):
     img = Image.open(path).convert('L')
@@ -51,7 +51,7 @@ def gradient_mag(img):
 
 def test_loaded_model(modelpath):
     model = MRFactory.load_state_dict(modelpath)
-    coords = make2Dcoords(513, 513, -1, 1)
+    coords = make_grid_coords((513, 513), -1, 1, dim=2)
     output = model(coords)['model_out']
     i = 0
     for v in output:

@@ -8,21 +8,23 @@ from .poisson_disc import PoissonDisc
 
 from .constants import Sampling
 
-def make2Dcoords(width:int, height:int, 
-                 start:Union[float, Sequence[float]], 
-                 end:Union[float, Sequence[float]]):
-    if isinstance(start, Sequence):
-        sx, sy = start
-    else:
-        sx = sy = start
-    if isinstance(end, Sequence):
-        ex, ey = start
-    else:
-        ex = ey = end
-    lx = torch.linspace(sx, ex, steps=width)
-    ly = torch.linspace(sy, ey, steps=height)
-    xs, ys = torch.meshgrid(lx, ly, indexing='ij')
-    return torch.stack([xs, ys], -1).view(-1, 2)
+
+def make_grid_coords(nsamples, start, end, dim):
+    if not isinstance(nsamples, Sequence):
+        nsamples = dim * [nsamples]
+    if not isinstance(start, Sequence):
+        if not len(start, Sequence):
+            start = dim * [start]
+    if not isinstance(end, Sequence):
+        if not len(end, Sequence):
+            end = dim * [start]
+    if len(nsamples) != dim or len(start) != dim or len(end) != dim:
+        raise ValueError("'nsamples'; 'start'; and 'end' should be a single value or have same  length as 'dim'")
+    
+    dir_samples = tuple([torch.linspace(start[i], end[i], steps=nsamples[i]) 
+                   for i in range(dim)])
+    grid = torch.stack(torch.meshgrid(*dir_samples, indexing='ij'), dim=-1)
+    return grid.reshape(-1, dim)
 
 class Sampler:
     def __init__(self) -> None:
@@ -77,7 +79,7 @@ class RegularSampler(Sampler):
         self.img_data = torch.flatten(data)
         self.img_width = width
         self.img_height = height
-        self.coords = make2Dcoords(width, height, *domain)
+        self.coords = make_grid_coords((width, height), *domain, dim=2)
         
         self.coords_vis = self.coords
 
@@ -120,7 +122,7 @@ class PoissonDiscSampler(RegularSampler):
 
         self.sampler_poison = PoissonDisc(width, height, self.r, self.k)
         self.coords = self.sampler_poison.sample()
-        self.coords_vis = make2Dcoords(width, height, *domain)
+        self.coords_vis = make_grid_coords((width, height), *domain, dim=2)
 
         self.size = len(self.coords)
         print(f'Num of samples: {self.size}')
@@ -238,7 +240,7 @@ class StratifiedSampler:
         self.coords = {}
         self.coords['c0'] = PoissonDisc(width, height, self.r_d0, self.k_d0).sample()
         self.coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
-        self.coords_vis = make2Dcoords(width, height, *domain)
+        self.coords_vis = make_grid_coords(width, height, *domain)
 
         if 'd1' in self.attributes:
             self.compute_gradients()
