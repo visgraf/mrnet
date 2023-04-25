@@ -4,17 +4,17 @@ model: M
 # Network
 in_features: 2
 hidden_layers: 1
-hidden_features: [60, 80, 100, 160]
+hidden_features: [8, 8, 16, 32, 64, 128, 192]
 bias: True
-max_stages: 2
+max_stages: 7
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [4, 8, 16, 48]
-hidden_omega_0: [30, 30, 30, 30]
+omega_0: [1, 2, 4, 6, 8, 16, 32]
+hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
 superposition_w0: False
 
 # Sampling
@@ -31,13 +31,13 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
-max_epochs_per_stage: [1000, 500, 500, 500]
-batch_size: 0
+max_epochs_per_stage: [601, 401, 401, 401, 401, 401, 401]
+batch_size: 128 * 128
 
 # Image
 image_name: hallpaz.jpg
-width: 128
-height: 128
+width: 512
+height: 512
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
@@ -47,7 +47,7 @@ eval_device: cpu
 # Etc
 save_format: 'general'
 visualize_grad: True
-extrapolate: [-3, 3]
+extrapolate: [-2, 2]
 
 
 

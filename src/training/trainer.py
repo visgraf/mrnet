@@ -262,14 +262,6 @@ class MRTrainer:
                                         self.n_stages, 
                                         self.get_stage_hyper())
             last_epoch_loss = 10000000
-            # list_dataloader = list(iter(self.current_dataloader))
-
-            # for i, source in enumerate(self._datasource):
-            #     # print(source)
-            #     listsamples = list(iter(source))
-            #     for j, sample in enumerate(listsamples):
-            #         X, Y = sample['c0']
-            #         print(f"[DATALOADER] {i} [SAMPLE] {j} {X['coords'].is_cuda}, {Y['d0'].is_cuda}")
 
             for epoch in range(self.current_limit_for_epochs):
                 running_loss = {}
@@ -306,7 +298,7 @@ class MRTrainer:
                 self.logger.on_epoch_finish(self.get_model(), epoch_loss)
                 if tolerance_reached:
                     break
-
+            optimizer = None
             self.logger.on_stage_trained(self.get_model(), 
                                         self.current_dataloader,
                                         self.current_testloader)

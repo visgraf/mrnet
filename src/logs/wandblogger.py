@@ -17,6 +17,8 @@ from datasets.sampler import make_grid_coords
 
 from .logger import Logger
 from networks.mrnet import MRNet, MRFactory
+from copy import deepcopy
+import time
 
 MODELS_DIR = 'models'
 
@@ -247,9 +249,9 @@ class WandBLogger2D(WandBLogger):
         device = self.hyper.get('eval_device', 'cpu')
         current_model.eval()
         current_model.to(device)
-
+        start_time = time.time()
         self.log_traindata(train_loader)
-        gt = self.log_groundtruth(test_loader)        
+        gt = self.log_groundtruth(test_loader)   
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.to(device), pred)
 
@@ -257,7 +259,7 @@ class WandBLogger2D(WandBLogger):
         if extrapolation_interval is not None:
             self.log_extrapolation(current_model, extrapolation_interval, 
                                     test_loader.dimensions(), device)
-
+        print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
         current_model.to(self.hyper['device'])
         
@@ -295,8 +297,11 @@ class WandBLogger2D(WandBLogger):
                 print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
         
         return gtdata
-
+    # TODO: find a way to optimize. Huge memory consumption here
+    # thought it was accumulating, but it turns out that inference over 
+    # full interval takes a lot of memory
     def log_prediction(self, model, test_loader, device):
+        # with torch.no_grad():
         output_dict = model(test_loader.sampler.coords.to(device))
         model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
 
@@ -357,9 +362,9 @@ class WandBLogger2D(WandBLogger):
         neww, newh = int(scale * w), int(scale * h)
         
         ext_domain = make_grid_coords((neww, newh), start, end, dim=2)
-
-        output_dict = model(ext_domain.to(device))
-        model_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)
+        with torch.no_grad():
+            output_dict = model(ext_domain.to(device))
+            model_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)
 
         pixels = self.as_imagetensor(model_out)
         self.log_imagetensor(pixels, 'Extrapolation')
