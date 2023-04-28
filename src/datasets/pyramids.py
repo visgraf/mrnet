@@ -1,14 +1,20 @@
+import torch
 import torch.nn.functional as F
 from torchvision.transforms.functional import to_tensor
 # from .imagesignal import ImageSignal
-from .signals import ImageSignal
+from .signals import ImageSignal, BaseSignal
 import cv2
 import numpy as np
 from PIL import Image
 
+import scipy.ndimage as sig
+from skimage.transform import pyramid_gaussian, pyramid_laplacian, pyramid_expand
+
+
 def resize_half_image(numpy_image):
     dims = numpy_image.shape
-    resized_img = cv2.resize(numpy_image, (dims[0]//2, dims[1]//2), interpolation = cv2.INTER_AREA)
+    resized_img = cv2.resize(numpy_image, (dims[0]//2, dims[1]//2),
+                              interpolation = cv2.INTER_AREA)
     return resized_img
 
 def pil2opencv(pil_image): 
@@ -96,31 +102,41 @@ def construct_laplacian_pyramid(gaussian_pyramid):
     laplacian_pyramid.append(gaussian_pyramid[-1])
     return laplacian_pyramid
 
-def create_MR_structure(img_signal, num_levels, filter, decimation = False):
 
-    if filter=='none' and not decimation:
-        return [img_signal]*num_levels
+VALID_FILTERS = {
+    'gauss': pyramid_gaussian,
+    'laplace': pyramid_laplacian,
+}
 
-    if filter=='none' and decimation:
-        return construct_pyramid(img_signal,num_levels, desired_filter=resize_half_image)
-
-    gaussian_pyramid = construct_pyramid(img_signal,num_levels)
-
-    if filter=='gauss' and decimation:
-        return gaussian_pyramid
-
-    if filter=='laplace' and decimation:
-        laplacian_pyramid = construct_laplacian_pyramid(gaussian_pyramid)
-        return laplacian_pyramid
-    
-    gaussian_tower = construct_gaussian_tower(gaussian_pyramid)
-
-    if filter=='gauss' and not decimation:
-        return gaussian_tower
-
-    if filter=='laplace' and not decimation:
-        laplacian_tower = construct_laplacian_tower(gaussian_tower)
-        return laplacian_tower
+def create_MR_structure(signal, num_levels, filter_name, 
+                                decimation, mode='wrap', sigma=2/3,
+                                channel_axis=0):
+    if filter_name == 'none':
+        if decimation:
+            # it does not make sense on regular sampling; should re-sample
+            raise NotImplementedError(f"Invalid for now: filter {filter} + decimation {decimation}")
+        return [signal] * num_levels
+    else:
+        pyramid_filter = VALID_FILTERS[filter_name]
+        
+        signal_data = signal.data.numpy()
+        pyramid = pyramid_filter(signal_data, 
+                                num_levels-1,
+                                sigma=sigma, mode=mode,
+                                channel_axis=channel_axis)
+        if decimation:
+            return [BaseSignal.new_like(signal, torch.from_numpy(data)) 
+                                    for data in pyramid]
+        mrstack = []
+        for i, sdata in enumerate(pyramid):
+            current = sdata
+            for j in range(i):
+                current = pyramid_expand(current, 
+                            sigma=sigma, 
+                            mode=mode, 
+                            channel_axis=channel_axis)
+            mrstack.append(BaseSignal.new_like(signal, torch.from_numpy(current)))
+        return mrstack
 
 
 

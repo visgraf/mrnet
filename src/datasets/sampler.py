@@ -25,9 +25,8 @@ def make_grid_coords(nsamples, start, end, dim):
     return grid.reshape(-1, dim)
 
 class Sampler:
-    def __init__(self, data, shape, domain, attributes, batch_size):
+    def __init__(self, data, domain, attributes, batch_size):
         self.data = data
-        self.data_shape = shape
         self.domain = domain
         self.attributes = attributes
         self.batch_size = (batch_size if batch_size > 0 
@@ -44,16 +43,25 @@ class Sampler:
     def __getitem__(self, idx):
         return self.batches[idx]
     
+    def data_channels(self):
+        return self.data.shape[0]
+    
+    def data_shape(self):
+        return self.data.shape[1:]
+    
     def total_nsamples(self):
         raise NotImplementedError()
+    
+    def scheme(self):
+        raise NotImplemented()
     
 
 class RegularSampler(Sampler):
 
     def make_samples(self, domain_mask=None):
         self.key_group = 'c0'
-        self.coords = make_grid_coords(self.data_shape, 
-                                       *self.domain, dim=len(self.data_shape))
+        self.coords = make_grid_coords(self.data_shape(), 
+                                       *self.domain, dim=len(self.data_shape()))
         
         if domain_mask is None:
             sampled_indices = torch.randperm(len(self.coords))
@@ -65,18 +73,20 @@ class RegularSampler(Sampler):
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
         flatdata = torch.flatten(self.data)
-        self.batches = [self.get_tuple_dicts(idx_batch, flatdata) 
-                        for idx_batch in index_batches]
+        self.batches = [self.get_tuple_dicts(
+                                torch.Tensor(idx_batch).long(), flatdata) 
+                                for idx_batch in index_batches]
 
     def get_tuple_dicts(self, sel_idxs, flatdata):
-        channels = (1 if len(self.data.shape) == self.data_shape 
-                      else len(self.data))
         coords_sel = self.coords[sel_idxs]
-        img_data_sel = flatdata[sel_idxs]
+        data_sel = flatdata[sel_idxs]
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
-        out_dict = {'d0': img_data_sel.view(-1, channels)}
+        out_dict = {'d0': data_sel.view(-1, self.data_channels())}
         samples = {self.key_group:(in_dict, out_dict)}
         return samples
+    
+    def scheme(self):
+        return Sampling.REGULAR
 
 # TODO: refactor and extend to work with multiple dimensions
 class PoissonDiscSampler(RegularSampler):
@@ -249,18 +259,19 @@ class StratifiedSampler:
     
 class SamplerFactory:
     def init(sampling_type:Sampling, 
-             data, shape, domain, 
+             data, domain, 
              attributes, batch_size):
         if sampling_type==Sampling.REGULAR:
-            return RegularSampler(data, shape, domain, attributes, batch_size)
-
+            return RegularSampler(data, domain, attributes, batch_size)
         elif sampling_type==Sampling.STRATIFIED:
-            return StratifiedSampler(data, shape, domain, 
+            return StratifiedSampler(data, domain, 
                                      attributes, batch_size)
-
         elif sampling_type==Sampling.POISSON_DISC:
-            return PoissonDiscSampler(data, shape, domain, 
+            return PoissonDiscSampler(data, domain, 
                                       attributes, batch_size)
+        else:
+            raise ValueError(f"Invalid sampling type {sampling_type}")
+
         
 
 

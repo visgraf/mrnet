@@ -3,7 +3,6 @@ import torch
 import os
 import re
 import numpy as np
-import torch.utils.data as data_utils
 
 from scipy.fft import fft, fftfreq
 from matplotlib import cm
@@ -52,6 +51,26 @@ class WandBLogger(Logger):
         print(f'Total model parameters = ', trained_model.total_parameters())
         print(f'Training finished after {total_epochs} epochs')
 
+    def log_model(self, model, save_format):
+        filename = f"{self.runname}.pth".replace('/', '-')
+        mdir = os.path.join(self.basedir, MODELS_DIR)
+        Path(mdir).mkdir(parents=True, exist_ok=True)
+        path = os.path.join(mdir, filename)
+        if save_format == 'script':
+            scripted = torch.jit.script(model)
+            scripted.save(path)
+        # TODO: check if it should be moved to a network class
+        elif save_format == 'general':
+            MRFactory.save(model, path)
+        else:
+            warnings.warn(
+                f'Model not saved! Save type {save_format} NOT supported.')
+            return None
+        print("File ", filename)
+        artifact = wandb.Artifact(filename, type='model')
+        artifact.add_file(path)
+        wandb.log_artifact(artifact)
+
 
 
 class WandBLogger1D(WandBLogger):
@@ -61,10 +80,10 @@ class WandBLogger1D(WandBLogger):
         if updated_hyper:
             for key in updated_hyper:
                 stage_hyper[key] = updated_hyper[key]
-        runname = f"{self.name}{stage_hyper['stage']}/{stage_hyper['max_stages']}_w{stage_hyper['omega_0']}{'T' if stage_hyper['superposition_w0'] else 'F'}_hf{stage_hyper['hidden_features']}"
+        self.runname = f"{self.name}{stage_hyper['stage']}/{stage_hyper['max_stages']}_w{stage_hyper['omega_0']}{'T' if stage_hyper['superposition_w0'] else 'F'}_hf{stage_hyper['hidden_features']}"
         wandb.init(project=self.project, 
                     entity=self.entity, 
-                    name=runname, 
+                    name=self.runname, 
                     config=stage_hyper,
                     settings=self.settings)
         wandb.watch(current_model, log_freq=10, log='all')
@@ -73,23 +92,24 @@ class WandBLogger1D(WandBLogger):
                                 train_loader, test_loader):
         super().on_stage_trained(current_model, train_loader, test_loader)
 
-        # testX, testY = next(iter(test_loader))
-        # # we'll need samples sorted for FFT
-        # # xtensor, sortidx = torch.sort(testX)
-        # if isinstance(testY, dict):
-        #     testY = testY['d0']
+        device = self.hyper.get('eval_device', 'cpu')
+        testX = test_loader.sampler.coords 
+        testY = test_loader.data.view(-1, self.hyper['channels'])
+        # we'll need samples sorted for FFT
+        # xtensor, sortidx = torch.sort(testX)
+        if isinstance(testY, dict):
+            testY = testY['d0']
 
-        
-        # with torch.no_grad():
-        #     fulloutput = current_model(testX.to(device))
+        with torch.no_grad():
+            fulloutput = current_model(testX.to(device))
 
-        # pred = fulloutput['model_out']
+        pred = fulloutput['model_out']
         
-        # self.log_fft(testY, pred)
+        self.log_fft(testY, pred)
 
-        # self.log_results(current_model, train_loader, test_loader)
+        self.log_results(current_model, train_loader, test_loader, device)
         
-        # current_model.train()
+        current_model.train()
         
 
     def get_fft(self, data):
@@ -119,9 +139,11 @@ class WandBLogger1D(WandBLogger):
                             xname="frequency",)
         })
 
-    def log_results(self, model, train_loader, test_loader):
-        trainX, trainY = next(iter(train_loader))
-        testX, testY = next(iter(test_loader))
+    def log_results(self, model, train_loader, test_loader, device):
+        trainX = train_loader.sampler.coords 
+        trainY = train_loader.data.view(-1, self.hyper['channels'])#next(iter(train_loader))
+        testX = test_loader.sampler.coords 
+        testY = test_loader.data.view(-1, self.hyper['channels'])#next(iter(test_loader))
 
         if not isinstance(testY, dict):
             testY = {'d0': testY}
@@ -134,11 +156,12 @@ class WandBLogger1D(WandBLogger):
         Y_test = testY['d0'].view(-1).detach().numpy()
 
         self.log_ground_truth_signal(X_train, Y_train, X_test, Y_test)
-        
         # Prediction
-        device = self.hyper.get('device', 'cpu')
         model.eval()
-        output_dict = model(trainX.to(device))
+        
+        tst = trainX.to(device)
+        output_dict = model(tst)
+        
         train_pred = output_dict['model_out']
         output_dict = model(testX.to(device))
         test_pred, coords = output_dict['model_out'], output_dict['model_in']
@@ -183,7 +206,7 @@ class WandBLogger1D(WandBLogger):
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
             self.log_extrapolation(model, extrapolation_interval,
-                                    X_test, Y_test)
+                                    X_test, Y_test, device)
 
         
     def log_regression_curves(self, X, gt, pred, plot_name, title):
@@ -208,12 +231,12 @@ class WandBLogger1D(WandBLogger):
                 )}
         )
 
-    def log_extrapolation(self, model, interval, X_test, Y_test):
+    def log_extrapolation(self, model, interval, X_test, Y_test, device):
         space = X_test[1] - X_test[0]
         start, end = interval[0], interval[1]
         newsamplesize = abs(int((end - start) / space)) + 1
         ext_x = torch.linspace(start, end, newsamplesize)
-        out_dict = model(ext_x.view(-1, 1).to(self.hyper.get('device', 'cpu')))
+        out_dict = model(ext_x.view(-1, 1).to(device))
         ext_y = out_dict['model_out'].cpu().view(-1).detach()
         wandb.log(
                 {'extrapolation_plot': wandb.plot.line_series(
@@ -258,7 +281,7 @@ class WandBLogger2D(WandBLogger):
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
             self.log_extrapolation(current_model, extrapolation_interval, 
-                                    test_loader.dimensions(), device)
+                                    test_loader.size()[1:], device)
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
         current_model.to(self.hyper['device'])
@@ -368,23 +391,3 @@ class WandBLogger2D(WandBLogger):
 
         pixels = self.as_imagetensor(model_out)
         self.log_imagetensor(pixels, 'Extrapolation')
-
-    def log_model(self, model, save_format):
-        filename = f"{self.runname}.pth".replace('/', '-')
-        mdir = os.path.join(self.basedir, MODELS_DIR)
-        Path(mdir).mkdir(parents=True, exist_ok=True)
-        path = os.path.join(mdir, filename)
-        if save_format == 'script':
-            scripted = torch.jit.script(model)
-            scripted.save(path)
-        # TODO: check if it should be moved to a network class
-        elif save_format == 'general':
-            MRFactory.save(model, path)
-        else:
-            warnings.warn(
-                f'Model not saved! Save type {save_format} NOT supported.')
-            return None
-        print("File ", filename)
-        artifact = wandb.Artifact(filename, type='model')
-        artifact.add_file(path)
-        wandb.log_artifact(artifact)
