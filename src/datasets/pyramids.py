@@ -115,7 +115,9 @@ def create_MR_structure(signal, num_levels, filter_name,
         if decimation:
             # it does not make sense on regular sampling; should re-sample
             raise NotImplementedError(f"Invalid for now: filter {filter} + decimation {decimation}")
-        return [signal] * num_levels
+        # TODO: maybe differentiate between test and train?
+        return [BaseSignal.new_like(signal, 
+                                    signal.data, shuffle=False)] * num_levels
     else:
         pyramid_filter = VALID_FILTERS[filter_name]
         
@@ -135,7 +137,8 @@ def create_MR_structure(signal, num_levels, filter_name,
                             sigma=sigma, 
                             mode=mode, 
                             channel_axis=channel_axis)
-            mrstack.append(BaseSignal.new_like(signal, torch.from_numpy(current)))
+            mrstack.append(BaseSignal.new_like(signal, 
+                                               torch.from_numpy(current), shuffle=False))
         return mrstack
 
 

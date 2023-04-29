@@ -27,9 +27,70 @@ def noise(scale, samples):
     noise_values.append(0.0)
     return torch.tensor(noise_values)
 
-def perlin_noise(samples, scale=10, octaves=1, p=1, batch_size=0):
+def perlin_noise(samples, scale=10, octaves=1, p=1):
     pnoise = 0
     for i in range(octaves):
         partial = noise(2**i * scale, samples)/(p**i)
         pnoise = partial + pnoise
     return pnoise
+
+
+
+# def checker(res, scale=10):
+#     tensors = tuple(3 * [torch.linspace(-1, 1, steps=res)])
+#     grid = torch.stack(torch.meshgrid(*tensors, indexing='ij'), dim=-1)
+#     grid = grid.reshape(-1, 3)
+
+#     volume = torch.sin(scale * grid)
+#     volume = grid[:, 0] * grid[:, 1] * grid[:, 2]
+#     volume[volume < 0] = 0.0
+#     volume[volume > 0] = 1.0
+#     return volume.view(res, res, res).numpy()
+
+def checker(texsize, cubesize):
+    # Create a 3D grid of coordinates
+    x, y, z = np.mgrid[0:texsize, 0:texsize, 0:texsize]
+
+    # Generate a sine wave pattern in each dimension
+    sine_x = np.sin(2 * np.pi * x / cubesize)
+    sine_y = np.sin(2 * np.pi * y / cubesize)
+    sine_z = np.sin(2 * np.pi * z / cubesize)
+
+    # Combine the sine waves and threshold to create checkerboard pattern
+    return ((sine_x + sine_y + sine_z) > 0).astype(np.float32)
+
+if __name__ == '__main__':
+    # from PIL import Image
+    # board = (255 * checker(256, 20)).astype(np.int8)
+    # Image.fromarray(board[0, :, :]).save('x.png')
+    # Image.fromarray(board[:, 0, :]).save('y.png')
+    # Image.fromarray(board[:, :, 0]).save('z.png')
+
+    import numpy as np
+    from PIL import Image
+
+    # Define texture size and cube size
+    texture_size = 128
+    cube_size = 16
+
+    # Create a 3D grid of coordinates
+    x, y, z = np.mgrid[0:texture_size, 0:texture_size, 0:texture_size]
+
+    # Generate a sine wave pattern in each dimension
+    sine_x = np.sin(2 * np.pi * x / cube_size)
+    sine_y = np.sin(2 * np.pi * y / cube_size)
+    sine_z = np.sin(2 * np.pi * z / cube_size)
+
+    # Combine the sine waves and threshold to create checkerboard pattern
+    board = ((sine_x + sine_y + sine_z) > 0).astype(np.uint8) * 255
+    print(board.shape)
+    Image.fromarray(board[0, :, :]).save('x.png')
+    Image.fromarray(board[:, 0, :]).save('y.png')
+    Image.fromarray(board[:, :, 0]).save('z.png')
+    # # Convert NumPy array to PIL image
+    # image = Image.fromarray(checkerboard)
+
+    # # Save the generated texture
+    # image.save('checkerboard_sine_3d.png')
+
+    

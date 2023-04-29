@@ -25,12 +25,13 @@ def make_grid_coords(nsamples, start, end, dim):
     return grid.reshape(-1, dim)
 
 class Sampler:
-    def __init__(self, data, domain, attributes, batch_size):
+    def __init__(self, data, domain, attributes, batch_size, shuffle=False):
         self.data = data
         self.domain = domain
         self.attributes = attributes
         self.batch_size = (batch_size if batch_size > 0 
                            else len(torch.flatten(data)))
+        self.shuffle = shuffle
         self.batches = []
         self.make_samples()
 
@@ -64,7 +65,9 @@ class RegularSampler(Sampler):
                                        *self.domain, dim=len(self.data_shape()))
         
         if domain_mask is None:
-            sampled_indices = torch.randperm(len(self.coords))
+            n = len(self.coords)
+            sampled_indices = (torch.randperm(n) if self.shuffle 
+                               else torch.arange(0, n, dtype=torch.long))
         else:
             # TODO: permute; flatten domain_mask?
             sampled_indices = torch.tensor(range(len(self.coords)))[domain_mask]
@@ -260,15 +263,15 @@ class StratifiedSampler:
 class SamplerFactory:
     def init(sampling_type:Sampling, 
              data, domain, 
-             attributes, batch_size):
+             attributes, batch_size, shuffle):
         if sampling_type==Sampling.REGULAR:
-            return RegularSampler(data, domain, attributes, batch_size)
+            return RegularSampler(data, domain, attributes, batch_size, shuffle)
         elif sampling_type==Sampling.STRATIFIED:
             return StratifiedSampler(data, domain, 
-                                     attributes, batch_size)
+                                     attributes, batch_size, shuffle)
         elif sampling_type==Sampling.POISSON_DISC:
             return PoissonDiscSampler(data, domain, 
-                                      attributes, batch_size)
+                                      attributes, batch_size, shuffle)
         else:
             raise ValueError(f"Invalid sampling type {sampling_type}")
 

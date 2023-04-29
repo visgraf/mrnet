@@ -141,3 +141,4 @@ class LocalLogger2D(LocalLogger):
                                                     pred.detach().cpu().numpy(),
                                                     data_range=1, channel_axis=-1)
         self.logs[stage_number]['ssim'] = ssim
+
