@@ -4,16 +4,16 @@ model: M
 # Network
 in_features: 3
 hidden_layers: 1
-hidden_features: [80, 160, 256]
+hidden_features: [160, 256]
 bias: True
-max_stages: 3
+max_stages: 2
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [2, 4, 8]
+omega_0: [4, 8]
 hidden_omega_0: [30, 30, 30]
 superposition_w0: False
 
