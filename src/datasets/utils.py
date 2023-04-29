@@ -59,31 +59,32 @@ def checker(texsize, cubesize):
     # Combine the sine waves and threshold to create checkerboard pattern
     return ((sine_x + sine_y + sine_z) > 0).astype(np.float32)
 
-if __name__ == '__main__':
-    # from PIL import Image
-    # board = (255 * checker(256, 20)).astype(np.int8)
-    # Image.fromarray(board[0, :, :]).save('x.png')
-    # Image.fromarray(board[:, 0, :]).save('y.png')
-    # Image.fromarray(board[:, :, 0]).save('z.png')
 
-    import numpy as np
+def solid_texture(N, noise_scale=0.1):
+    x, y, z = np.ogrid[-1:1:N*1j, -1:1:N*1j, -1:1:N*1j]
+    r = np.sqrt(x**2 + y**2 + z**2)
+    solid = np.zeros_like(r)
+    solid[r < 0.5] = 1
+    noise = noise_scale * np.random.randn(N, N, N)
+    solid += noise
+    solid[solid < 0] = 0
+    solid[solid > 1] = 1
+    return solid.astype(np.float32)
+
+
+if __name__ == '__main__':
     from PIL import Image
 
     # Define texture size and cube size
     texture_size = 128
     cube_size = 16
 
-    # Create a 3D grid of coordinates
-    x, y, z = np.mgrid[0:texture_size, 0:texture_size, 0:texture_size]
-
-    # Generate a sine wave pattern in each dimension
-    sine_x = np.sin(2 * np.pi * x / cube_size)
-    sine_y = np.sin(2 * np.pi * y / cube_size)
-    sine_z = np.sin(2 * np.pi * z / cube_size)
+    
 
     # Combine the sine waves and threshold to create checkerboard pattern
-    board = ((sine_x + sine_y + sine_z) > 0).astype(np.uint8) * 255
-    print(board.shape)
+    # board = ((sine_x + sine_y + sine_z) > 0).astype(np.uint8) * 255
+    # print(board.shape)
+    board = (solid_texture(texture_size, 0.4) * 255).astype(np.uint8)
     Image.fromarray(board[0, :, :]).save('x.png')
     Image.fromarray(board[:, 0, :]).save('y.png')
     Image.fromarray(board[:, :, 0]).save('z.png')

@@ -440,6 +440,7 @@ class WandBLogger3D(WandBLogger):
         gt = self.log_groundtruth(test_loader)   
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.to(device), pred)
+        self.log_point_cloud(current_model, device)
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
@@ -572,3 +573,23 @@ class WandBLogger3D(WandBLogger):
 
         pixels = self.as_imagetensor(model_out)
         self.log_imagetensor(pixels, 'Extrapolation')
+
+    def log_point_cloud(self, model, device):
+        from torch.utils.data import BatchSampler
+
+        point_cloud = torch.rand((200000, 3)) - 0.5
+        point_cloud = (point_cloud / torch.linalg.vector_norm(
+                                    point_cloud, dim=-1).unsqueeze(-1)) * 0.8
+        colors = []
+        for batch in BatchSampler(point_cloud, 
+                                  self.hyper['batch_size'], drop_last=False):
+            batch = torch.stack(batch)
+            with torch.no_grad():
+                colors.append(model(batch.to(device))['model_out'])
+        colors = torch.concat(colors) * 255
+        if self.hyper['channels'] == 1:
+            colors = torch.concat([colors, colors, colors], 1)
+        
+        point_cloud = torch.concat((point_cloud, colors), 1)
+
+        wandb.log({"point_cloud": wandb.Object3D(point_cloud.numpy())})
