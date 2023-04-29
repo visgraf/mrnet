@@ -1,20 +1,20 @@
-# Model Class (S, L, M)
+# Model Variant (S, L, M)
 model: M
 
 # Network
-in_features: 2
+in_features: 3
 hidden_layers: 1
-hidden_features: [8, 8, 16, 32, 64, 128, 192]
+hidden_features: [80, 160, 256]
 bias: True
-max_stages: 7
+max_stages: 3
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [1, 2, 4, 6, 8, 16, 32]
-hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
+omega_0: [2, 4, 8]
+hidden_omega_0: [30, 30, 30]
 superposition_w0: False
 
 # Sampling
@@ -31,13 +31,13 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [1000, 400, 400, 400, 400, 400, 400]
-batch_size: 128 * 128
+max_epochs_per_stage: [100, 21, 21]
+batch_size: 256 * 256
 
 # Image
-image_name: hallpaz.jpg
-width: 512
-height: 512
+image_name: checker.npy
+width: 128
+height: 128
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
@@ -47,7 +47,7 @@ eval_device: cpu
 # Etc
 save_format: 'general'
 visualize_grad: True
-extrapolate: [-2, 2]
+# extrapolate: [-3, 3]
 
 
 

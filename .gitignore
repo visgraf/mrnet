@@ -9,3 +9,4 @@ __pycache__/*
 *.npy
 logs/*
 wandb/*
+img/kodak/*

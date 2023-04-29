@@ -18,18 +18,15 @@ class LocalLogger(Logger):
     def __init__(self, project: str, 
                         name: str, 
                         hyper: dict,
-                        basedir: str,
-                        to_file: bool = False, 
-                        entity = None, config=None, settings=None):
-        self.project = project
-        self.name = name
-        self.hyper = hyper
-        self.basedir = basedir
-        self.to_file = to_file
-        self.entity = entity
-        self.config = config
-        self.settings = settings
+                        basedir: str, 
+                        entity=None, 
+                        config=None, 
+                        settings=None,
+                        to_file=False):
+        super().__init__(project, name, hyper, 
+                         basedir, entity, config, settings)
         self.logs = {}
+        self.to_file = to_file
         if self.to_file:
             self.savedir = os.path.join(basedir, 'logs', project, name)
             os.makedirs(self.savedir, exist_ok=True)
@@ -144,3 +141,4 @@ class LocalLogger2D(LocalLogger):
                                                     pred.detach().cpu().numpy(),
                                                     data_range=1, channel_axis=-1)
         self.logs[stage_number]['ssim'] = ssim
+

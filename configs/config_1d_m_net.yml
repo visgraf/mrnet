@@ -2,18 +2,18 @@
 model: M
 
 # Network
-in_features: 2
+in_features: 1
 hidden_layers: 1
-hidden_features: [8, 8, 16, 32, 64, 128, 192]
+hidden_features: [8, 8, 8, 16, 32]
 bias: True
-max_stages: 7
+max_stages: 5
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [1, 2, 4, 6, 8, 16, 32]
+omega_0: [4, 8, 16, 32, 64]
 hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
 superposition_w0: False
 
@@ -29,15 +29,14 @@ loss_function: 'mse'
 # Training
 opt_method: Adam
 lr: 0.0005
-loss_tol: 0.000000000001
-diff_tol: 0.000000001
-max_epochs_per_stage: [1000, 400, 400, 400, 400, 400, 400]
+loss_tol: 0.00000000000001
+diff_tol: 0.00000000001
+max_epochs_per_stage: [1000, 401, 401, 401, 401, 401, 401]
 batch_size: 128 * 128
 
-# Image
-image_name: hallpaz.jpg
-width: 512
-height: 512
+# Signal
+image_name: perlin
+width: 1024
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')

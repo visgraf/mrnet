@@ -1,13 +1,20 @@
+import torch
 import torch.nn.functional as F
 from torchvision.transforms.functional import to_tensor
-from .imagesignal import ImageSignal
+# from .imagesignal import ImageSignal
+from .signals import ImageSignal, BaseSignal
 import cv2
 import numpy as np
 from PIL import Image
 
+import scipy.ndimage as sig
+from skimage.transform import pyramid_gaussian, pyramid_laplacian, pyramid_expand
+
+
 def resize_half_image(numpy_image):
     dims = numpy_image.shape
-    resized_img = cv2.resize(numpy_image, (dims[0]//2, dims[1]//2), interpolation = cv2.INTER_AREA)
+    resized_img = cv2.resize(numpy_image, (dims[0]//2, dims[1]//2),
+                              interpolation = cv2.INTER_AREA)
     return resized_img
 
 def pil2opencv(pil_image): 
@@ -33,7 +40,8 @@ def pyrdown2D(signal, desired_filter):
                         h_new,
                         channels=signal.channels,
                         sampling_scheme=signal.sampling_scheme,
-                        batch_samples_perc=signal.batch_samples_perc,
+                        domain=signal.domain,
+                        batch_size=signal.batch_size,
                         attributes=signal.attributes)
 
 def pyrup2d_opencv(image,num_times, dims_to_upscale):
@@ -45,11 +53,11 @@ def pyrup2d_opencv(image,num_times, dims_to_upscale):
     
     return img_scale
 
-def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
+def pyrup2D_imagesignal(signal, num_times, dims_to_upscale):
     img_pil = signal.image_pil()
     img_npy = pil2opencv(img_pil)    
 
-    scaled_up_image = pyrup2d_opencv(img_npy,num_times,dims_to_upscale)
+    scaled_up_image = pyrup2d_opencv(img_npy,num_times, dims_to_upscale)
     pil_scaled_up_image = opencv2pil(scaled_up_image)
 
     w_new, h_new = pil_scaled_up_image.size
@@ -59,8 +67,9 @@ def pyrup2D_imagesignal(signal,num_times, dims_to_upscale):
                         w_new,
                         h_new,
                         channels=signal.channels,
+                        domain=signal.domain,
                         sampling_scheme=signal.sampling_scheme,
-                        batch_samples_perc=signal.batch_samples_perc,
+                        batch_size=signal.batch_size,
                         attributes=signal.attributes
                         )
 
@@ -77,7 +86,7 @@ def construct_gaussian_tower(gaussian_pyramid):
     for level,signal in enumerate(gaussian_pyramid[1:]):
         dims_to_upscale = pyramid_dimensions[:(level+1)]
         dims_to_upscale.reverse()
-        signal = pyrup2D_imagesignal(signal,level,dims_to_upscale)
+        signal = pyrup2D_imagesignal(signal, level, dims_to_upscale)
         gauss_tower.append(signal)
     return gauss_tower
 
@@ -93,31 +102,44 @@ def construct_laplacian_pyramid(gaussian_pyramid):
     laplacian_pyramid.append(gaussian_pyramid[-1])
     return laplacian_pyramid
 
-def create_MR_structure(img_signal, num_levels, filter, decimation = False):
 
-    if filter=='none' and not decimation:
-        return [img_signal]*num_levels
+VALID_FILTERS = {
+    'gauss': pyramid_gaussian,
+    'laplace': pyramid_laplacian,
+}
 
-    if filter=='none' and decimation:
-        return construct_pyramid(img_signal,num_levels, desired_filter=resize_half_image)
-
-    gaussian_pyramid = construct_pyramid(img_signal,num_levels)
-
-    if filter=='gauss' and decimation:
-        return gaussian_pyramid
-
-    if filter=='laplace' and decimation:
-        laplacian_pyramid = construct_laplacian_pyramid(gaussian_pyramid)
-        return laplacian_pyramid
-    
-    gaussian_tower = construct_gaussian_tower(gaussian_pyramid)
-
-    if filter=='gauss' and not decimation:
-        return gaussian_tower
-
-    if filter=='laplace' and not decimation:
-        laplacian_tower = construct_laplacian_tower(gaussian_tower)
-        return laplacian_tower
+def create_MR_structure(signal, num_levels, filter_name, 
+                                decimation, mode='wrap', sigma=2/3,
+                                channel_axis=0):
+    if filter_name == 'none':
+        if decimation:
+            # it does not make sense on regular sampling; should re-sample
+            raise NotImplementedError(f"Invalid for now: filter {filter} + decimation {decimation}")
+        # TODO: maybe differentiate between test and train?
+        return [BaseSignal.new_like(signal, 
+                                    signal.data, shuffle=False)] * num_levels
+    else:
+        pyramid_filter = VALID_FILTERS[filter_name]
+        
+        signal_data = signal.data.numpy()
+        pyramid = pyramid_filter(signal_data, 
+                                num_levels-1,
+                                sigma=sigma, mode=mode,
+                                channel_axis=channel_axis)
+        if decimation:
+            return [BaseSignal.new_like(signal, torch.from_numpy(data)) 
+                                    for data in pyramid]
+        mrstack = []
+        for i, sdata in enumerate(pyramid):
+            current = sdata
+            for j in range(i):
+                current = pyramid_expand(current, 
+                            sigma=sigma, 
+                            mode=mode, 
+                            channel_axis=channel_axis)
+            mrstack.append(BaseSignal.new_like(signal, 
+                                               torch.from_numpy(current), shuffle=False))
+        return mrstack
 
 
 
