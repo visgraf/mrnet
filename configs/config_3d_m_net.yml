@@ -3,18 +3,19 @@ model: M
 
 # Network
 in_features: 3
+out_features: 3
 hidden_layers: 1
-hidden_features: [160, 256]
+hidden_features: [120, 256, 320]
 bias: True
-max_stages: 2
+max_stages: 3
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [4, 8]
-hidden_omega_0: [30, 30, 30]
+omega_0: [2, 4, 12]
+hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: False
 
 # Sampling
@@ -28,17 +29,17 @@ loss_function: 'mse'
 
 # Training
 opt_method: Adam
-lr: 0.0005
+lr: 0.0004
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [100, 21, 21]
+max_epochs_per_stage: [101, 22, 22, 21]
 batch_size: 256 * 256
 
 # Image
-image_name: checker.npy
+filename: colorful_noise3d128.npy
 width: 128
 height: 128
-channels: 1
+channels: 3
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda

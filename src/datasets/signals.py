@@ -158,17 +158,20 @@ class VolumeSignal(BaseSignal):
             volume = np.expand_dims(volume, axis=0)
         else:
             if volume.shape[-1] == 3:
-                volume.transpose((3, 0, 1, 2))
+                volume = volume.transpose((3, 0, 1, 2))
 
         if width is not None or height is not None:
             raise NotImplementedError("Can't resize volume at this moment")
         vol_tensor = torch.from_numpy(volume)
         # mask = to_tensor(Image.open(maskpath).resize((width, height))) if maskpath else None
-        mask = None
 
+        if isinstance(sampling_scheme, str):
+            sampling_scheme = SAMPLING_DICT[sampling_scheme]
+        mask = None
+        print(vol_tensor.shape, 'VOLUME SHAPE')
         return VolumeSignal(vol_tensor,
                             domain=domain,
-                            sampling_scheme=SAMPLING_DICT[sampling_scheme],
+                            sampling_scheme=sampling_scheme,
                             attributes=attributes,
                             batch_size=batch_size)
                             #domain_mask=mask)

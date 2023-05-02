@@ -183,20 +183,21 @@ class MRNet(nn.Module):
         if mrweights is None:
             mrweights = torch.ones(self.n_stages(), device=device)
         # Different weights per sample
-        # TODO: understand why this if was added
         if len(mrweights.shape) == len(mroutputs[0].shape):
             concatenated = torch.concat(mroutputs, 1)
             weighted = torch.mul(concatenated, mrweights)
             return torch.sum(weighted, 1).unsqueeze(-1)
         # Same weights for all samples
-        aggr_layer = nn.Linear(self.n_stages(), self.out_features, 
-                                bias=bias, device=device)
-        for i in range(self.out_features):
-            with torch.no_grad():
-                aggr_layer.weight[i] = mrweights
+        # aggr_layer = nn.Linear(self.n_stages(), self.out_features, 
+        #                         bias=bias, device=device)
+        # for i in range(self.out_features):
+        #     with torch.no_grad():
+        #         aggr_layer.weight[i] = mrweights
        
-        aggregated = aggr_layer(torch.stack(mroutputs, dim=-1))
-        return aggregated.squeeze(-1)
+        # aggregated = aggr_layer(torch.stack(mroutputs, dim=-1)).squeeze(-1)
+        dims = [1] * len(mroutputs[0].shape)
+        return (mrweights.view(self.n_stages(), 
+                               *dims) * torch.stack(mroutputs)).sum(dim=0)
 
     def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
         if recurse:
@@ -237,13 +238,13 @@ class MNet(MRNet):
     def forward(self, coords, mrweights=None):
         # allows to take derivative w.r.t. input
         coords = coords.clone().detach().requires_grad_(True) 
+        from IPython import embed
         
         mroutputs = []
         basis = None
         for mrstage in self.stages:
             out, basis = mrstage(coords, basis)
             mroutputs.append(out)
-        
         y = self._aggregate_resolutions(mroutputs, mrweights)
         return {"model_in": coords, "model_out": y}
     
@@ -311,10 +312,10 @@ class MRFactory:
         period = 2 if hyper.get('periodic', False) else 0
         
         return  MRClass(
-            hyper.get('in_features', 1),
+            hyper['in_features'],
             hfeat[0] if isinstance(hfeat, Sequence) else hfeat,
             hlayers[0] if isinstance(hlayers, Sequence) else hlayers,
-            hyper.get('out_features', 1),
+            hyper['out_features'],
             omega0[0] if isinstance(omega0, Sequence) else omega0,
             hidden_omega0[0] if isinstance(hidden_omega0, Sequence) else hidden_omega0,
             bias=hyper.get('bias', False),

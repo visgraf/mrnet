@@ -75,7 +75,7 @@ class RegularSampler(Sampler):
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
-        flatdata = torch.flatten(self.data)
+        flatdata = self.data.view(self.data_channels(), -1).permute((1, 0))
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]
@@ -84,7 +84,7 @@ class RegularSampler(Sampler):
         coords_sel = self.coords[sel_idxs]
         data_sel = flatdata[sel_idxs]
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
-        out_dict = {'d0': data_sel.view(-1, self.data_channels())}
+        out_dict = {'d0': data_sel}
         samples = {self.key_group:(in_dict, out_dict)}
         return samples
     
