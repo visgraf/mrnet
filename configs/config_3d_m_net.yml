@@ -5,16 +5,16 @@ model: M
 in_features: 3
 out_features: 3
 hidden_layers: 1
-hidden_features: [120, 256, 320]
+hidden_features: [120, 192, 512, 1024]
 bias: True
-max_stages: 3
+max_stages: 4
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [2, 4, 12]
+omega_0: [2, 3, 6, 16]
 hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: False
 
@@ -29,17 +29,20 @@ loss_function: 'mse'
 
 # Training
 opt_method: Adam
-lr: 0.0004
+lr: 0.0001
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [101, 22, 22, 21]
-batch_size: 256 * 256
+max_epochs_per_stage: [20, 5, 5, 5]
+batch_size: 256 * 128
 
 # Image
 filename: colorful_noise3d128.npy
 width: 128
 height: 128
 channels: 3
+
+test_mesh: bunny.obj
+ntestpoints: 290000
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
@@ -48,7 +51,7 @@ eval_device: cpu
 # Etc
 save_format: 'general'
 visualize_grad: True
-# extrapolate: [-3, 3]
+extrapolate: [-2, 2]
 
 
 

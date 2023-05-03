@@ -21,9 +21,11 @@ from .utils import output_per_batch
 from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
 import time
+import trimesh
 from IPython import embed
 
 MODELS_DIR = 'models'
+MESHES_DIR = 'meshes'
 
 
 class WandBLogger(Logger):
@@ -484,22 +486,38 @@ class WandBLogger3D(WandBLogger):
         return gtdata
     
     def log_prediction(self, model, test_loader, device):
-        # with torch.no_grad():
-        #     output_dict = model(test_loader.sampler.coords.to(device))
-        # model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
-        model_out = output_per_batch(model, test_loader, device)
-        pred_slices = self.get_slice_image(model_out.permute((1, 0)
-                                            ).view(test_loader.data.shape))
+        dims = test_loader.sampler.data_shape()
+        channels = self.hyper['channels']
+        domain = test_loader.sampler.coords.permute(1, 0).view(
+            channels, *dims
+        )
+        
+        domain_slices =[domain[:, self.x_slice, :, :],
+                        domain[:, :, self.y_slice, :],
+                        domain[:, :, self.z_slice, :],
+                        domain[:, :, :, self.w_slice]]
+        pred_slices = []
+        grads = []
+        for slice in domain_slices:
+            output_dict = model(
+                slice.reshape(channels, -1).permute((1, 0)).to(device))
+            model_out = output_dict['model_out'].clamp(0, 1)
+            grads.append(gradient(model_out, 
+                                  output_dict['model_in']).detach().cpu().view(dims[0], dims[1], 3))
+            pred_slices.append(
+                model_out.view(dims[0], dims[1], channels).detach().cpu())
+
         pred_pixels = torch.vstack(
             (torch.hstack(pred_slices[:2]), torch.hstack(pred_slices[2:])))
         self.log_imagetensor(pred_pixels, 'Prediction')
         self.log_fft(pred_slices, 'FFT Prediction')
 
-        # model_grads = gradient(model_out, output_dict['model_in'])
-        # pred_grads = torch.reshape(model_grads, (-1, 2))
-        # self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
+        pred_grads = torch.vstack((torch.hstack(grads[:2]), 
+                                   torch.hstack(grads[2:])))
+
+        self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
         
-        return model_out
+        return output_per_batch(model, test_loader, device)
     
     # TODO: make it work with color images and non-squared images
     def get_slice_image(self, volume):
@@ -523,9 +541,9 @@ class WandBLogger3D(WandBLogger):
         wandb.log({label: image})
     
     def log_gradmagnitude(self, grads:torch.Tensor, label: str):
-        grads = self.as_imagetensor(grads)
-        mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
-                        grads[:, :, 1].squeeze(-1).numpy())
+        mag = torch.sqrt(grads[:, :, 0]**2 
+                         + grads[:, :, 1]**2 
+                         + grads[:, :, 2]**2).numpy()
         gmin, gmax = np.min(mag), np.max(mag)
         img = Image.fromarray(255 * (mag - gmin) / gmax).convert('L')
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
@@ -560,26 +578,47 @@ class WandBLogger3D(WandBLogger):
                                     title="PSNR for reconstruction")})
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
-        # w, h = dims
-        # start, end = interval[0], interval[1]
-        # scale = (end - start) // 2
-        # neww, newh = int(scale * w), int(scale * h)
-        # ext_domain = make_grid_coords((neww, newh), start, end, dim=3)
-        
-        values = []
-        # for batch in BatchSampler(ext_domain, 
-        #                           self.hyper['batch_size'], drop_last=False):
-        #     batch = torch.stack(batch)
-        #     with torch.no_grad():
-        #         values.append(model(batch.to(device))['model_out'].clamp(0, 1))
-        # values = torch.concat(values)
-        # pred_slices = self.get_slice_image(values.)
-        # pixels = self.as_imagetensor(model_out)
-        # self.log_imagetensor(pixels, 'Extrapolation')
+        w, h, d = dims
+        start, end = interval[0], interval[1]
+        scale = (end - start) // 2
+        neww, newh, newd = int(scale * w), int(scale * h), int(scale * d)
+        ext_domain = make_grid_coords((neww, newh, newd), start, end, dim=3)
+        ext_domain = ext_domain.permute(1, 0).view(
+                                self.hyper['channels'], neww, newh, newd)
+        domain_slices =[ext_domain[:, self.x_slice, :, :],
+                        ext_domain[:, :, self.y_slice, :],
+                        ext_domain[:, :, self.z_slice, :],
+                        ext_domain[:, :, :, self.w_slice]]
+        pred_slices = []
+        for slice in domain_slices:
+            values = []
+            for batch in BatchSampler(
+                    slice.reshape(self.hyper['channels'], -1).permute((1, 0)), 
+                    self.hyper['batch_size'], drop_last=False):
+                batch = torch.stack(batch)
+                with torch.no_grad():
+                    values.append(
+                        model(batch.to(device))['model_out'].clamp(0, 1))
+            values = torch.concat(values)
+            pred_slices.append(values.view(neww, newh, self.hyper['channels']))
+        pred_pixels = torch.vstack((torch.hstack(pred_slices[:2]), 
+                                    torch.hstack(pred_slices[2:])))
+        self.log_imagetensor(pred_pixels, 'Extrapolation')
 
     def log_point_cloud(self, model, device):
-        point_cloud = torch.rand((280000, 3)) - 0.5
-        point_cloud = (point_cloud / torch.linalg.vector_norm(
+        if self.hyper.get('test_mesh', ""):
+            mesh = trimesh.load_mesh(os.path.join(self.basedir, MESHES_DIR, 
+                                                  self.hyper['test_mesh']))
+            point_cloud, _ = trimesh.sample.sample_surface(
+                                    mesh, self.hyper['ntestpoints'])
+            point_cloud = torch.from_numpy(point_cloud).float()
+            # center at the origin and rescale to fit a sphere of radius 0.8
+            point_cloud = point_cloud - torch.mean(point_cloud, dim=0)
+            scale = 0.8 / torch.max(torch.abs(point_cloud))
+            point_cloud = scale * point_cloud
+        else:
+            point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
+            point_cloud = (point_cloud / torch.linalg.vector_norm(
                                     point_cloud, dim=-1).unsqueeze(-1)) * 0.8
         colors = []
         for batch in BatchSampler(point_cloud, 
