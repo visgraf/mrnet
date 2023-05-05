@@ -5,7 +5,7 @@ import warnings
 from .siren import SineLayer
 from torch import nn
 from torch.nn.parameter import Parameter
-from typing import Iterator, Sequence
+from typing import Iterator, Sequence, Union
 from copy import deepcopy
 
 
@@ -14,7 +14,7 @@ class MRModule(nn.Module):
     Built upon SIREN code
     """
     def __init__(self, in_features: int, 
-                    hidden_features: int, 
+                    hidden_features: Union[int, Sequence], 
                     hidden_layers: int, 
                     out_features: int, 
                     first_omega_0: int, 
@@ -26,26 +26,39 @@ class MRModule(nn.Module):
 
         self.bias = bias
         self.period = period
+
+        if not isinstance(hidden_features, Sequence):
+            hidden_features = [hidden_features] * (hidden_layers + 1)
+
+        hidden_idx = 0
+        self.first_layer = SineLayer(in_features, hidden_features[hidden_idx],
+                                      bias=bias, is_first=True, omega_0=first_omega_0, period=period)
         
-        self.first_layer = SineLayer(in_features, hidden_features, bias=bias,
-                                  is_first=True, omega_0=first_omega_0, period=period)
-
         middle = []
-        middle.append(
-            SineLayer(prevknowledge + hidden_features, hidden_features, bias=True,
-                                is_first=False, omega_0=hidden_omega_0)
-        )
-
-        for i in range(hidden_layers - 1):
-            middle.append(SineLayer(hidden_features, hidden_features, bias=True,
-                                      is_first=False, omega_0=hidden_omega_0))
+        while hidden_idx < hidden_layers:
+            middle.append(
+                SineLayer(hidden_features[hidden_idx] 
+                           + (prevknowledge if hidden_idx == 0 else 0),
+                          hidden_features[hidden_idx + 1], bias=True,
+                          is_first=False, omega_0=hidden_omega_0)
+            )
+            hidden_idx += 1
+        # middle.append(
+        #     SineLayer(prevknowledge + hidden_features[hidden_idx],
+        #                hidden_features[hidden_idx + 1], bias=True,
+        #                         is_first=False, omega_0=hidden_omega_0)
+        # )
+        # for i in range(hidden_layers - 1):
+        #     middle.append(SineLayer(hidden_features, hidden_features, bias=True,
+        #                               is_first=False, omega_0=hidden_omega_0))
         
         self.middle_layers = nn.Sequential(*middle)
         
-        self.final_linear = nn.Linear(hidden_features, out_features)
+        self.final_linear = nn.Linear(hidden_features[hidden_idx], out_features)
         with torch.no_grad():
-            self.final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0,
-                                              np.sqrt(6 / hidden_features) / hidden_omega_0)
+            self.final_linear.weight.uniform_(
+                    -np.sqrt(6 / hidden_features[hidden_idx]) / hidden_omega_0,
+                    np.sqrt(6 / hidden_features[hidden_idx]) / hidden_omega_0)
             
    
     # Check if internal layers initialization is needed/correct
@@ -65,7 +78,11 @@ class MRModule(nn.Module):
 
     @property
     def hidden_features(self):
-        return self.first_layer.out_features
+        # return self.first_layer.out_features
+        hf = [self.middle_layers[0].linear.in_features]
+        for layer in self.middle_layers:
+            hf.append(layer.linear.out_features)
+        return hf
 
     @property
     def hidden_layers(self):
@@ -107,7 +124,6 @@ class MRNet(nn.Module):
         self.out_features = out_features
         self.bias = bias
         self.period = period
-
         first_module = MRModule(in_features, 
                                 hidden_features, 
                                 hidden_layers, 
@@ -232,7 +248,7 @@ class MNet(MRNet):
 
     def add_stage(self, first_omega_0, hidden_features, 
                   hidden_layers, hidden_omega_0, bias):
-        prev = self.top_stage.hidden_features
+        prev = self.top_stage.hidden_features[-1]
         return self._add_stage(first_omega_0, hidden_features, hidden_layers, hidden_omega_0, bias, prev)
     
     def forward(self, coords, mrweights=None):
@@ -310,7 +326,6 @@ class MRFactory:
         hfeat, hlayers = hyper['hidden_features'], hyper['hidden_layers']
         # TODO: remove in future versions; for compatibility only (periodic->period).
         period = 2 if hyper.get('periodic', False) else 0
-        
         return  MRClass(
             hyper['in_features'],
             hfeat[0] if isinstance(hfeat, Sequence) else hfeat,

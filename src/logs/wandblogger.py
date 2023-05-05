@@ -46,14 +46,28 @@ class WandBLogger(Logger):
             for key in updated_hyper:
                 self.hyper[key] = updated_hyper[key]
         
-        hyper = self.hyper
-        self.runname = f"{self.name}_{hyper['stage']}/{hyper['max_stages']}_w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}_hf{hyper['hidden_features']}_MEp{hyper['max_epochs_per_stage']}_hl{hyper['hidden_layers']}_{hyper['width']}px"
         wandb.init(project=self.project, 
                     entity=self.entity, 
                     name=self.runname, 
                     config=self.hyper,
                     settings=self.settings)
         wandb.watch(current_model, log_freq=10, log='all')
+
+    @property
+    def runname(self):
+        hyper = self.hyper
+        stage = f"{hyper['stage']}/{hyper['max_stages']}"
+        w0 = f"w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}"
+        hl = f"hl{hyper['hidden_layers']}"
+        epochs = f"MEp{hyper['max_epochs_per_stage']}"
+        if isinstance(hyper['hidden_features'], Sequence):
+            hf = ''.join([str(v) for v in hyper['hidden_features']])
+        else:
+            hf = hyper['hidden_features']
+        hf = f"hf{hf}"
+        res = f"r{hyper['width']}"
+        per = f"pr{hyper['period']}"
+        return f"{self.name}_{stage}_{w0}_{hf}_{epochs}_{hl}_{res}_{per}"
 
     def on_epoch_finish(self, current_model, epochloss):
         log_dict = {f'{key.upper()} loss': value 
@@ -96,18 +110,18 @@ class WandBLogger(Logger):
 
 class WandBLogger1D(WandBLogger):
 
-    def on_stage_start(self, current_model, stage_number, updated_hyper=None):
-        stage_hyper = deepcopy(self.hyper)
-        if updated_hyper:
-            for key in updated_hyper:
-                stage_hyper[key] = updated_hyper[key]
-        self.runname = f"{self.name}{stage_hyper['stage']}/{stage_hyper['max_stages']}_w{stage_hyper['omega_0']}{'T' if stage_hyper['superposition_w0'] else 'F'}_hf{stage_hyper['hidden_features']}"
-        wandb.init(project=self.project, 
-                    entity=self.entity, 
-                    name=self.runname, 
-                    config=stage_hyper,
-                    settings=self.settings)
-        wandb.watch(current_model, log_freq=10, log='all')
+    # def on_stage_start(self, current_model, stage_number, updated_hyper=None):
+    #     stage_hyper = deepcopy(self.hyper)
+    #     if updated_hyper:
+    #         for key in updated_hyper:
+    #             stage_hyper[key] = updated_hyper[key]
+    #     self.runname = f"{self.name}{stage_hyper['stage']}/{stage_hyper['max_stages']}_w{stage_hyper['omega_0']}{'T' if stage_hyper['superposition_w0'] else 'F'}_hf{stage_hyper['hidden_features']}"
+    #     wandb.init(project=self.project, 
+    #                 entity=self.entity, 
+    #                 name=self.runname, 
+    #                 config=stage_hyper,
+    #                 settings=self.settings)
+    #     wandb.watch(current_model, log_freq=10, log='all')
 
     def on_stage_trained(self, current_model: MRNet,
                                 train_loader, test_loader):
@@ -228,6 +242,8 @@ class WandBLogger1D(WandBLogger):
         if extrapolation_interval is not None:
             self.log_extrapolation(model, extrapolation_interval,
                                     X_test, Y_test, device)
+            
+        self.log_chosen_frequencies(model, None)
 
         
     def log_regression_curves(self, X, gt, pred, plot_name, title):
@@ -269,22 +285,55 @@ class WandBLogger1D(WandBLogger):
                 )}
         )
 
+    def log_chosen_frequencies(self, model, predfftdata):
+        nyquist_limit = self.hyper['width']//4
+        all_freqs = np.arange(-nyquist_limit, nyquist_limit+1)
+        frequencies = []
+        for stage in model.stages:
+            last_stage_frequencies = stage.first_layer.linear.weight.cpu()
+            freqs = np.round(self.hyper['period'] 
+                    * last_stage_frequencies.view(-1).numpy() 
+                    / (2 * np.pi))
+            frequencies.append(freqs)
+        frequencies = np.concatenate(frequencies)
+        print(frequencies.shape, frequencies)
+        values = np.zeros_like(all_freqs)
+        values[np.in1d(all_freqs, frequencies.astype(np.int32)).nonzero()] = 1
+        wandb.log(
+            {"init_freqs": wandb.plot.line_series(
+                xs = all_freqs,
+                ys = [values],
+                keys = ["chosen"],
+                title = "chosen frequencies",
+                xname = "freqs"
+            )}
+        )
+        print("Logged")
+
+        ##FFT plot
+        # predfftdata = self.get_fft(pred)
+        
+        # freq_table = wandb.Table(data = np.stack(frequencies, 
+        #                                          np.ones_like(frequencies) * 0.05), 
+        #                             columns=["frequency", "FFT"])
+        # wandb.log({"frequencies": wandb.plot.line(freq_table, "freq","chosen", stroke=None, title="Chosen Frequencies")})
+
 
 class WandBLogger2D(WandBLogger):
     
-    def on_stage_start(self, current_model, stage_number, updated_hyper=None):
-        if updated_hyper:
-            for key in updated_hyper:
-                self.hyper[key] = updated_hyper[key]
+    # def on_stage_start(self, current_model, stage_number, updated_hyper=None):
+    #     if updated_hyper:
+    #         for key in updated_hyper:
+    #             self.hyper[key] = updated_hyper[key]
         
-        hyper = self.hyper
-        self.runname = f"{self.name}_{hyper['stage']}/{hyper['max_stages']}_w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}_hf{hyper['hidden_features']}_MEp{hyper['max_epochs_per_stage']}_hl{hyper['hidden_layers']}_{hyper['width']}px"
-        wandb.init(project=self.project, 
-                    entity=self.entity, 
-                    name=self.runname, 
-                    config=self.hyper,
-                    settings=self.settings)
-        wandb.watch(current_model, log_freq=10, log='all')
+    #     hyper = self.hyper
+    #     self.runname = f"{self.name}_{hyper['stage']}/{hyper['max_stages']}_w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}_hf{hyper['hidden_features']}_MEp{hyper['max_epochs_per_stage']}_hl{hyper['hidden_layers']}_{hyper['width']}px"
+    #     wandb.init(project=self.project, 
+    #                 entity=self.entity, 
+    #                 name=self.runname, 
+    #                 config=self.hyper,
+    #                 settings=self.settings)
+    #     wandb.watch(current_model, log_freq=10, log='all')
 
 
     def on_stage_trained(self, current_model: MRNet,

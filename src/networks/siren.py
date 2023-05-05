@@ -51,11 +51,12 @@ class SineLayer(nn.Module):
                                                 np.sqrt(6 / self.in_features) / self.omega_0)
                 
     def init_periodic_weights(self, used_weights=None):
+        # used_weights = [-30, -24, -8, -4, 4, 8, 24, 30]
         with torch.no_grad():
             if self.is_first:
                 rng = np.random.default_rng(RANDOM_SEED)
                 possible_frequencies = cartesian_product(
-                    *(self.in_features * [np.array(range(-self.omega_0,
+                    *(self.in_features * [np.array(range(1,#-self.omega_0,
                                                          self.omega_0 + 1))])
                 )
                 if used_weights is not None:
@@ -65,6 +66,11 @@ class SineLayer(nn.Module):
                 chosen_frequencies = torch.from_numpy(
                     rng.choice(possible_frequencies, self.out_features, False)
                 )
+                # chosen_frequencies = torch.tensor([-30., -24., -8, -4, 4, 8, 24, 30]).unsqueeze(-1)
+
+                # chosen_frequencies = torch.concat(
+                #     (chosen_frequencies, chosen_frequencies2))
+                # chosen_frequencies = torch.tensor([4, 8, 24, 30]).unsqueeze(-1)
 
                 self.linear.weight = nn.Parameter(
                     chosen_frequencies.float() * 2 * torch.pi / self.period)

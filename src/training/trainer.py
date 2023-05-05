@@ -262,7 +262,7 @@ class MRTrainer:
                                         self.n_stages, 
                                         self.get_stage_hyper())
             last_epoch_loss = 10000000
-
+            print("DATA SIZE", self.current_dataloader.size())
             for epoch in range(self.current_limit_for_epochs):
                 running_loss = {}
                 for batch in self.current_dataloader:
