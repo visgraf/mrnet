@@ -345,6 +345,7 @@ class WandBLogger2D(WandBLogger):
         start_time = time.time()
         self.log_traindata(train_loader)
         gt = self.log_groundtruth(test_loader)   
+        print("FOI GT")
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.to(device), pred)
 
@@ -362,9 +363,8 @@ class WandBLogger2D(WandBLogger):
        
 ##
     def log_traindata(self, train_loader):
-        traindata = train_loader.data.view(-1, self.hyper['channels'])
-        pixels = self.as_imagetensor(torch.clamp(traindata, 0, 1))
-
+        pixels = train_loader.data.permute((1, 2, 0))
+        #pixels = self.as_imagetensor(torch.clamp(traindata, 0, 1))
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Train Data')
         else:
@@ -372,8 +372,8 @@ class WandBLogger2D(WandBLogger):
     
     def log_groundtruth(self, test_loader):
         gtdata = test_loader.data.view(-1, self.hyper['channels'])
-        pixels = self.as_imagetensor(torch.clamp(gtdata, 0, 1))
-        
+        #pixels = self.as_imagetensor(torch.clamp(gtdata, 0, 1))
+        pixels = test_loader.data.permute((1, 2, 0))
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Ground Truth')
         else:
@@ -396,10 +396,11 @@ class WandBLogger2D(WandBLogger):
     def log_prediction(self, model, test_loader, device):
         # with torch.no_grad():
         output_dict = model(test_loader.sampler.coords.to(device))
-        model_out = torch.clamp(output_dict['model_out'], 0.0, 1.0)
-
-        pred_pixels = self.as_imagetensor(model_out)
-        self.log_imagetensor(pred_pixels, 'Prediction')
+        model_out = output_dict['model_out']
+        #pred_pixels = self.as_imagetensor(model_out)
+        h, w = test_loader.size()[1:]
+        pred_pixels = model_out.reshape((h, w, self.hyper['channels'])).detach()
+        self.log_imagetensor(pred_pixels.clamp(0, 1), 'Prediction')
         self.log_fft(pred_pixels, 'FFT Prediction')
 
         model_grads = gradient(model_out, output_dict['model_in'])
@@ -432,6 +433,10 @@ class WandBLogger2D(WandBLogger):
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
     
     def log_fft(self, pixels:torch.Tensor, label:str):
+        if self.hyper['channels'] == 3:
+            pixels = (0.2126 * pixels[:, :, 0] 
+                    + 0.7152 * pixels[:, :, 1] 
+                    + 0.0722 * pixels[:, :, 2])
         fourier_tensor = torch.fft.fftshift(
                         torch.fft.fft2(pixels.squeeze(-1)))
         magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-10)
