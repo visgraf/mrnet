@@ -88,6 +88,8 @@ class MRTrainer:
         self.epochs_per_stage = []
         self._total_epochs_trained = 0
 
+        self.loss_weights = {'d0': 1.0, 'd1': 0.5}
+
 
     def init_from_dict(model: MRNet, 
                         datasource: Union[DataLoader, Sequence[DataLoader]], 
@@ -274,7 +276,8 @@ class MRTrainer:
                     out_dict = self.model(X['coords'].to(device), mrweights)
                     
                     loss_dict = self.loss_function(out_dict, gt_dict, device)
-                    loss = sum(loss_dict.values())
+                    loss = sum([loss_dict[key] * self.loss_weights[key] for key in loss_dict.keys()])
+                    # loss = sum(loss_dict.values())
 
                     loss.backward()
                     optimizer.step()

@@ -22,6 +22,21 @@ def mse_loss(output_dict, gt_dict, device):
 
     return loss_dict
 
+def hermite_loss(output_dict, train_dict, device):
+    loss_dict = {}
+
+    coords = output_dict['model_in'].to(device)
+    pred = output_dict['model_out'].to(device)
+    gt_pred = train_dict['d0'].to(device)
+    gt_grad = train_dict['d1'].to(device)
+    
+    pred_grad = gradient(pred, coords)
+
+    loss_dict['d0'] = F.mse_loss(pred, gt_pred) 
+    loss_dict['d1'] = F.mse_loss(pred_grad, gt_grad)
+
+    return loss_dict
+
 # def old_mse_loss(batch, model, mrweights, device):
 #     loss_dict = {}
 
@@ -41,7 +56,9 @@ def mse_loss(output_dict, gt_dict, device):
 
 #     return loss_dict
 
-def hermite_loss(batch, model, mrweights,device):
+
+
+def old_hermite_loss(batch, model, mrweights,device):
 
 
     (trainX, trainY) = batch['c1']
