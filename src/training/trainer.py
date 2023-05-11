@@ -269,8 +269,11 @@ class MRTrainer:
                     optimizer.zero_grad()
                     # not all model's parameters are updated by the optimizer
                     self.model.zero_grad()
-
-                    loss_dict = self.loss_function(batch, self.model, mrweights, device)
+                    # why c0?
+                    X, gt_dict = batch['c0']
+                    out_dict = self.model(X['coords'].to(device), mrweights)
+                    
+                    loss_dict = self.loss_function(out_dict, gt_dict, device)
                     loss = sum(loss_dict.values())
 
                     loss.backward()

@@ -7,6 +7,7 @@ from torchvision.transforms.functional import to_tensor, to_pil_image
 from pathlib import Path
 from .constants import SAMPLING_DICT, Sampling
 from datasets.sampler import SamplerFactory
+from scipy.ndimage import sobel
 
 
 def make_mask(srcpath, mask_color):
@@ -36,6 +37,16 @@ class BaseSignal(Dataset):
                                            self.attributes,
                                            batch_size,
                                            shuffle)
+    def compute_derivatives(self):
+        dims = len(self.data.shape[1:])
+        directions = []
+        for d in range(1, dims + 1):
+            directions.append(
+                torch.from_numpy(sobel(self.data, d, mode='wrap'))
+                )
+        # channels x N x dims
+        self.data_attributes = {'d1': torch.stack(directions, dim=-1)}
+
     def size(self):
         return self.data.shape
     

@@ -8,7 +8,7 @@ out_features: 3
 hidden_layers: 1
 hidden_features: [[512, 512], [32, 64], [128, 96], 192]
 bias: True
-max_stages: 3
+max_stages: 1
 
 period: 2
 domain: [-1, 1]
@@ -34,7 +34,7 @@ lr: 0.0005
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
 max_epochs_per_stage: [2000, 1000, 600, 400, 400, 400, 400]
-batch_size: 512 * 512
+batch_size: 256 * 256
 
 # Image
 image_name: periodic.png
