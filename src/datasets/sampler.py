@@ -76,21 +76,23 @@ class RegularSampler(Sampler):
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
         flatdata = self.data.view(self.data_channels(), -1).permute((1, 0))
+        if 'd1' in self.attributes.keys():
+            self.d1 = torch.sum(self.attributes['d1'], dim=0).view(2, -1).permute((1, 0))
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]
         
     def flat_attributes(self):
-        d1 = self.attributes['d1'].view()
+        d1 = torch.sum(self.attributes['d1'], dim=0).view(2, -1).permute((1, 0))
 
     def get_tuple_dicts(self, sel_idxs, flatdata):
         coords_sel = self.coords[sel_idxs]
         data_sel = flatdata[sel_idxs]
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {'d0': data_sel}
-        # if 'd1' in self.attributes:
+        if 'd1' in self.attributes.keys():
         #     # lazy or not?
-        #     out_dict['d1'] = self.grads.view(XXXXX)[sel_idxs]
+            out_dict['d1'] = self.d1[sel_idxs]
         samples = {self.key_group:(in_dict, out_dict)}
         return samples
     

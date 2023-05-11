@@ -29,12 +29,15 @@ class BaseSignal(Dataset):
         self.data = data
         self.domain = domain
         self.attributes = attributes
+        self.data_attributes = {}
+        if 'd1' in self.attributes:
+            self.compute_derivatives()
         if isinstance(sampling_scheme, str):
             sampling_scheme = SAMPLING_DICT[sampling_scheme]
         self.sampler = SamplerFactory.init(sampling_scheme,
                                            self.data,
                                            self.domain,
-                                           self.attributes,
+                                           self.data_attributes,
                                            batch_size,
                                            shuffle)
     def compute_derivatives(self):
@@ -63,7 +66,7 @@ class BaseSignal(Dataset):
     def type_code(self):
         return 'B'
     
-    def new_like(other, data, attributes=[], shuffle=None):
+    def new_like(other, data, shuffle=None):
         if other.type_code() == '1D':
             Class = Signal1D
         elif other.type_code() == '2D':
@@ -75,7 +78,8 @@ class BaseSignal(Dataset):
         if shuffle is None:
             shuffle = other.sampler.shuffle
         return Class(data, other.domain,
-                    attributes, other.sampler.scheme(),
+                    other.attributes, 
+                    other.sampler.scheme(),
                     other.sampler.batch_size,
                     shuffle)
         

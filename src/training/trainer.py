@@ -88,7 +88,7 @@ class MRTrainer:
         self.epochs_per_stage = []
         self._total_epochs_trained = 0
 
-        self.loss_weights = {'d0': 1.0, 'd1': 0.5}
+        self.loss_weights = {'d0': 1, 'd1': 0.0001}
 
 
     def init_from_dict(model: MRNet, 

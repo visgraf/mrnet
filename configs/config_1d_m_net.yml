@@ -26,7 +26,7 @@ filter: gauss # vary between none, laplace and gauss
 attributes: ['d0']
 
 # Loss
-loss_function: 'mse'
+loss_function: 'hermite'
 
 # Training
 opt_method: Adam

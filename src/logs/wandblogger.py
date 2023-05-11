@@ -382,12 +382,27 @@ class WandBLogger2D(WandBLogger):
         self.log_fft(pixels, 'FFT Ground Truth')
 
         if self.visualize_gt_grads:
+            print("HOP")
+            if 'd1' in self.hyper['attributes']:
+                grads = test_loader.data_attributes['d1']
+                if self.hyper['channels'] == 3:
+                    grads = (0.2126 * grads[0, ...] 
+                        + 0.7152 * grads[1, ...] 
+                        + 0.0722 * grads[2, ...])
+                else:
+                    grads = grads.squeeze(0)
+                print(grads.shape)
+                mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
+                        grads[:, :, 1].squeeze(-1).numpy())
+                gmin, gmax = np.min(mag), np.max(mag)
+                img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
+                wandb.log({f'Gradient Magnitude - {"GT"}': wandb.Image(img)})
 
-            try:
-                gt_grads = test_loader.sampler.img_grad
-                self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
-            except:
-                print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
+            # try:
+            #     gt_grads = test_loader.sampler.img_grad
+            #     self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
+            # except:
+            #     print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
         
         return gtdata
     # TODO: find a way to optimize. Huge memory consumption here
@@ -429,7 +444,7 @@ class WandBLogger2D(WandBLogger):
         mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
                         grads[:, :, 1].squeeze(-1).numpy())
         gmin, gmax = np.min(mag), np.max(mag)
-        img = Image.fromarray(255 * (mag - gmin) / gmax).convert('L')
+        img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
     
     def log_fft(self, pixels:torch.Tensor, label:str):

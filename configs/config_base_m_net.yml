@@ -4,9 +4,9 @@ positive_freqs: False
 
 # Network
 in_features: 2
-out_features: 3
+out_features: 1
 hidden_layers: 1
-hidden_features: [[512, 512], [32, 64], [128, 96], 192]
+hidden_features: [[512, 256], [32, 64], [128, 96], 192]
 bias: True
 max_stages: 1
 
@@ -23,24 +23,24 @@ superposition_w0: False
 sampling_scheme: regular
 decimation: True
 filter: gauss # vary between none, laplace and gauss
-attributes: ['d0']
+attributes: ['d0', 'd1']
 
 # Loss
-loss_function: 'mse'
+loss_function: 'hermite'
 
 # Training
 opt_method: Adam
 lr: 0.0005
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [2000, 1000, 600, 400, 400, 400, 400]
-batch_size: 256 * 256
+max_epochs_per_stage: [4000, 1000, 600, 400, 400, 400, 400]
+batch_size: 512 * 512
 
 # Image
 image_name: periodic.png
 width: 512
 height: 512
-channels: 3
+channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
