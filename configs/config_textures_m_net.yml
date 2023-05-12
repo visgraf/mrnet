@@ -34,7 +34,7 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.00000000001
 diff_tol: 0.0000001
-max_epochs_per_stage: [400, 1000, 600, 400, 400, 400, 400]
+max_epochs_per_stage: [800, 1000, 600, 400, 400, 400, 400]
 batch_size: 256 * 256
 
 # Image
@@ -51,11 +51,3 @@ eval_device: cpu
 save_format: 'general'
 visualize_grad: True
 extrapolate: [-2, 2]
-
-
-
-
-
-
-
-

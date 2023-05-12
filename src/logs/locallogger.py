@@ -1,4 +1,4 @@
-from networks.mrnet import MRNet
+from networks.mrnet import MRNet, MRFactory
 from .logger import Logger
 
 import os
@@ -7,7 +7,6 @@ import torch
 from torch.utils.data import DataLoader
 from PIL import Image
 from training.loss import gradient
-from datasets.imagesignal import ImageSignal
 from typing import Sequence, Tuple
 import yaml
 import skimage
@@ -26,6 +25,8 @@ class LocalLogger(Logger):
         super().__init__(project, name, hyper, 
                          basedir, entity, config, settings)
         self.logs = {}
+        logs_path = basedir.joinpath('logs')
+        self.modelspath = os.path.join(logs_path, project, 'models')
         self.to_file = to_file
         if self.to_file:
             self.savedir = os.path.join(basedir, 'logs', project, name)
@@ -93,6 +94,10 @@ class LocalLogger2D(LocalLogger):
                     paramfile.write("n_parameters, n_buffers, n_epochs\n")
                 paramfile.write(f"{param_size}, {buffer_size}, {total_epochs}\n")
         print(f'Training finished after {total_epochs} epochs')
+        
+        filename = f"{self.hyper['model']}{self.hyper['image_name'][0:4]}.pth"
+        path = os.path.join(self.models_path, filename)
+        MRFactory.save(trained_model, path)
 
     def tensor_to_img(self, tensor):
         data = tensor.view(-1, self.hyper['channels'])

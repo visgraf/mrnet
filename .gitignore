@@ -10,4 +10,5 @@ __pycache__/*
 logs/*
 wandb/*
 img/kodak/*
+img/pexels_textures/*
 meshes/*

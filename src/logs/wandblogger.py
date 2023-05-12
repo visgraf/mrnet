@@ -35,11 +35,9 @@ class WandBLogger(Logger):
                         basedir: str, 
                         entity=None, 
                         config=None, 
-                        settings=None,
-                        visualize_gt_grads=False):
+                        settings=None):
         super().__init__(project, name, hyper, 
                          basedir, entity, config, settings)
-        self.visualize_gt_grads = visualize_gt_grads
 
     def on_stage_start(self, current_model, stage_number, updated_hyper=None):
         if updated_hyper:
@@ -73,7 +71,9 @@ class WandBLogger(Logger):
         log_dict = {f'{key.upper()} loss': value 
                         for key, value in epochloss.items()}
         if len(epochloss) > 1:
-            log_dict['Total loss'] = sum(epochloss.values())
+            log_dict['Total loss'] = sum(
+                            [self.hyper['loss_weights'][k] * epochloss[k] 
+                                for k in epochloss.keys()])
 
         wandb.log(log_dict)
 
@@ -109,19 +109,6 @@ class WandBLogger(Logger):
 
 
 class WandBLogger1D(WandBLogger):
-
-    # def on_stage_start(self, current_model, stage_number, updated_hyper=None):
-    #     stage_hyper = deepcopy(self.hyper)
-    #     if updated_hyper:
-    #         for key in updated_hyper:
-    #             stage_hyper[key] = updated_hyper[key]
-    #     self.runname = f"{self.name}{stage_hyper['stage']}/{stage_hyper['max_stages']}_w{stage_hyper['omega_0']}{'T' if stage_hyper['superposition_w0'] else 'F'}_hf{stage_hyper['hidden_features']}"
-    #     wandb.init(project=self.project, 
-    #                 entity=self.entity, 
-    #                 name=self.runname, 
-    #                 config=stage_hyper,
-    #                 settings=self.settings)
-    #     wandb.watch(current_model, log_freq=10, log='all')
 
     def on_stage_trained(self, current_model: MRNet,
                                 train_loader, test_loader):
@@ -308,8 +295,7 @@ class WandBLogger1D(WandBLogger):
                 xname = "freqs"
             )}
         )
-        print("Logged")
-
+        print("Logged frequencies")
         ##FFT plot
         # predfftdata = self.get_fft(pred)
         
@@ -320,21 +306,6 @@ class WandBLogger1D(WandBLogger):
 
 
 class WandBLogger2D(WandBLogger):
-    
-    # def on_stage_start(self, current_model, stage_number, updated_hyper=None):
-    #     if updated_hyper:
-    #         for key in updated_hyper:
-    #             self.hyper[key] = updated_hyper[key]
-        
-    #     hyper = self.hyper
-    #     self.runname = f"{self.name}_{hyper['stage']}/{hyper['max_stages']}_w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}_hf{hyper['hidden_features']}_MEp{hyper['max_epochs_per_stage']}_hl{hyper['hidden_layers']}_{hyper['width']}px"
-    #     wandb.init(project=self.project, 
-    #                 entity=self.entity, 
-    #                 name=self.runname, 
-    #                 config=self.hyper,
-    #                 settings=self.settings)
-    #     wandb.watch(current_model, log_freq=10, log='all')
-
 
     def on_stage_trained(self, current_model: MRNet,
                                 train_loader,
@@ -344,8 +315,7 @@ class WandBLogger2D(WandBLogger):
         current_model.to(device)
         start_time = time.time()
         self.log_traindata(train_loader)
-        gt = self.log_groundtruth(test_loader)   
-        print("FOI GT")
+        gt = self.log_groundtruth(test_loader)
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.to(device), pred)
 
@@ -381,53 +351,43 @@ class WandBLogger2D(WandBLogger):
         
         self.log_fft(pixels, 'FFT Ground Truth')
 
-        if self.visualize_gt_grads:
-            print("HOP")
-            if 'd1' in self.hyper['attributes']:
-                grads = test_loader.data_attributes['d1']
-                if self.hyper['channels'] == 3:
-                    grads = (0.2126 * grads[0, ...] 
-                        + 0.7152 * grads[1, ...] 
-                        + 0.0722 * grads[2, ...])
-                else:
-                    grads = grads.squeeze(0)
-                print(grads.shape)
-                mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
-                        grads[:, :, 1].squeeze(-1).numpy())
-                gmin, gmax = np.min(mag), np.max(mag)
-                img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
-                wandb.log({f'Gradient Magnitude - {"GT"}': wandb.Image(img)})
-
-            # try:
-            #     gt_grads = test_loader.sampler.img_grad
-            #     self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
-            # except:
-            #     print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
-        
+        if 'd1' in self.hyper['attributes']:
+            grads = test_loader.data_attributes['d1']
+            if self.hyper['channels'] == 3:
+                grads = (0.2126 * grads[0, ...] 
+                    + 0.7152 * grads[1, ...] 
+                    + 0.0722 * grads[2, ...])
+            else:
+                grads = grads.squeeze(0)
+            mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
+                    grads[:, :, 1].squeeze(-1).numpy())
+            gmin, gmax = np.min(mag), np.max(mag)
+            img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
+            wandb.log({f'Gradient Magnitude - {"GT"}': wandb.Image(img)})
         return gtdata
-    # TODO: find a way to optimize. Huge memory consumption here
-    # thought it was accumulating, but it turns out that inference over 
-    # full interval takes a lot of memory
+    
     def log_prediction(self, model, test_loader, device):
-        # with torch.no_grad():
-        output_dict = model(test_loader.sampler.coords.to(device))
-        model_out = output_dict['model_out']
-        #pred_pixels = self.as_imagetensor(model_out)
+        coords = test_loader.sampler.coords
+        pixels = []
+        grads = []
+        for batch in BatchSampler(coords, 
+                                  self.hyper['batch_size'], 
+                                  drop_last=False):
+            batch = torch.stack(batch)
+            output_dict = model(batch.to(device))
+            pixels.append(output_dict['model_out'].detach().cpu())
+            grads.append(gradient(output_dict['model_out'], 
+                                  output_dict['model_in']).detach().cpu())
+        pixels = torch.concat(pixels)
+        grads = torch.concat(grads)
         h, w = test_loader.size()[1:]
-        pred_pixels = model_out.reshape((h, w, self.hyper['channels'])).detach()
+        pred_pixels = pixels.reshape((h, w, self.hyper['channels']))
         self.log_imagetensor(pred_pixels.clamp(0, 1), 'Prediction')
         self.log_fft(pred_pixels, 'FFT Prediction')
 
-        model_grads = gradient(model_out, output_dict['model_in'])
-        pred_grads = torch.reshape(model_grads, (-1, 2))
-        self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
-        
-        return model_out
-    
-    # TODO: make it work with color images and non-squared images
-    def as_imagetensor(self, tensor):
-        w = h = int(np.sqrt(len(tensor)))
-        pixels = tensor.cpu().detach().unflatten(0, (w, h))
+        # model_grads = gradient(model_out, output_dict['model_in'])
+        grads = grads.reshape((h, w, 2))
+        self.log_gradmagnitude(grads, 'Prediction - Gradient')
         return pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
@@ -440,7 +400,6 @@ class WandBLogger2D(WandBLogger):
         wandb.log({label: image})
     
     def log_gradmagnitude(self, grads:torch.Tensor, label: str):
-        grads = self.as_imagetensor(grads)
         mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
                         grads[:, :, 1].squeeze(-1).numpy())
         gmin, gmax = np.min(mag), np.max(mag)
@@ -476,17 +435,23 @@ class WandBLogger2D(WandBLogger):
         
         ext_domain = make_grid_coords((neww, newh), start, end, dim=2)
         with torch.no_grad():
-            output_dict = model(ext_domain.to(device))
-            model_out = torch.clamp(output_dict['model_out'].detach(), 0, 1)
+            pixels = []
+            for batch in BatchSampler(ext_domain, 
+                                      self.hyper['batch_size'], 
+                                      drop_last=False):
+                batch = torch.stack(batch)
+                output_dict = model(batch.to(device))
+                pixels.append(output_dict['model_out'].detach().clamp(0, 1))
+            pixels = torch.concat(pixels)
 
-        pixels = self.as_imagetensor(model_out)
+        pixels = pixels.view((newh, neww, self.hyper['channels']))
         self.log_imagetensor(pixels, 'Extrapolation')
 
 
 class WandBLogger3D(WandBLogger):
 
-    def __init__(self, project: str, name: str, hyper: dict, basedir: str, entity=None, config=None, settings=None, visualize_gt_grads=False):
-        super().__init__(project, name, hyper, basedir, entity, config, settings, visualize_gt_grads)
+    def __init__(self, project: str, name: str, hyper: dict, basedir: str, entity=None, config=None, settings=None):
+        super().__init__(project, name, hyper, basedir, entity, config, settings)
         self.x_slice = 1
         self.y_slice = 2
         self.z_slice = 3

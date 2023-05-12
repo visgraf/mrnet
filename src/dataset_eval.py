@@ -1,9 +1,10 @@
 import torch
 import os
 from pathlib import Path
-from logs.locallogger import LocalLogger2D, LocalLogger
+from logs.locallogger import LocalLogger2D
+from logs.wandblogger import WandBLogger2D
 from training.trainer import MRTrainer
-from datasets.imagesignal import ImageSignal
+from datasets.signals import ImageSignal
 from networks.mrnet import MRFactory
 from datasets.pyramids import create_MR_structure
 from datasets.sampler import make_grid_coords
@@ -11,6 +12,7 @@ import yaml
 from yaml.loader import SafeLoader
 import matplotlib.pyplot as plt
 from PIL import Image
+from PIL.Image import Resampling
 
 def get_base_dir():
     base = Path('.').absolute()
@@ -28,16 +30,32 @@ def center_crop(img, newsize):
     # Crop the center of the image
     return img.crop((left, top, right, bottom))
 
-def prepare_dataset(datapath, newsize):
+def prepare_dataset(datapath, newsize, resize=False, rename_to=""):
     filenames = os.listdir(datapath)
+    print(f"{len(filenames)} files found at {datapath}")
+    print(filenames)
     for i, name in enumerate(filenames):
         filepath = os.path.join(datapath, name)
         img = Image.open(filepath)
+        if resize:
+            w, h = img.size
+            if w < h:
+                s = int(newsize * h/w)
+                img = img.resize((newsize, s), Resampling.BICUBIC)
+            else:
+                s = int(newsize * w/h)
+                img = img.resize((s, newsize), Resampling.BICUBIC)
+
         img = center_crop(img, newsize)
-        img.save(filepath)
+        if rename_to:
+            newpath = os.path.join(datapath, f'{rename_to}{i}.png')
+            img.save(newpath)
+            os.remove(filepath)
+        else:
+            img.save(filepath)
         print(f"{i}. Processed: ", filepath)
 
-def run_experiment(project_name, dataset_relpath, configfile):
+def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
     base_dir = get_base_dir()
     logs_path = base_dir.joinpath('logs')
     models_path = os.path.join(logs_path, project_name, 'models')
@@ -60,12 +78,15 @@ def run_experiment(project_name, dataset_relpath, configfile):
                             width=hyper['width'], height= hyper['height'],
                             attributes=hyper['attributes'],
                             channels=hyper['channels'])
-        train_dataloader = create_MR_structure(base_signal, hyper['max_stages'],
-                                                hyper['filter'], hyper['decimation'])
-        test_dataloader = create_MR_structure(base_signal, hyper['max_stages'],
-                                                hyper['filter'])
+        train_dataloader = create_MR_structure(base_signal, 
+                                               hyper['max_stages'],
+                                                hyper['filter'], 
+                                                hyper['decimation'])
+        test_dataloader = create_MR_structure(base_signal, 
+                                              hyper['max_stages'],
+                                              hyper['filter'], False)
 
-        locallogger = LocalLogger2D(project_name,
+        logger = LoggerClass(project_name,
                                     f"{hyper['model']}net{hyper['max_stages']}Stg{hyper['hidden_features'][0]}B{'T' if hyper['decimation'] else 'F'}",
                                     hyper,
                                     base_dir, 
@@ -73,9 +94,10 @@ def run_experiment(project_name, dataset_relpath, configfile):
         mrmodel = MRFactory.from_dict(hyper)
         print("Model: ", type(mrmodel))
         mrtrainer = MRTrainer.init_from_dict(mrmodel, 
-                                            train_dataloader, test_dataloader, locallogger, hyper)
+                                            train_dataloader, 
+                                            test_dataloader, 
+                                            logger, hyper)
         mrtrainer.train(hyper['device'])
-
 
         filename = f"{hyper['model']}{hyper['image_name'][0:4]}.pth"
         path = os.path.join(models_path, filename)
@@ -84,6 +106,8 @@ def run_experiment(project_name, dataset_relpath, configfile):
         
 
 if __name__ == '__main__':
-    # prepare_dataset('E:\Workspace\impa\mrimg\img\kodak512', 512)
-    # run_experiment('kodak512', 'img/kodak512', 'config_kodak_m_net.yml')
-    run_experiment('kodak512', 'img/kodak512', 'config_kodak_siren.yml') 
+    # prepare_dataset('E:\Workspace\impa\mrnet\img\pexels_textures', 1024, 
+    #                 resize=True, rename_to="pic")
+    run_experiment('pexels1024', 'img/pexels_textures', 
+                   'config_textures_m_net.yml', WandBLogger2D)
+    # run_local_experiment('kodak512', 'img/kodak512', 'config_kodak_siren.yml')

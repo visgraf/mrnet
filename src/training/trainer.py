@@ -34,7 +34,7 @@ class MRTrainer:
                         learning_rate: Union[float, Sequence[float]],
                         opt_method=torch.optim.Adam,
                         loss_function=F.mse_loss,
-                        useattributes=False,
+                        loss_weights={'d0': 1.0},
                         bias=False,
                         mr_train_type=MRTrainType):
         
@@ -62,7 +62,7 @@ class MRTrainer:
         self._testsource = testsource
         self._loss_tol = loss_tol
         self._diff_tol = diff_tol
-        self._useattributes = useattributes
+        self._loss_weights = loss_weights
         self._max_epochs_per_stage = max_epochs_per_stage
         self._hidden_features = hidden_features
         self._hidden_layers = hidden_layers
@@ -87,8 +87,6 @@ class MRTrainer:
 
         self.epochs_per_stage = []
         self._total_epochs_trained = 0
-
-        self.loss_weights = {'d0': 1, 'd1': 0.0001}
 
 
     def init_from_dict(model: MRNet, 
@@ -122,7 +120,7 @@ class MRTrainer:
                         diff_tol=hyper.get('diff_tol', 1e-7),
                         learning_rate=lr,
                         loss_function=loss_func,
-                        useattributes=hyper.get('useattributes', False), 
+                        loss_weights=hyper['loss_weights'],
                         bias=hyper.get('bias',False),
                         mr_train_type=mr_train_type)
 
@@ -276,7 +274,8 @@ class MRTrainer:
                     out_dict = self.model(X['coords'].to(device), mrweights)
                     
                     loss_dict = self.loss_function(out_dict, gt_dict, device)
-                    loss = sum([loss_dict[key] * self.loss_weights[key] for key in loss_dict.keys()])
+                    loss = sum([loss_dict[key] * self._loss_weights[key] 
+                                for key in loss_dict.keys()])
                     # loss = sum(loss_dict.values())
 
                     loss.backward()
@@ -308,12 +307,6 @@ class MRTrainer:
             self.logger.on_stage_trained(self.get_model(), 
                                         self.current_dataloader,
                                         self.current_testloader)
-            # TODO: REMOVE
-            # for i, source in enumerate(self._datasource):
-            #     listsamples = list(iter(source))
-            #     for j, sample in enumerate(listsamples):
-            #         X, Y = sample['c0']
-            #         print(f"[DATALOADER] {i} [SAMPLE] {j} {X['coords'].is_cuda}, {Y['d0'].is_cuda}")
         
         self.logger.on_train_finish(self.get_model(), 
                                     self._total_epochs_trained)
