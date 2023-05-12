@@ -6,16 +6,16 @@ positive_freqs: False
 in_features: 2
 out_features: 3
 hidden_layers: 1
-hidden_features: [[1024, 512], [32, 64], [128, 96], 192]
+hidden_features: [[24, 32], [48, 32], [80, 64], [192, 128], [256, 256], [512, 384]]
 bias: True
-max_stages: 1
+max_stages: 6
 
 period: 2
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [96, 3, 8, 4, 6, 8, 16, 32]
+omega_0: [3, 6, 12, 24, 48, 96]
 hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
 superposition_w0: False
 
@@ -34,8 +34,8 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.00000000001
 diff_tol: 0.0000001
-max_epochs_per_stage: [101, 1000, 600, 400, 400, 400, 400]
-batch_size: 256 * 256
+max_epochs_per_stage: [1400, 1000, 800, 600, 401, 201, 101]
+batch_size: 512 * 512
 
 # Image
 image_name: pexels_textures/pic0.png
@@ -45,7 +45,7 @@ channels: 3
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
-eval_device: cpu
+eval_device: cuda
 
 # Etc
 save_format: 'general'

@@ -317,7 +317,7 @@ class WandBLogger2D(WandBLogger):
         self.log_traindata(train_loader)
         gt = self.log_groundtruth(test_loader)
         pred = self.log_prediction(current_model, test_loader, device)
-        self.log_PSNR(gt.to(device), pred)
+        self.log_PSNR(gt.to(device), pred.to(device))
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
@@ -446,7 +446,7 @@ class WandBLogger2D(WandBLogger):
                                       drop_last=False):
                 batch = torch.stack(batch)
                 output_dict = model(batch.to(device))
-                pixels.append(output_dict['model_out'].detach().clamp(0, 1))
+                pixels.append(output_dict['model_out'].detach().cpu().clamp(0, 1))
             pixels = torch.concat(pixels)
 
         pixels = pixels.view((newh, neww, self.hyper['channels']))
