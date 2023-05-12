@@ -26,7 +26,9 @@ def hermite_loss(output_dict, train_dict, device):
     pred_grad = gradient(pred, coords)
 
     loss_dict['d0'] = F.mse_loss(pred, gt_pred) 
-    loss_dict['d1'] = F.l1_loss(pred_grad, gt_grad)
+    # loss_dict['d1'] = F.l1_loss(pred_grad, gt_grad)
+    # loss_dict['d1'] = F.mse_loss(pred_grad, gt_grad)
+    loss_dict['d1'] = torch.mean((pred_grad - gt_grad).pow(2).sum(-1))
     return loss_dict
 
 def get_loss_from_map(lossname:str):

@@ -350,7 +350,6 @@ class WandBLogger2D(WandBLogger):
             # apparently, we need to finish the run when running on script
             wandb.finish()
        
-##
     def log_traindata(self, train_loader):
         pixels = train_loader.data.permute((1, 2, 0))
         #pixels = self.as_imagetensor(torch.clamp(traindata, 0, 1))
@@ -412,7 +411,10 @@ class WandBLogger2D(WandBLogger):
         grads = torch.concat(grads)
         h, w = test_loader.size()[1:]
         pred_pixels = pixels.reshape((h, w, self.hyper['channels']))
-        self.log_imagetensor(pred_pixels.clamp(0, 1), 'Prediction')
+        norm_weights = []
+        if self.hyper['channels'] == 1 and self.hyper['loss_weights']['d0'] == 0:
+            norm_weights = [torch.min(test_loader.data), torch.max(test_loader.data)]
+        self.log_imagetensor(pred_pixels, 'Prediction', norm_weights)
         self.log_fft(pred_pixels, 'FFT Prediction')
 
         # model_grads = gradient(model_out, output_dict['model_in'])
@@ -420,10 +422,16 @@ class WandBLogger2D(WandBLogger):
         self.log_gradmagnitude(grads, 'Prediction - Gradient')
         return pixels
 
-    def log_imagetensor(self, pixels:torch.Tensor, label:str):
+    def log_imagetensor(self, pixels:torch.Tensor, label:str, norm_weights=[]):
+        if norm_weights:
+            vmin, vmax = norm_weights
+            pmin, pmax = torch.min(pixels), torch.max(pixels)
+            pixels = (pixels - pmin) / (pmax - pmin)
+            pixels = pixels * (vmax - vmin) + vmin
+
         if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
             pixels = ycbcr_to_rgb(pixels)
-        image = wandb.Image(pixels.numpy())
+        image = wandb.Image(pixels.clamp(0, 1).numpy())
         wandb.log({label: image})
 
     def log_detailtensor(self, pixels:torch.Tensor, label:str):
