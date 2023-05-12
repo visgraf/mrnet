@@ -24,11 +24,13 @@ class BaseSignal(Dataset):
                  attributes=[], 
                  sampling_scheme=Sampling.REGULAR,
                  batch_size=0,
+                 YCbCr=False,
                  shuffle=True):
         
         self.data = data
         self.domain = domain
         self.attributes = attributes
+        self.ycbcr = YCbCr
         self.data_attributes = {}
         if 'd1' in self.attributes:
             self.compute_derivatives()
@@ -81,6 +83,7 @@ class BaseSignal(Dataset):
                     other.attributes, 
                     other.sampler.scheme(),
                     other.sampler.batch_size,
+                    other.ycbcr,
                     shuffle)
         
 
@@ -103,6 +106,7 @@ class Signal1D(BaseSignal):
 
 
 class ImageSignal(BaseSignal):
+
     def init_fromfile(imagepath, 
                       domain=[-1, 1],
                       channels=3,
@@ -136,8 +140,22 @@ class ImageSignal(BaseSignal):
                             domain=domain,
                             sampling_scheme=sampling_scheme,
                             attributes=attributes,
-                            batch_size=batch_size)
+                            batch_size=batch_size,
+                            YCbCr=YCbCr)
                             #domain_mask=mask)
+
+    def compute_derivatives(self):
+        dims = len(self.data.shape[1:])
+        directions = []
+        for d in range(1, dims + 1):
+            directions.append(
+                torch.from_numpy(sobel(self.data, d, mode='wrap'))
+                )
+        # channels x N x dims
+        if self.ycbcr:
+            self.data_attributes = {'d1': torch.stack(directions, dim=-1)[0:1, ...]} #GAMBIARRA YCbCr
+        else:
+            self.data_attributes = {'d1': torch.stack(directions, dim=-1)}
 
     def image_pil(self):
         return to_pil_image(self.data)

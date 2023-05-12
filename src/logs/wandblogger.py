@@ -17,10 +17,9 @@ from training.loss import gradient
 from datasets.sampler import make_grid_coords
 
 from .logger import Logger
-from .utils import output_per_batch
+from .utils import output_per_batch, ycbcr_to_rgb
 from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
-from utils import ycbcr_to_rgb
 import time
 import trimesh
 from IPython import embed
@@ -355,9 +354,12 @@ class WandBLogger2D(WandBLogger):
         if 'd1' in self.hyper['attributes']:
             grads = test_loader.data_attributes['d1']
             if self.hyper['channels'] == 3:
-                grads = (0.2126 * grads[0, ...] 
-                    + 0.7152 * grads[1, ...] 
-                    + 0.0722 * grads[2, ...])
+                if self.hyper['YCbCr']:
+                    grads = grads[0, ...]
+                else:
+                    grads = (0.2126 * grads[0, ...] 
+                        + 0.7152 * grads[1, ...] 
+                        + 0.0722 * grads[2, ...])
             else:
                 grads = grads.squeeze(0)
             mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
@@ -379,9 +381,12 @@ class WandBLogger2D(WandBLogger):
             pixels.append(output_dict['model_out'].detach().cpu())
             value = output_dict['model_out']
             if self.hyper['channels'] == 3:
-                value = (0.2126 * value[:, 0:1] 
-                    + 0.7152 * value[:, 1:2] 
-                    + 0.0722 * value[:, 2:3])
+                if self.hyper.get('YCbCr', False):
+                    value = value[:, 0:1]
+                else:
+                    value = (0.2126 * value[:, 0:1] 
+                        + 0.7152 * value[:, 1:2] 
+                        + 0.0722 * value[:, 2:3])
             grads.append(gradient(value, 
                                   output_dict['model_in']).detach().cpu())
         pixels = torch.concat(pixels)
@@ -416,9 +421,12 @@ class WandBLogger2D(WandBLogger):
     
     def log_fft(self, pixels:torch.Tensor, label:str):
         if self.hyper['channels'] == 3:
-            pixels = (0.2126 * pixels[:, :, 0] 
-                    + 0.7152 * pixels[:, :, 1] 
-                    + 0.0722 * pixels[:, :, 2])
+            if self.hyper.get('YCbCr', False):
+                pixels = pixels[..., 0]
+            else:
+                pixels = (0.2126 * pixels[:, :, 0] 
+                        + 0.7152 * pixels[:, :, 1] 
+                        + 0.0722 * pixels[:, :, 2])
         fourier_tensor = torch.fft.fftshift(
                         torch.fft.fft2(pixels.squeeze(-1)))
         magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-10)

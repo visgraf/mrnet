@@ -62,22 +62,28 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
     DATASET_PATH = os.path.join(base_dir, dataset_relpath)
 
     config_file = os.path.join(base_dir, 'configs', configfile)
-    with open(config_file) as f:
-        hyper = yaml.load(f, Loader=SafeLoader)
-        print(hyper)
 
     filenames = os.listdir(DATASET_PATH)
     os.makedirs(models_path, exist_ok=True)
-
+    print(len(filenames), "imagens")
     for name in filenames:
+        with open(config_file) as f:
+            hyper = yaml.load(f, Loader=SafeLoader)
+            print(hyper)
+            if isinstance(hyper['batch_size'], str):
+                hyper['batch_size'] = eval(hyper['batch_size'])
+            print(hyper)
         hyper['image_name'] = name
+        imgpath = os.path.join(DATASET_PATH, hyper['image_name'])
+        print(imgpath)
         base_signal = ImageSignal.init_fromfile(
-                            os.path.join(DATASET_PATH, hyper['image_name']),
-                            batch_samples_perc=hyper['batch_samples_perc'],
-                            sampling_scheme=hyper['sampling_scheme'],
-                            width=hyper['width'], height= hyper['height'],
-                            attributes=hyper['attributes'],
-                            channels=hyper['channels'])
+                    imgpath,
+                    domain=hyper['domain'],
+                    channels=hyper['channels'],
+                    sampling_scheme=hyper['sampling_scheme'],
+                    attributes=hyper['attributes'],
+                    batch_size=hyper['batch_size'],
+                    YCbCr=hyper.get('YCbCr', False))
         train_dataloader = create_MR_structure(base_signal, 
                                                hyper['max_stages'],
                                                 hyper['filter'], 
@@ -87,10 +93,10 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
                                               hyper['filter'], False)
 
         logger = LoggerClass(project_name,
-                                    f"{hyper['model']}net{hyper['max_stages']}Stg{hyper['hidden_features'][0]}B{'T' if hyper['decimation'] else 'F'}",
+                                    f"{hyper['model']}{hyper['filter'][0].upper()}{name[0:5]}{'RGB' if not hyper['YCbCr'] else ''}",
                                     hyper,
-                                    base_dir, 
-                                    to_file=True)
+                                    base_dir) 
+                                    #to_file=True)
         mrmodel = MRFactory.from_dict(hyper)
         print("Model: ", type(mrmodel))
         mrtrainer = MRTrainer.init_from_dict(mrmodel, 
@@ -98,11 +104,12 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
                                             test_dataloader, 
                                             logger, hyper)
         mrtrainer.train(hyper['device'])
+        print("DONE", name)
 
-        filename = f"{hyper['model']}{hyper['image_name'][0:4]}.pth"
-        path = os.path.join(models_path, filename)
+        # filename = f"{hyper['model']}{hyper['image_name'][0:4]}.pth"
+        # path = os.path.join(models_path, filename)
 
-        MRFactory.save(mrmodel, path)
+        # MRFactory.save(mrmodel, path)
         
 
 if __name__ == '__main__':
