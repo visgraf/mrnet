@@ -110,10 +110,13 @@ class ImageSignal(BaseSignal):
                       width=None, height=None,
                       attributes=[], 
                       maskpath=None,
-                      batch_size=0):
+                      batch_size=0,
+                      YCbCr=False):
         img = Image.open(imagepath)
         if channels == 1:
             img = img.convert('L')
+        if channels == 3 and YCbCr:
+            img = img.convert('YCbCr')
 
         if width is not None or height is not None:
             if height is None:

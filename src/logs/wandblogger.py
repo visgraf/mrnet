@@ -20,6 +20,7 @@ from .logger import Logger
 from .utils import output_per_batch
 from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
+from utils import ycbcr_to_rgb
 import time
 import trimesh
 from IPython import embed
@@ -396,7 +397,9 @@ class WandBLogger2D(WandBLogger):
         return pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
-        image = wandb.Image(pixels.numpy())    
+        if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
+            pixels = ycbcr_to_rgb(pixels)
+        image = wandb.Image(pixels.numpy())
         wandb.log({label: image})
 
     def log_detailtensor(self, pixels:torch.Tensor, label:str):

@@ -19,3 +19,29 @@ def output_on_batched_domain(model, nsamples, domain, dim, batch_size, device):
         with torch.no_grad():
             output.append(model(batch.to(device))['model_out'])
     return torch.concat(output)
+
+def ycbcr_to_rgb(image: torch.Tensor) -> torch.Tensor:
+    r"""Convert an YCbCr image to RGB.
+
+    The image data is assumed to be in the range of (0, 1).
+
+    Args:
+        image: YCbCr Image to be converted to RGB with shape :math:`(H, W, 3)`.
+
+    Returns:
+        RGB version of the image with shape :math:`(H, W, 3)`.
+    based on: https://kornia.readthedocs.io/en/latest/_modules/kornia/color/ycbcr.html
+    """
+
+    y = image[..., 0]
+    cb = image[..., 1]
+    cr = image[..., 2]
+
+    delta: float = 0.5
+    cb_shifted = cb - delta
+    cr_shifted = cr - delta
+
+    r = y + 1.403 * cr_shifted
+    g = y - 0.714 * cr_shifted - 0.344 * cb_shifted
+    b = y + 1.773 * cb_shifted
+    return torch.stack([r, g, b], -1)
