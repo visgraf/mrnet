@@ -376,7 +376,12 @@ class WandBLogger2D(WandBLogger):
             batch = torch.stack(batch)
             output_dict = model(batch.to(device))
             pixels.append(output_dict['model_out'].detach().cpu())
-            grads.append(gradient(output_dict['model_out'], 
+            value = output_dict['model_out']
+            if self.hyper['channels'] == 3:
+                value = (0.2126 * value[:, 0:1] 
+                    + 0.7152 * value[:, 1:2] 
+                    + 0.0722 * value[:, 2:3])
+            grads.append(gradient(value, 
                                   output_dict['model_in']).detach().cpu())
         pixels = torch.concat(pixels)
         grads = torch.concat(grads)
