@@ -22,6 +22,7 @@ from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
 import time
 import trimesh
+import skimage
 from IPython import embed
 
 MODELS_DIR = 'models'
@@ -105,6 +106,23 @@ class WandBLogger(Logger):
         artifact = wandb.Artifact(filename, type='model')
         artifact.add_file(path)
         wandb.log_artifact(artifact)
+
+    def log_PSNR(self, gt, pred):
+        psnr = 10*torch.log10(1 / (torch.mean(gt - pred)**2 + 1e-10))
+        
+        label = f"Stage {self.hyper['stage']}"
+        table = wandb.Table(data=[(label, psnr)], columns = ["Stage", "PSNR"])
+        wandb.log({"psnr_value" : wandb.plot.bar(table, "Stage", "PSNR",
+                                    title="PSNR for reconstruction")})
+
+    def log_SSIM(self, gt, pred):
+        ssim = skimage.metrics.structural_similarity(gt.detach().cpu().numpy(), 
+                                                    pred.detach().cpu().numpy(),
+                                                    data_range=1, channel_axis=-1)
+        label = f"Stage {self.hyper['stage']}"
+        table = wandb.Table(data=[(label, ssim)], columns = ["Stage", "SSIM"])
+        wandb.log({"ssim_value" : wandb.plot.bar(table, "Stage", "SSIM",
+                                    title="SSIM for reconstruction")})
 
 
 
@@ -318,6 +336,7 @@ class WandBLogger2D(WandBLogger):
         gt = self.log_groundtruth(test_loader)
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.to(device), pred.to(device))
+        self.log_SSIM(gt.cpu(), pred.cpu())
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
@@ -435,13 +454,6 @@ class WandBLogger2D(WandBLogger):
         img = Image.fromarray(np.uint8(graymap(magnitude) * 255))
         wandb.log({label: wandb.Image(img)})
 
-    def log_PSNR(self, gt, pred):
-        psnr = 10*torch.log10(1 / (torch.mean(gt - pred)**2 + 1e-10))
-        
-        label = f"Stage {self.hyper['stage']}"
-        table = wandb.Table(data=[(label, psnr)], columns = ["Stage", "PSNR"])
-        wandb.log({"psnr_value" : wandb.plot.bar(table, "Stage", "PSNR",
-                                    title="PSNR for reconstruction")})
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
         w, h = dims
@@ -487,6 +499,7 @@ class WandBLogger3D(WandBLogger):
         gt = self.log_groundtruth(test_loader)   
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.to(device), pred)
+        self.log_SSIM(gt.cpu(), pred.cpu())
         self.log_point_cloud(current_model, device)
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
@@ -619,13 +632,6 @@ class WandBLogger3D(WandBLogger):
             img = Image.fromarray(np.uint8(graymap(magnitude) * 255))
         wandb.log({label: wandb.Image(img)})
 
-    def log_PSNR(self, gt, pred):
-        psnr = 10*torch.log10(1 / (torch.mean(gt - pred)**2 + 1e-10))
-        
-        label = f"Stage {self.hyper['stage']}"
-        table = wandb.Table(data=[(label, psnr)], columns = ["Stage", "PSNR"])
-        wandb.log({"psnr_value" : wandb.plot.bar(table, "Stage", "PSNR",
-                                    title="PSNR for reconstruction")})
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
         w, h, d = dims
