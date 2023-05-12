@@ -24,6 +24,7 @@ import time
 import trimesh
 import skimage
 from IPython import embed
+from torchvision.transforms.functional import to_tensor
 
 MODELS_DIR = 'models'
 MESHES_DIR = 'meshes'
@@ -342,6 +343,10 @@ class WandBLogger2D(WandBLogger):
         if extrapolation_interval is not None:
             self.log_extrapolation(current_model, extrapolation_interval, 
                                     test_loader.size()[1:], device)
+        zoom = self.hyper.get('zoom', [])
+        for zfactor in zoom:
+            self.log_zoom(current_model, test_loader, zfactor, device)
+        
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
         current_model.to(self.hyper['device'])
@@ -412,7 +417,8 @@ class WandBLogger2D(WandBLogger):
         h, w = test_loader.size()[1:]
         pred_pixels = pixels.reshape((h, w, self.hyper['channels']))
         norm_weights = []
-        if self.hyper['channels'] == 1 and self.hyper['loss_weights']['d0'] == 0:
+        if (self.hyper['channels'] == 1 
+            and self.hyper['loss_weights']['d0'] == 0):
             norm_weights = [torch.min(test_loader.data), torch.max(test_loader.data)]
         self.log_imagetensor(pred_pixels, 'Prediction', norm_weights)
         self.log_fft(pred_pixels, 'FFT Prediction')
@@ -462,7 +468,6 @@ class WandBLogger2D(WandBLogger):
         img = Image.fromarray(np.uint8(graymap(magnitude) * 255))
         wandb.log({label: wandb.Image(img)})
 
-
     def log_extrapolation(self, model, interval, dims, device='cpu'):
         w, h = dims
         start, end = interval[0], interval[1]
@@ -481,7 +486,56 @@ class WandBLogger2D(WandBLogger):
             pixels = torch.concat(pixels)
 
         pixels = pixels.view((newh, neww, self.hyper['channels']))
-        self.log_imagetensor(pixels, 'Extrapolation')
+        norm_weights = []
+        if (self.hyper['channels'] == 1 
+            and self.hyper['loss_weights']['d0'] == 0):
+            norm_weights = [0, 1]
+        self.log_imagetensor(pixels, 'Extrapolation', norm_weights)
+
+    def log_zoom(self, model, test_loader, zoom_factor, device):
+        w, h = test_loader.size()[1:]
+        domain = self.hyper.get('domain', [-1, 1])
+        start, end = domain[0]/zoom_factor, domain[1]/zoom_factor
+        zoom_coords = make_grid_coords((w, h), start, end, dim=2)
+        with torch.no_grad():
+            pixels = []
+            for batch in BatchSampler(zoom_coords, 
+                                      self.hyper['batch_size'], 
+                                      drop_last=False):
+                batch = torch.stack(batch)
+                output_dict = model(batch.to(device))
+                pixels.append(output_dict['model_out'].detach().cpu())
+            pixels = torch.concat(pixels)
+        # center crop
+        cropsize = int(w // zoom_factor)
+        left, top = (w - cropsize), (h - cropsize)
+        right, bottom = (w + cropsize), (h + cropsize)
+        crop_rectangle = tuple(np.array([left, top, right, bottom]) // 2)
+        gt = Image.fromarray(
+                            (test_loader.data.permute((1, 2, 0)
+                              ).squeeze(-1).numpy() * 255).astype(np.uint8)
+            ).crop(crop_rectangle).resize((w, h), Image.Resampling.BICUBIC)
+        
+        pixels = pixels.view((h, w, self.hyper['channels']))
+        if (self.hyper['channels'] == 1 
+            and self.hyper['loss_weights']['d0'] == 0):
+            vmin = torch.min(test_loader.data)
+            vmax = torch.max(test_loader.data)
+            pmin, pmax = torch.min(pixels), torch.max(pixels)
+            pixels = (pixels - pmin) / (pmax - pmin)
+            pixels = pixels * vmax #(vmax - vmin) + vmin
+        # images = [wandb.Image(pixels.clamp(0, 1).numpy(), caption='Pred'),
+        #           wandb.Image(gt, caption='GT (bicubic)')
+        #           ]
+        if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
+            pixels = ycbcr_to_rgb(pixels)
+
+        # print(pixels.shape, gt.shape)
+        imgs = torch.hstack([pixels.clamp(0, 1), 
+                             to_tensor(gt).permute((1, 2, 0))])
+        imgs = wandb.Image(imgs.squeeze(-1),
+                            caption="Pred (left); GT - bicubic (right)")
+        wandb.log({f"Zoom {zoom_factor}x": imgs})
 
 
 class WandBLogger3D(WandBLogger):

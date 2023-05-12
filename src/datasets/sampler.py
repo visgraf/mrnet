@@ -77,13 +77,10 @@ class RegularSampler(Sampler):
         )
         flatdata = self.data.view(self.data_channels(), -1).permute((1, 0))
         if 'd1' in self.attributes.keys():
-            self.d1 = torch.sum(self.attributes['d1'], dim=0).view(2, -1).permute((1, 0))
+            self.d1 = torch.sum(self.attributes['d1'], dim=0).view(-1, 2)
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]
-        
-    def flat_attributes(self):
-        d1 = torch.sum(self.attributes['d1'], dim=0).view(2, -1).permute((1, 0))
 
     def get_tuple_dicts(self, sel_idxs, flatdata):
         coords_sel = self.coords[sel_idxs]
