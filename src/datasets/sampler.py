@@ -9,7 +9,7 @@ from .poisson_disc import PoissonDisc
 from .constants import Sampling
 
 
-def make_grid_coords(nsamples, start, end, dim):
+def make_grid_coords(nsamples, start, end, dim, flatten=True):
     if not isinstance(nsamples, Sequence):
         nsamples = dim * [nsamples]
     if not isinstance(start, Sequence):
@@ -22,7 +22,7 @@ def make_grid_coords(nsamples, start, end, dim):
     dir_samples = tuple([torch.linspace(start[i], end[i], steps=nsamples[i]) 
                    for i in range(dim)])
     grid = torch.stack(torch.meshgrid(*dir_samples, indexing='ij'), dim=-1)
-    return grid.reshape(-1, dim)
+    return grid.reshape(-1, dim) if flatten else grid
 
 class Sampler:
     def __init__(self, data, domain, attributes, batch_size, shuffle=False):
