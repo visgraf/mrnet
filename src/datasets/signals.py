@@ -226,7 +226,9 @@ class VolumeSignal(BaseSignal):
     def get_slices(self, dircodes):
         slices = []
         volume = self.data
-        x_slice = y_slice = z_slice = 0
+        x_slice = 1
+        y_slice = 2
+        z_slice = 3
         for code in dircodes:
             if code == 'x':
                 slices.append(volume[:, x_slice, :, :].permute((1, 2, 0)))

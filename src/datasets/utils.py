@@ -82,15 +82,16 @@ def make_domain_slices(nsamples, start, end, dircodes):
         'y': [0, 2, 1],
         'z': [0, 1, 2]
     }
+    value_map = {'x': 1, 'y': 2, 'z': 3}
     
     coords = make_grid_coords(nsamples, start, end, 2)
-    newdim = 0.0 * torch.ones((len(coords), 1))
-    domain_slice = torch.cat([coords, newdim], dim=-1)
     slices = []
     for code in dircodes:
         if code not in valid_codes:
             raise ValueError(
                 "Direction codes should be in [x, y, z, xy, xz, yz]")
+        newdim = value_map[code[0]] * torch.ones((len(coords), 1))
+        domain_slice = torch.cat([coords, newdim], dim=-1)
         domain_slice = domain_slice[:, code_map[code[0]]]
         if len(code) == 2:
             # todo, make angle a parameter
