@@ -75,22 +75,28 @@ def perlin_noise(samples, scale=10, octaves=1, p=1):
     return pnoise
 
 # only works for plane slices in 3D for now
-def make_domain_slices(nsamples, start, end, dircodes):
+def make_domain_slices(nsamples, start, end, slice_views, slice_idx={}):
     valid_codes = ['x', 'y', 'z', 'xy', 'xz', 'yz']
     code_map = {
         'x': [2, 0, 1],
         'y': [0, 2, 1],
         'z': [0, 1, 2]
     }
-    value_map = {'x': 1, 'y': 2, 'z': 3}
+    if not slice_idx:
+        slice_idx = {'x': 1, 'y': 2, 'z': 3}
     
     coords = make_grid_coords(nsamples, start, end, 2)
     slices = []
-    for code in dircodes:
+    for code in slice_views:
         if code not in valid_codes:
             raise ValueError(
                 "Direction codes should be in [x, y, z, xy, xz, yz]")
-        newdim = value_map[code[0]] * torch.ones((len(coords), 1))
+        try:
+            idx = slice_idx[code]
+            value = torch.linspace(start, end, nsamples)[idx]
+        except KeyError:
+            value = 0.0
+        newdim = value * torch.ones((len(coords), 1))
         domain_slice = torch.cat([coords, newdim], dim=-1)
         domain_slice = domain_slice[:, code_map[code[0]]]
         if len(code) == 2:

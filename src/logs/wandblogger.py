@@ -582,7 +582,7 @@ class WandBLogger3D(WandBLogger):
 ##
     def log_traindata(self, train_loader):
         # TODO: put in hyper
-        slices = train_loader.get_slices(['x', 'y', 'z', 'xy'])
+        slices = train_loader.get_slices(self.hyper['slice_views'])
         # TODO: do not stack
         pixels = torch.vstack((torch.hstack(slices[:2]), 
                                torch.hstack(slices[2:])))
@@ -592,7 +592,7 @@ class WandBLogger3D(WandBLogger):
             self.log_imagetensor(pixels, 'Train Data')
     
     def log_groundtruth(self, test_loader):
-        slices = test_loader.get_slices(['x', 'y', 'z', 'xy'])
+        slices = test_loader.get_slices(self.hyper['slice_views'])
         
         pixels = torch.vstack((torch.hstack(slices[:2]), 
                                torch.hstack(slices[2:])))
@@ -618,7 +618,7 @@ class WandBLogger3D(WandBLogger):
         channels = test_loader.shape[0]
         domain_slices = make_domain_slices(dims[0], 
                                            *self.hyper['domain'],
-                                           ['x', 'y', 'z', 'xy'])
+                                           self.hyper['slice_views'])
         pred_slices = []
         grads = []
         for slice in domain_slices:
@@ -639,7 +639,7 @@ class WandBLogger3D(WandBLogger):
 
         self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
         
-        return pred_pixels#output_per_batch(model, test_loader, device)
+        return pred_pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
         image = wandb.Image(pixels.numpy())
@@ -690,7 +690,7 @@ class WandBLogger3D(WandBLogger):
         domain_slices = make_domain_slices(neww, 
                                            start, 
                                            end, 
-                                           ['x', 'y', 'z', 'xy'])
+                                           self.hyper['slice_views'])
         pred_slices = []
         for slice in domain_slices:
             values = []

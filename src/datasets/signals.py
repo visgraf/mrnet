@@ -223,19 +223,20 @@ class VolumeSignal(BaseSignal):
     def type_code(self):
         return "3D"
     
-    def get_slices(self, dircodes):
+    def get_slices(self, slice_views, slice_idx={}):
         slices = []
         volume = self.data
-        x_slice = 1
-        y_slice = 2
-        z_slice = 3
-        for code in dircodes:
+        if not slice_idx:
+            slice_idx = {'x': 1, 'y': 2, 'z': 3}
+        
+        for code in slice_views:
+            idx = slice_idx.get(code, 0)
             if code == 'x':
-                slices.append(volume[:, x_slice, :, :].permute((1, 2, 0)))
+                slices.append(volume[:, idx, :, :].permute((1, 2, 0)))
             if code == 'y':
-                slices.append(volume[:, :, y_slice, :].permute((1, 2, 0)))
+                slices.append(volume[:, :, idx, :].permute((1, 2, 0)))
             if code == 'z':
-                slices.append(volume[:, :, :, z_slice].permute((1, 2, 0)))
+                slices.append(volume[:, :, :, idx].permute((1, 2, 0)))
             if len(code) == 2:
                 code_map = { 'x': [2, 0, 1], 'y': [0, 2, 1], 'z': [0, 1, 2] }
                 dims = self.size()[0]
@@ -345,27 +346,33 @@ class Procedural3DSignal(Dataset):
     def new_like(other, data, shuffle=None):
         raise NotImplementedError("Procedural Signal does not support this operation")
     
-    def get_slices(self, dircodes):
+    def get_slices(self, slice_views, slice_idx={}):
         valid_codes = ['x', 'y', 'z', 'xy', 'xz', 'yz']
         code_map = {
             'x': [2, 0, 1],
             'y': [0, 2, 1],
             'z': [0, 1, 2]
         }
-        coords = make_grid_coords(self.dims[0], 
+        if not slice_idx:
+            slice_idx = {'x': 1, 'y': 2, 'z': 3}
+        res = self.dims[0]
+        coords = make_grid_coords(res, 
                                   *self.domain, 
                                   len(self.dims) - 1)
-        newdim = 0.0 * torch.ones((len(coords), 1))
-        domain_slice = torch.cat([coords, newdim], dim=-1)
         slices = []
-        res = self.dims[0]
-        for code in dircodes:
+        for code in slice_views:
             if code not in valid_codes:
                 raise ValueError(
                     "Direction codes should be in [x, y, z, xy, xz, yz]")
+            try:
+                idx = slice_idx[code]
+                value = torch.linspace(*self.domain, res)[idx]
+            except KeyError:
+                value = 0.0
+            newdim = value * torch.ones((len(coords), 1))
+            domain_slice = torch.cat([coords, newdim], dim=-1)
             domain = domain_slice[:, code_map[code[0]]]
             if len(code) == 2:
-                # todo, check hot to do it
                 rotation = rotation_matrix(code[1], np.pi/4)
                 domain = torch.matmul(rotation, 
                                       domain.permute((1, 0))).permute((1, 0))
