@@ -396,7 +396,10 @@ class WandBLogger2D(WandBLogger):
         return gtdata
     
     def log_prediction(self, model, test_loader, device):
-        coords = test_loader.sampler.coords
+        datashape = test_loader.shape[1:]
+        coords = make_grid_coords(datashape, 
+                                  *self.hyper['domain'],
+                                  len(datashape))
         pixels = []
         grads = []
         for batch in BatchSampler(coords, 

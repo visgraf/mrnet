@@ -20,10 +20,12 @@ class Sampling(Enum):
     REGULAR = auto()
     POISSON_DISC = auto()
     STRATIFIED = auto()
+    REFLECT = auto()
 
 SAMPLING_DICT = {
     'regular': Sampling.REGULAR,
     'poisson': Sampling.POISSON_DISC,
-    'stratified' : Sampling.STRATIFIED
+    'stratified' : Sampling.STRATIFIED,
+    'reflect': Sampling.REFLECT
 }
     
