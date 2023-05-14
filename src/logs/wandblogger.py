@@ -545,10 +545,10 @@ class WandBLogger3D(WandBLogger):
 
     def __init__(self, project: str, name: str, hyper: dict, basedir: str, entity=None, config=None, settings=None):
         super().__init__(project, name, hyper, basedir, entity, config, settings)
-        self.x_slice = 1
-        self.y_slice = 2
-        self.z_slice = 3
-        self.w_slice = 1
+        # self.x_slice = 1
+        # self.y_slice = 2
+        # self.z_slice = 3
+        # self.w_slice = 1
 
 
     def on_stage_trained(self, current_model: MRNet,
@@ -563,8 +563,8 @@ class WandBLogger3D(WandBLogger):
         self.log_traindata(train_loader)
         gt = self.log_groundtruth(test_loader)   
         pred = self.log_prediction(current_model, test_loader, device)
-        # self.log_PSNR(gt.to(device), pred)
-        # self.log_SSIM(gt.cpu(), pred.cpu())
+        self.log_PSNR(gt.cpu(), pred.cpu())
+        self.log_SSIM(gt.cpu(), pred.cpu())
         self.log_point_cloud(current_model, device)
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
@@ -581,7 +581,6 @@ class WandBLogger3D(WandBLogger):
        
 ##
     def log_traindata(self, train_loader):
-        #slices = self.get_slice_image(train_loader.data)
         # TODO: put in hyper
         slices = train_loader.get_slices(['x', 'y', 'z', 'xy'])
         # TODO: do not stack
@@ -593,8 +592,6 @@ class WandBLogger3D(WandBLogger):
             self.log_imagetensor(pixels, 'Train Data')
     
     def log_groundtruth(self, test_loader):
-        # gtdata = test_loader.data.view(self.hyper['channels'], 
-        #                                -1).permute((1, 0))
         slices = test_loader.get_slices(['x', 'y', 'z', 'xy'])
         
         pixels = torch.vstack((torch.hstack(slices[:2]), 
@@ -614,20 +611,11 @@ class WandBLogger3D(WandBLogger):
         #     except:
         #         print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
         
-        return None #gtdata
+        return pixels
     
     def log_prediction(self, model, test_loader, device):
         dims = test_loader.shape[1:]
         channels = test_loader.shape[0]
-
-        # domain = test_loader.sampler.coords.permute(1, 0).view(
-        #     channels, *dims
-        # )
-        
-        # domain_slices =[domain[:, self.x_slice, :, :],
-        #                 domain[:, :, self.y_slice, :],
-        #                 domain[:, :, self.z_slice, :],
-        #                 domain[:, :, :, self.w_slice]]
         domain_slices = make_domain_slices(dims[0], 
                                            *self.hyper['domain'],
                                            ['x', 'y', 'z', 'xy'])
@@ -651,7 +639,7 @@ class WandBLogger3D(WandBLogger):
 
         self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
         
-        return output_per_batch(model, test_loader, device)
+        return pred_pixels#output_per_batch(model, test_loader, device)
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
         image = wandb.Image(pixels.numpy())
@@ -697,13 +685,7 @@ class WandBLogger3D(WandBLogger):
         start, end = interval[0], interval[1]
         scale = (end - start) // 2
         neww, newh, newd = int(scale * w), int(scale * h), int(scale * d)
-        # ext_domain = make_grid_coords((neww, newh, newd), start, end, dim=3)
-        # ext_domain = ext_domain.permute(1, 0).view(
-        #                         self.hyper['channels'], neww, newh, newd)
-        # domain_slices =[ext_domain[:, self.x_slice, :, :],
-        #                 ext_domain[:, :, self.y_slice, :],
-        #                 ext_domain[:, :, self.z_slice, :],
-        #                 ext_domain[:, :, :, self.w_slice]]
+     
         # TODO different resolutions per axis?
         domain_slices = make_domain_slices(neww, 
                                            start, 
