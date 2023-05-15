@@ -25,9 +25,13 @@ def hermite_loss(output_dict, train_dict, device):
     
     pred_grad = gradient(pred, coords)
 
+    # GAMBIARRA
+    #mask = (torch.rand_like(pred) < 0.2).int()
+    # mask = torch.ones_like(pred)
     loss_dict['d0'] = F.mse_loss(pred, gt_pred) 
-    # loss_dict['d1'] = F.l1_loss(pred_grad, gt_grad)
+    # loss_dict['d0'] = F.mse_loss(pred * mask, gt_pred * mask) 
     loss_dict['d1'] = F.mse_loss(pred_grad, gt_grad)
+    # loss_dict['d1'] = F.mse_loss(pred_grad * (1-mask), gt_grad * (1-mask))
     return loss_dict
 
 def get_loss_from_map(lossname:str):

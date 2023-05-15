@@ -348,7 +348,10 @@ class WandBLogger2D(WandBLogger):
                                     test_loader.size()[1:], device)
         zoom = self.hyper.get('zoom', [])
         for zfactor in zoom:
-            self.log_zoom(current_model, test_loader, zfactor, device)
+            try:
+                self.log_zoom(current_model, test_loader, zfactor, device)
+            except Exception as e:
+                print(e)
         
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
