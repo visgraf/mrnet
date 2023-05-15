@@ -5,9 +5,9 @@ model: M
 in_features: 3
 out_features: 3
 hidden_layers: 1
-hidden_features: [[256, 128], [512, 256], [512, 512]]
+hidden_features: [[512, 256], [512, 256], [512, 512]]
 bias: True
-max_stages: 3
+max_stages: 1
 
 period: 2
 domain: [-1, 1]
@@ -37,10 +37,10 @@ max_epochs_per_stage: [200, 150, 100, 5]
 batch_size: 128 * 128 * 2
 
 # Image
-filename: colorful_noise3d128.npy
-width: 128
-height: 128
-depth: 128
+filename: voronoi #colorful_noise3d128.npy
+width: 32
+height: 32
+depth: 32
 channels: 3
 
 test_mesh: bunny.obj
