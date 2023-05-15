@@ -251,8 +251,6 @@ class VolumeSignal(BaseSignal):
                                 for i in range(dims))
 
                 values = []
-                # from IPython import embed
-                # embed()
                 for c in range(len(self.data)):
                     values.append(
                         interpn(points, self.data[c].numpy(), domain.numpy())
@@ -297,8 +295,9 @@ class Procedural3DSignal(Dataset):
         #                                    shuffle)
         self.order = 0
         slice_size = dims[0] * dims[1]
-        self.batches_per_slice = (slice_size // batch_size 
-                                  + 1 if (slice_size % batch_size != 0) else 0)
+        self.batches_per_slice = slice_size // batch_size
+        if slice_size % batch_size != 0:
+            self.batches_per_slice += 1
 
     def size(self):
         return (self.channels, *self.dims)
@@ -312,7 +311,6 @@ class Procedural3DSignal(Dataset):
         return self.batches_per_slice * self.dims[self.order]
 
     def __getitem__(self, idx):
-        # return self.sampler[idx]
         try:
             coords = next(self.coords_sampler)
         except: #which?
@@ -330,8 +328,8 @@ class Procedural3DSignal(Dataset):
             self.coords_sampler = iter(BatchSampler(coords, 
                                                self.batch_size, 
                                                drop_last=False))
-            coords = torch.stack(next(self.coords_sampler))
-        
+            coords = next(self.coords_sampler)
+        coords = torch.stack(coords)
         in_dict = {'coords': coords}
         out_dict = {'d0': self.procedure(coords)}
         # if 'd1' in self.attributes.keys():

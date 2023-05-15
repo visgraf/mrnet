@@ -10,7 +10,8 @@ hidden_features: [[2048, 1024]] #[[24, 32], [48, 32], [96, 64], [256, 128], [102
 bias: True
 max_stages: 1
 
-period: 2
+period: 4
+pmode: "reflect"
 domain: [-1, 1]
 # mask_color: 130
 
@@ -20,7 +21,7 @@ hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
 superposition_w0: False
 
 # Sampling
-sampling_scheme: regular
+sampling_scheme: reflect
 decimation: True
 filter: gauss # vary between none, laplace and gauss
 attributes: ['d0', 'd1']

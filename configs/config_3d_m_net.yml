@@ -5,7 +5,7 @@ model: M
 in_features: 3
 out_features: 3
 hidden_layers: 1
-hidden_features: [512, 1024, 512, 1024]
+hidden_features: [[9, 16], 1024, 512, 1024]
 bias: True
 max_stages: 1
 
@@ -14,7 +14,7 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [8, 24, 6, 16]
+omega_0: [1, 24, 6, 16]
 hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: False
 
@@ -34,12 +34,13 @@ lr: 0.0001
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
 max_epochs_per_stage: [10, 50, 5, 5]
-batch_size: 256 * 128
+batch_size: 128 * 128 * 2
 
 # Image
-filename: colorful_noise3d128.npy
-width: 128
-height: 128
+filename: procedural
+width: 256
+height: 256
+depth: 256
 channels: 3
 
 test_mesh: bunny.obj

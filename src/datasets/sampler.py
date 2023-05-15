@@ -56,7 +56,6 @@ class Sampler:
     def scheme(self):
         raise NotImplemented()
     
-
 class RegularSampler(Sampler):
 
     def make_samples(self, domain_mask=None):
@@ -75,26 +74,89 @@ class RegularSampler(Sampler):
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
-        flatdata = self.data.view(self.data_channels(), -1).permute((1, 0))
+        flatdata = {'d0': self.data.view(self.data_channels(), 
+                                         -1).permute((1, 0))}
         if 'd1' in self.attributes.keys():
-            self.d1 = torch.sum(self.attributes['d1'], dim=0).view(-1, 2)
+            flatdata['d1'] = torch.sum(self.attributes['d1'], dim=0).view(-1, 2)
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]
 
     def get_tuple_dicts(self, sel_idxs, flatdata):
         coords_sel = self.coords[sel_idxs]
-        data_sel = flatdata[sel_idxs]
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
-        out_dict = {'d0': data_sel}
-        if 'd1' in self.attributes.keys():
-        #     # lazy or not?
-            out_dict['d1'] = self.d1[sel_idxs]
+        out_dict = {}
+        for key in flatdata.keys():
+            out_dict[key] = flatdata[key][sel_idxs]
         samples = {self.key_group:(in_dict, out_dict)}
         return samples
     
     def scheme(self):
         return Sampling.REGULAR
+    
+
+class ReflectSampler(RegularSampler):
+    def make_samples(self, domain_mask=None):
+        self.key_group = 'c0'
+        # double the points
+        nsamples = tuple(np.array(self.data_shape()) * 2)
+        domain = tuple(np.array(self.domain) * 2)
+        self.coords = make_grid_coords(nsamples, 
+                                       *domain,
+                                       dim=len(self.data_shape()))
+        
+        if domain_mask is None:
+            n = len(self.coords)
+            sampled_indices = (torch.randperm(n) if self.shuffle 
+                               else torch.arange(0, n, dtype=torch.long))
+        else:
+            # TODO: permute; flatten domain_mask?
+            sampled_indices = torch.tensor(range(len(self.coords)))[domain_mask]
+        
+        index_batches = list(
+            BatchSampler(sampled_indices, self.batch_size, drop_last=False)
+        )
+        
+        d0 = self.extend_by_reflection(self.data, (0, 1))
+        flatdata = {'d0': d0.view(self.data_channels(), -1).permute((1, 0))}
+        if 'd1' in self.attributes.keys():
+            d1 = torch.sum(self.attributes['d1'], dim=0).unsqueeze(0)
+            d1 = self.extend_by_reflection(d1, (0, 1)).squeeze(0).view(-1, 2)
+            flatdata['d1'] = d1
+        self.batches = [self.get_tuple_dicts(
+                                torch.Tensor(idx_batch).long(), flatdata) 
+                                for idx_batch in index_batches]
+
+    
+    def extend_by_reflection(self, data, dims):
+        channels = data.shape[0]
+        for ch in range(channels):
+            reflected = []
+            extended = data[ch]
+            for dim in dims:
+                flipped = extended.flip(dim)
+                extd = self.data_shape()[dim] // 2
+                if dim == 0:
+                    values = [flipped[-extd:, ...], 
+                            extended, 
+                            flipped[:extd, ...]]
+                elif dim == 1:
+                    values = [flipped[:, -extd:, ...], 
+                            extended,
+                            flipped[:, :extd, ...]]
+                elif dim == 2:
+                    values = [flipped[..., -extd:], 
+                            extended, 
+                            flipped[..., :extd]]
+                else:
+                    raise ValueError("Unsupported dimension")
+                extended = torch.cat(values, dim=dim)
+            reflected.append(extended)
+        reflected = torch.stack(reflected)
+        return reflected
+    
+    def scheme(self):
+        return Sampling.REFLECT
 
 # TODO: refactor and extend to work with multiple dimensions
 class PoissonDiscSampler(RegularSampler):
@@ -277,6 +339,8 @@ class SamplerFactory:
         elif sampling_type==Sampling.POISSON_DISC:
             return PoissonDiscSampler(data, domain, 
                                       attributes, batch_size, shuffle)
+        elif sampling_type == Sampling.REFLECT:
+            return ReflectSampler(data, domain, attributes, batch_size, shuffle)
         else:
             raise ValueError(f"Invalid sampling type {sampling_type}")
 
