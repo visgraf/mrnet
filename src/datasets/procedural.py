@@ -1,6 +1,6 @@
 import numpy as np
 from PIL import Image
-from noise import snoise3
+# from noise import snoise3
 from typing import Sequence
 from scipy.spatial import cKDTree
 import torch
@@ -21,7 +21,7 @@ def make_grid_coords(nsamples, start, end, dim):
     grid = np.stack(np.meshgrid(*dir_samples, indexing='ij'), axis=-1)
     return grid.reshape(-1, dim)
 
-vnoise3 = np.vectorize(snoise3)
+# vnoise3 = np.vectorize(snoise3)
 
 def turbulence(p, pixelsize):
     t = np.zeros(len(p))
@@ -67,8 +67,8 @@ def colorful_texture(size):
     print(texture.shape)
     return texture
 
-def voronoi_texture(ncells, colors_map=[], line_tol=4e-3):
-    points = torch.rand((ncells, 3)).numpy()
+def voronoi_texture(ncells, domain=(-1, 1), colors_map=[], line_tol=4e-3):
+    points = (torch.rand((ncells, 3)).numpy() * (domain[1] - domain[0])) + domain[0]
     voronoi_kdtree = cKDTree(points)
     if not colors_map:
         colors_map = torch.rand((ncells//2, 3))
