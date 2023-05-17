@@ -9,7 +9,7 @@ from matplotlib import cm
 from PIL import Image
 from copy import deepcopy
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Union
 from torch.utils.data import BatchSampler
 
 import warnings
@@ -18,7 +18,7 @@ from datasets.sampler import make_grid_coords
 from datasets.utils import make_domain_slices
 
 from .logger import Logger
-from .utils import (output_on_batched_dataset, output_on_batched_grid,
+from .utils import (output_on_batched_dataset, output_on_batched_grid, rgb_to_grayscale,
                      ycbcr_to_rgb, RESIZING_FILTERS)
 from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
@@ -127,7 +127,28 @@ class WandBLogger(Logger):
         table = wandb.Table(data=[(label, ssim)], columns = ["Stage", "SSIM"])
         wandb.log({"ssim_value" : wandb.plot.bar(table, "Stage", "SSIM",
                                     title="SSIM for reconstruction")})
+        
+    def log_images(self, pixels, label, captions=None):
+        if isinstance(pixels, torch.Tensor):
+            pixels = [pixels]
+        if captions is None:
+            captions = [None] * len(pixels)
+        if isinstance(captions, str):
+            captions = [captions]
+        if len(pixels) != len(captions):
+            raise ValueError("label and pixels should have the same size")
+        
+        images = [
+            wandb.Image(pixels[i].detach().cpu(
+                                        ).clamp(0, 1).squeeze(-1).numpy(),
+                            caption=captions[i]) for i in range(len(pixels))
+        ]
+        wandb.log({label: images})
 
+    def log_detailtensor(self, pixels:torch.Tensor, label:str):
+        pixels = (pixels + 1.0) / (2.0)
+        image = wandb.Image(pixels.numpy())    
+        wandb.log({label: image})
 
 
 class WandBLogger1D(WandBLogger):
@@ -414,9 +435,8 @@ class WandBLogger2D(WandBLogger):
                 if self.hyper.get('YCbCr', False):
                     value = value[:, 0:1]
                 else:
-                    value = (0.2126 * value[:, 0:1] 
-                        + 0.7152 * value[:, 1:2] 
-                        + 0.0722 * value[:, 2:3])
+                    value = rgb_to_grayscale(value)
+
             grads.append(gradient(value, 
                                   output_dict['model_in']).detach().cpu())
         pixels = torch.concat(pixels)
@@ -464,13 +484,12 @@ class WandBLogger2D(WandBLogger):
             if self.hyper.get('YCbCr', False):
                 pixels = pixels[..., 0]
             else:
-                pixels = (0.2126 * pixels[:, :, 0] 
-                        + 0.7152 * pixels[:, :, 1] 
-                        + 0.0722 * pixels[:, :, 2])
+                pixels = rgb_to_grayscale(pixels)
         fourier_tensor = torch.fft.fftshift(
                         torch.fft.fft2(pixels.squeeze(-1)))
-        magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-10)
-        magnitude = magnitude / np.max(magnitude)
+        magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-14)
+        mmin, mmax = np.min(magnitude), np.max(magnitude)
+        magnitude = (magnitude - mmin) / (mmax - mmin)
         graymap = cm.get_cmap('gray')
         img = Image.fromarray(np.uint8(graymap(magnitude) * 255))
         wandb.log({label: wandb.Image(img)})
@@ -557,10 +576,6 @@ class WandBLogger2D(WandBLogger):
 
 class WandBLogger3D(WandBLogger):
 
-    def __init__(self, project: str, name: str, hyper: dict, basedir: str, entity=None, config=None, settings=None):
-        super().__init__(project, name, hyper, basedir, entity, config, settings)
-
-
     def on_stage_trained(self, current_model: MRNet,
                                 train_loader,
                                 test_loader):
@@ -570,8 +585,8 @@ class WandBLogger3D(WandBLogger):
         self.w_slice = rng.integers(0, test_loader.size()[-1])
         start_time = time.time()
         
-        self.log_traindata(train_loader)
-        gt = self.log_groundtruth(test_loader)   
+        self.log_data(train_loader, "Train Data")
+        gt = self.log_data(test_loader, "Ground Truth", True)   
         pred = self.log_prediction(current_model, test_loader, device)
         self.log_PSNR(gt.cpu(), pred.cpu())
         self.log_SSIM(gt.cpu(), pred.cpu())
@@ -589,46 +604,47 @@ class WandBLogger3D(WandBLogger):
             # apparently, we need to finish the run when running on script
             wandb.finish()
        
-##
-    def log_traindata(self, train_loader):
-        # TODO: put in hyper
-        slices = train_loader.get_slices(self.hyper['slice_views'])
-        # TODO: do not stack
-        pixels = torch.vstack((torch.hstack(slices[:2]), 
-                               torch.hstack(slices[2:])))
-        if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
-            self.log_detailtensor(pixels, 'Train Data')
-        else:
-            self.log_imagetensor(pixels, 'Train Data')
-    
-    def log_groundtruth(self, test_loader):
-        slices = test_loader.get_slices(self.hyper['slice_views'])
+    def log_data(self, train_loader, label, test=False):
+        views = self.hyper['slice_views']
+        slices = train_loader.get_slices(views)
+        captions = f"{views}"
         
-        pixels = torch.vstack((torch.hstack(slices[:2]), 
-                               torch.hstack(slices[2:])))
-        if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
-            self.log_detailtensor(pixels, 'Ground Truth')
-        else:
-            self.log_imagetensor(pixels, 'Ground Truth')
-        
-        self.log_fft(slices, 'FFT Ground Truth')
+        join_views = self.hyper.get("join_views", False)
 
-        # if self.visualize_gt_grads:
+        if (re.match('laplace_*', self.hyper['filter']) 
+            and self.hyper['stage'] > 1):
+            self.log_detailtensor(slices, label)
+        else:
+            if join_views:
+                slices = torch.vstack((torch.hstack(slices[:2]), 
+                                       torch.hstack(slices[2:])))
+            else:
+                captions = ["Slice {view} = k" for view in views]
 
-        #     try:
-        #         gt_grads = test_loader.sampler.img_grad
-        #         self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
-        #     except:
-        #         print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
-        
-        return pixels
+            self.log_images(slices, label, captions)
+
+        if not test:
+            return
+
+        if test:
+            self.log_fft(slices, f'FFT {label}', views)
+            # if self.visualize_gt_grads:
+
+            #     try:
+            #         gt_grads = test_loader.sampler.img_grad
+            #         self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
+            #     except:
+            #         print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
+        return slices if join_views else torch.concat(slices)
     
     def log_prediction(self, model, test_loader, device):
+        views = self.hyper['slice_views']
+        captions = f"{views}"
         dims = test_loader.shape[1:]
         channels = test_loader.shape[0]
         domain_slices = make_domain_slices(dims[0], 
                                            *self.hyper['domain'],
-                                           self.hyper['slice_views'])
+                                           views)
         pred_slices = []
         grads = []
         for slice in domain_slices:
@@ -639,26 +655,22 @@ class WandBLogger3D(WandBLogger):
             pred_slices.append(
                 model_out.view(dims[0], dims[1], channels).detach().cpu())
 
-        pred_pixels = torch.vstack(
-            (torch.hstack(pred_slices[:2]), torch.hstack(pred_slices[2:])))
-        self.log_imagetensor(pred_pixels, 'Prediction')
-        self.log_fft(pred_slices, 'FFT Prediction')
+        join_views = self.hyper.get("join_views", False)
+        if join_views:
+            pred_slices = torch.vstack(
+                (torch.hstack(pred_slices[:2]), torch.hstack(pred_slices[2:])))
+        else:
+            captions = [f"Slice {view} = k" for view in views]
+        
+        self.log_images(pred_slices, 'Prediction', captions)
+        self.log_fft(pred_slices, 'FFT Prediction', captions)
 
         pred_grads = torch.vstack((torch.hstack(grads[:2]), 
                                    torch.hstack(grads[2:])))
 
         self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
         
-        return pred_pixels
-
-    def log_imagetensor(self, pixels:torch.Tensor, label:str):
-        image = wandb.Image(pixels.detach().cpu().numpy())
-        wandb.log({label: image})
-
-    def log_detailtensor(self, pixels:torch.Tensor, label:str):
-        pixels = (pixels + 1.0) / (2.0)
-        image = wandb.Image(pixels.numpy())    
-        wandb.log({label: image})
+        return pred_slices if join_views else torch.concat(pred_slices)
     
     def log_gradmagnitude(self, grads:torch.Tensor, label: str):
         mag = torch.sqrt(grads[:, :, 0]**2 
@@ -668,26 +680,42 @@ class WandBLogger3D(WandBLogger):
         img = Image.fromarray(255 * (mag - gmin) / gmax).convert('L')
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
     
-    def log_fft(self, slices, label:str):
+    def log_fft(self, slices, label:str, captions=None):
         if not isinstance(slices, Sequence):
             slices = [slices]
         if self.hyper['channels'] == 3:
-            slices = [0.2126*s[:, :, 0] + 0.7152*s[:, :, 1] + 0.0722*s[:, :, 2]
-                      for s in slices]
+            if self.hyper.get('YCbCr', False):
+                slices = [rgb_to_grayscale(s) for s in slices]
+            else:
+                slices = [s[..., 0] for s in slices]
         imgs = []
         for pixels in slices:
             fourier_tensor = torch.fft.fftshift(
                             torch.fft.fft2(pixels.squeeze(-1)))
-            magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-10)
-            magnitude = magnitude / np.max(magnitude)
+            magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-14)
+            vmin, vmax = np.min(magnitude), np.max(magnitude)
+            magnitude = (magnitude - vmin) / (vmax - vmin)
             graymap = cm.get_cmap('gray')
             imgs.append(magnitude)
         if len(imgs) == 1:
             img = Image.fromarray(np.uint8(graymap(imgs[0]) * 255))
         else:
-            magnitude = np.vstack((np.hstack(imgs[:2]), np.hstack(imgs[2:])))
-            img = Image.fromarray(np.uint8(graymap(magnitude) * 255))
-        wandb.log({label: wandb.Image(img)})
+            if self.hyper.get('join_views', False):
+                magnitude = np.vstack((np.hstack(imgs[:2]), 
+                                       np.hstack(imgs[2:])))
+                img = wandb.Image(
+                    Image.fromarray(np.uint8(graymap(magnitude) * 255)),
+                    caption=captions
+                )
+            else:
+                if captions is None:
+                    captions = [None] * len(imgs)
+                img = [wandb.Image(
+                            Image.fromarray(np.uint8(graymap(imgs[i]) * 255)),
+                            caption=captions[i]) 
+                        for i in range(len(imgs))]
+
+        wandb.log({label: img})
 
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
@@ -695,27 +723,33 @@ class WandBLogger3D(WandBLogger):
         start, end = interval[0], interval[1]
         scale = (end - start) // 2
         neww, newh, newd = int(scale * w), int(scale * h), int(scale * d)
-     
+
+        views = self.hyper['slice_views']
+        channels = self.hyper['channels']
+        join_views = self.hyper.get("join_views", False)
         # TODO different resolutions per axis?
         domain_slices = make_domain_slices(neww, 
                                            start, 
                                            end, 
-                                           self.hyper['slice_views'])
+                                           views)
         pred_slices = []
         for slice in domain_slices:
             values = []
             for batch in BatchSampler(
-                    slice.reshape(self.hyper['channels'], -1).permute((1, 0)), 
+                    slice.reshape(channels, -1).permute((1, 0)), 
                     self.hyper['batch_size'], drop_last=False):
                 batch = torch.stack(batch)
                 with torch.no_grad():
                     values.append(
                         model(batch.to(device))['model_out'].clamp(0, 1))
             values = torch.concat(values)
-            pred_slices.append(values.view(neww, newh, self.hyper['channels']))
-        pred_pixels = torch.vstack((torch.hstack(pred_slices[:2]), 
-                                    torch.hstack(pred_slices[2:])))
-        self.log_imagetensor(pred_pixels, 'Extrapolation')
+            pred_slices.append(values.view(neww, newh, channels))
+        if join_views:
+            pred_slices = torch.vstack((torch.hstack(pred_slices[:2]), 
+                                        torch.hstack(pred_slices[2:])))
+        else:
+            captions = [f"Slices {view} = k" for view in views]
+        self.log_images(pred_slices, 'Extrapolation', captions)
 
     def log_point_cloud(self, model, device):
         if self.hyper.get('test_mesh', ""):
@@ -733,13 +767,7 @@ class WandBLogger3D(WandBLogger):
             point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
             point_cloud = (point_cloud / torch.linalg.vector_norm(
                                     point_cloud, dim=-1).unsqueeze(-1)) * scale_radius
-        # colors = []
-        # for batch in BatchSampler(point_cloud, 
-        #                           self.hyper['batch_size'], drop_last=False):
-        #     batch = torch.stack(batch)
-        #     with torch.no_grad():
-        #         colors.append(model(batch.to(device))['model_out'])
-        # colors = torch.concat(colors) * 255
+            
         with  torch.no_grad():
             colors = output_on_batched_grid(model, point_cloud, 
                                         self.hyper['batch_size'], device)

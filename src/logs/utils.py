@@ -52,3 +52,8 @@ def ycbcr_to_rgb(image: torch.Tensor) -> torch.Tensor:
     g = y - 0.714 * cr_shifted - 0.344 * cb_shifted
     b = y + 1.773 * cb_shifted
     return torch.stack([r, g, b], -1)
+
+def rgb_to_grayscale(image):
+    return (0.2126 * image[:, 0:1] 
+            + 0.7152 * image[:, 1:2] 
+            + 0.0722 * image[:, 2:3])
