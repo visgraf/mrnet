@@ -93,7 +93,7 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
                                               hyper['filter'], False)
 
         logger = LoggerClass(project_name,
-                                    f"{hyper['model']}{hyper['filter'][0].upper()}{name[0:5]}{'RGB' if not hyper['YCbCr'] else ''}",
+                                    f"{hyper['model']}{hyper['filter'][0].upper()}{name[0:5]}{'YUV' if hyper['YCbCr'] else ''}",
                                     hyper,
                                     base_dir) 
                                     #to_file=True)
@@ -117,4 +117,8 @@ if __name__ == '__main__':
     #                 resize=True, rename_to="pic")
     run_experiment('pexels1024', 'img/pexels_textures', 
                    'config_textures_m_net.yml', WandBLogger2D)
+    # run_experiment('pexels1024', 'img/pexels_textures', 
+    #                'config_textures_l_net.yml', WandBLogger2D)
+    # run_experiment('pexels1024', 'img/pexels_textures', 
+    #                'config_textures_m_net_color.yml', WandBLogger2D)
     # run_local_experiment('kodak512', 'img/kodak512', 'config_kodak_siren.yml')

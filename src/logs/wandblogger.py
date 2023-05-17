@@ -18,14 +18,15 @@ from datasets.sampler import make_grid_coords
 from datasets.utils import make_domain_slices
 
 from .logger import Logger
-from .utils import output_per_batch, ycbcr_to_rgb
+from .utils import (output_on_batched_dataset, output_on_batched_grid,
+                     ycbcr_to_rgb, RESIZING_FILTERS)
 from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
 import time
 import trimesh
 import skimage
 from IPython import embed
-from torchvision.transforms.functional import to_tensor
+from torchvision.transforms.functional import to_tensor, to_pil_image
 
 MODELS_DIR = 'models'
 MESHES_DIR = 'meshes'
@@ -110,9 +111,8 @@ class WandBLogger(Logger):
         wandb.log_artifact(artifact)
 
     def log_PSNR(self, gt, pred):
-        # BUG!!!! remake all experiments in paper?
-        # psnr = 10*torch.log10(1 / (torch.mean(gt - pred)**2 + 1e-10))
-        psnr = 10 * torch.log10(1 / (torch.mean((gt - pred)**2)) + 1e-10)
+        mse = torch.mean((gt - pred)**2)
+        psnr = 10 * torch.log10(1 / mse + 1e-15)
         
         label = f"Stage {self.hyper['stage']}"
         table = wandb.Table(data=[(label, psnr)], columns = ["Stage", "PSNR"])
@@ -349,6 +349,7 @@ class WandBLogger2D(WandBLogger):
         zoom = self.hyper.get('zoom', [])
         for zfactor in zoom:
             self.log_zoom(current_model, test_loader, zfactor, device)
+            
         
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
@@ -396,7 +397,10 @@ class WandBLogger2D(WandBLogger):
         return gtdata
     
     def log_prediction(self, model, test_loader, device):
-        coords = test_loader.sampler.coords
+        datashape = test_loader.shape[1:]
+        coords = make_grid_coords(datashape, 
+                                  *self.hyper['domain'],
+                                  len(datashape))
         pixels = []
         grads = []
         for batch in BatchSampler(coords, 
@@ -496,30 +500,15 @@ class WandBLogger2D(WandBLogger):
         self.log_imagetensor(pixels, 'Extrapolation', norm_weights)
 
     def log_zoom(self, model, test_loader, zoom_factor, device):
-        w, h = test_loader.size()[1:]
+        w, h = test_loader.shape[1:]
         domain = self.hyper.get('domain', [-1, 1])
         start, end = domain[0]/zoom_factor, domain[1]/zoom_factor
         zoom_coords = make_grid_coords((w, h), start, end, dim=2)
         with torch.no_grad():
-            pixels = []
-            for batch in BatchSampler(zoom_coords, 
-                                      self.hyper['batch_size'], 
-                                      drop_last=False):
-                batch = torch.stack(batch)
-                output_dict = model(batch.to(device))
-                pixels.append(output_dict['model_out'].detach().cpu())
-            pixels = torch.concat(pixels)
-        # center crop
-        cropsize = int(w // zoom_factor)
-        left, top = (w - cropsize), (h - cropsize)
-        right, bottom = (w + cropsize), (h + cropsize)
-        crop_rectangle = tuple(np.array([left, top, right, bottom]) // 2)
-        gt = Image.fromarray(
-                            (test_loader.data.permute((1, 2, 0)
-                              ).squeeze(-1).numpy() * 255).astype(np.uint8)
-            ).crop(crop_rectangle).resize((w, h), Image.Resampling.BICUBIC)
-        
-        pixels = pixels.view((h, w, self.hyper['channels']))
+            pixels = output_on_batched_grid(model, zoom_coords, 
+                                            self.hyper['batch_size'], device)
+
+        pixels = pixels.cpu().view((h, w, self.hyper['channels']))
         if (self.hyper['channels'] == 1 
             and self.hyper['loss_weights']['d0'] == 0):
             vmin = torch.min(test_loader.data)
@@ -527,28 +516,49 @@ class WandBLogger2D(WandBLogger):
             pmin, pmax = torch.min(pixels), torch.max(pixels)
             pixels = (pixels - pmin) / (pmax - pmin)
             pixels = pixels * vmax #(vmax - vmin) + vmin
+        
+        # center crop
+        cropsize = int(w // zoom_factor)
+        left, top = (w - cropsize), (h - cropsize)
+        right, bottom = (w + cropsize), (h + cropsize)
+        crop_rectangle = tuple(np.array([left, top, right, bottom]) // 2)
+        gt_pixels = test_loader.data.permute((1, 2, 0))
+        
+
+        if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
+            pixels = ycbcr_to_rgb(pixels)
+            gt_pixels = ycbcr_to_rgb(gt_pixels)
+
+        pixels = (pixels.clamp(0, 1) * 255).squeeze(-1).numpy().astype(np.uint8)
+        images = [
+            wandb.Image(Image.fromarray(pixels), 
+                        caption='Reconstruction (Ours)')
+        ]
+        gt_pixels = (gt_pixels * 255).squeeze(-1).numpy().astype(np.uint8)
+        cropped = Image.fromarray(gt_pixels).crop(crop_rectangle)
+        for filter in self.hyper.get('zoom_filters', ['linear']):
+            resized = cropped.resize((w, h), RESIZING_FILTERS[filter])
+            images.append(
+                wandb.Image(resized, 
+                            caption=f"Baseline - {filter} interpolation")
+            )
+        # print(pixels.shape, gt.shape)
+        # from IPython import embed
+        # embed()
+        # imgs = torch.hstack([pixels.clamp(0, 1), 
+        #                      to_tensor(gt).permute((1, 2, 0))])
+        # imgs = wandb.Image(imgs.squeeze(-1),
+        #                     caption="Pred (left); GT - bicubic (right)")
         # images = [wandb.Image(pixels.clamp(0, 1).numpy(), caption='Pred'),
         #           wandb.Image(gt, caption='GT (bicubic)')
         #           ]
-        if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
-            pixels = ycbcr_to_rgb(pixels)
-
-        # print(pixels.shape, gt.shape)
-        imgs = torch.hstack([pixels.clamp(0, 1), 
-                             to_tensor(gt).permute((1, 2, 0))])
-        imgs = wandb.Image(imgs.squeeze(-1),
-                            caption="Pred (left); GT - bicubic (right)")
-        wandb.log({f"Zoom {zoom_factor}x": imgs})
+        wandb.log({f"Zoom {zoom_factor}x": images})
 
 
 class WandBLogger3D(WandBLogger):
 
     def __init__(self, project: str, name: str, hyper: dict, basedir: str, entity=None, config=None, settings=None):
         super().__init__(project, name, hyper, basedir, entity, config, settings)
-        # self.x_slice = 1
-        # self.y_slice = 2
-        # self.z_slice = 3
-        # self.w_slice = 1
 
 
     def on_stage_trained(self, current_model: MRNet,
