@@ -665,15 +665,14 @@ class WandBLogger3D(WandBLogger):
         
         self.log_images(pred_slices, 'Prediction', captions)
         self.log_fft(pred_slices, 'FFT Prediction', captions)
-
-        pred_grads = torch.vstack((torch.hstack(grads[:2]), 
-                                   torch.hstack(grads[2:])))
-
-        self.log_gradmagnitude(pred_grads, 'Prediction - Gradient')
+        self.log_gradmagnitude(grads, 'Prediction - Gradient')
         
         return pred_slices if join_views else torch.concat(pred_slices)
     
     def log_gradmagnitude(self, grads:torch.Tensor, label: str):
+        # TODO: add option to not stack
+        grads = torch.vstack((torch.hstack(grads[:2]), 
+                                    torch.hstack(grads[2:])))
         mag = torch.sqrt(grads[:, :, 0]**2 
                          + grads[:, :, 1]**2 
                          + grads[:, :, 2]**2).numpy()
