@@ -5,7 +5,7 @@ model: M
 in_features: 3
 out_features: 3
 hidden_layers: 1
-hidden_features: [[512, 512], [512, 256], [512, 512]]
+hidden_features: [[256, 256], [512, 256], [512, 512]]
 bias: True
 max_stages: 1
 
@@ -14,7 +14,7 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [8, 12, 24]
+omega_0: [4, 12, 24]
 hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: False
 
@@ -33,14 +33,14 @@ opt_method: Adam
 lr: 0.001
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [20, 150, 100, 5]
+max_epochs_per_stage: [10, 150, 100, 5]
 batch_size: 256 * 256 * 2
 
 # Image
-filename: voronoi #colorful_noise3d128.npy
-width: 256
-height: 256
-depth: 256
+filename: colorful_noise3d128.npy
+width: 64
+height: 64
+depth: 64
 channels: 3
 
 test_mesh: bunny.obj
@@ -55,6 +55,7 @@ save_format: 'general'
 visualize_grad: True
 extrapolate: [-2, 2]
 slice_views: ['x', 'y', 'z', 'xy']
+join_views: False
 
 
 

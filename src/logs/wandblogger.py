@@ -594,8 +594,9 @@ class WandBLogger3D(WandBLogger):
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
         if extrapolation_interval is not None:
-            self.log_extrapolation(current_model, extrapolation_interval, 
-                                    test_loader.size()[1:], device)
+            self.log_extrapolation(current_model, 
+                                   extrapolation_interval, 
+                                    test_loader.shape[1:], device)
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
         current_model.to(self.hyper['device'])
@@ -727,6 +728,7 @@ class WandBLogger3D(WandBLogger):
         views = self.hyper['slice_views']
         channels = self.hyper['channels']
         join_views = self.hyper.get("join_views", False)
+        captions = f"{views}"
         # TODO different resolutions per axis?
         domain_slices = make_domain_slices(neww, 
                                            start, 
@@ -734,16 +736,12 @@ class WandBLogger3D(WandBLogger):
                                            views)
         pred_slices = []
         for slice in domain_slices:
-            values = []
-            for batch in BatchSampler(
-                    slice.reshape(channels, -1).permute((1, 0)), 
-                    self.hyper['batch_size'], drop_last=False):
-                batch = torch.stack(batch)
-                with torch.no_grad():
-                    values.append(
-                        model(batch.to(device))['model_out'].clamp(0, 1))
-            values = torch.concat(values)
-            pred_slices.append(values.view(neww, newh, channels))
+            with torch.no_grad():
+                pred_slices.append(
+                    output_on_batched_grid(model, 
+                                        slice, 
+                                        self.hyper['batch_size'], 
+                                        device).view(neww, newh, channels)) 
         if join_views:
             pred_slices = torch.vstack((torch.hstack(pred_slices[:2]), 
                                         torch.hstack(pred_slices[2:])))
