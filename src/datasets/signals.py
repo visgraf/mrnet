@@ -10,7 +10,7 @@ from datasets.sampler import SamplerFactory, make_grid_coords
 from scipy.ndimage import sobel
 from torch.utils.data import BatchSampler
 from scipy.interpolate import RegularGridInterpolator, interpn
-from .utils import rotation_matrix
+from .utils import rotation_matrix, make_domain_slices
 
 
 def make_mask(srcpath, mask_color):
@@ -274,8 +274,7 @@ class Procedural3DSignal(Dataset):
                  attributes=[], 
                  sampling_scheme=Sampling.REGULAR,
                  batch_size=0,
-                 YCbCr=False,
-                 shuffle=True):
+                 YCbCr=False):
         
         self.procedure = procedure
         self.dims = dims
@@ -286,21 +285,16 @@ class Procedural3DSignal(Dataset):
         self.attributes = attributes
         self.ycbcr = YCbCr
         self.data_attributes = {}
-        # if 'd1' in self.attributes:
-        #     self.compute_derivatives()
-        # if isinstance(sampling_scheme, str):
-        #     sampling_scheme = SAMPLING_DICT[sampling_scheme]
-        # self.sampler = SamplerFactory.init(sampling_scheme,
-        #                                    self.data,
-        #                                    self.domain,
-        #                                    self.data_attributes,
-        #                                    batch_size,
-        #                                    shuffle)
-        self.order = 0
-        slice_size = dims[0] * dims[1]
-        self.batches_per_slice = slice_size // batch_size
-        if slice_size % batch_size != 0:
-            self.batches_per_slice += 1
+        
+        RANDOM_SEED = 777
+        self.rng = np.random.default_rng(RANDOM_SEED)
+
+        prod = dims[0] * dims[1] * dims[2]
+        self._num_samples =  prod // batch_size
+        if prod % batch_size != 0:
+            self._num_samples += 1
+
+
 
     def size(self):
         return (self.channels, *self.dims)
@@ -310,34 +304,18 @@ class Procedural3DSignal(Dataset):
         return self.size()
     
     def __len__(self):
-        # return len(self.sampler)
-        return self.batches_per_slice * self.dims[self.order]
+        return self._num_samples
 
     def __getitem__(self, idx):
-        try:
-            coords = next(self.coords_sampler)
-        except: #which?
-            self.newdim = torch.linspace(self.domain[0], 
-                                        self.domain[1], 
-                                        self.dims[self.order])
-            # TODO: deal with different sizes in each direction and ORDER
-            coords = make_grid_coords(self.dims[0], 
-                                      *self.domain, 
-                                      len(self.dims)-1)
-            value = self.newdim[idx // self.batches_per_slice]
-            coords = torch.cat([coords, 
-                                value * torch.ones((len(self.newdim)**2, 1))],
-                                dim=-1)
-            self.coords_sampler = iter(BatchSampler(coords, 
-                                               self.batch_size, 
-                                               drop_last=False))
-            coords = next(self.coords_sampler)
-        coords = torch.stack(coords)
+        if idx >= len(self):
+            raise StopIteration
+        possible_values = torch.linspace(*self.domain, self.shape[1])
+        coords = self.rng.choice(possible_values, 
+                            (self.batch_size, self.channels),
+                            replace=True)
+        coords = torch.from_numpy(coords)
         in_dict = {'coords': coords}
         out_dict = {'d0': self.procedure(coords)}
-        # if 'd1' in self.attributes.keys():
-        # #     # lazy or not?
-        #     out_dict['d1'] = self.d1[sel_idxs]
         return {'c0': (in_dict, out_dict)}
     
     def type_code(self):
@@ -347,36 +325,13 @@ class Procedural3DSignal(Dataset):
         raise NotImplementedError("Procedural Signal does not support this operation")
     
     def get_slices(self, slice_views, slice_idx={}):
-        valid_codes = ['x', 'y', 'z', 'xy', 'xz', 'yz']
-        code_map = {
-            'x': [2, 0, 1],
-            'y': [0, 2, 1],
-            'z': [0, 1, 2]
-        }
-        if not slice_idx:
-            slice_idx = {'x': 1, 'y': 2, 'z': 3}
         res = self.dims[0]
-        coords = make_grid_coords(res, 
-                                  *self.domain, 
-                                  len(self.dims) - 1)
-        slices = []
-        for code in slice_views:
-            if code not in valid_codes:
-                raise ValueError(
-                    "Direction codes should be in [x, y, z, xy, xz, yz]")
-            try:
-                idx = slice_idx[code]
-                value = torch.linspace(*self.domain, res)[idx]
-            except KeyError:
-                value = 0.0
-            newdim = value * torch.ones((len(coords), 1))
-            domain_slice = torch.cat([coords, newdim], dim=-1)
-            domain = domain_slice[:, code_map[code[0]]]
-            if len(code) == 2:
-                rotation = rotation_matrix(code[1], np.pi/4)
-                domain = torch.matmul(rotation, 
-                                      domain.permute((1, 0))).permute((1, 0))
-            slices.append(
-                self.procedure(domain).reshape(res, res, self.channels))
+        domain_slices = make_domain_slices(res, 
+                                           *self.domain, 
+                                           slice_views, 
+                                           slice_idx)
+        slices = [self.procedure(domain.reshape(-1, 3)
+                                 ).reshape(res, res, self.channels)
+                  for domain in domain_slices]
 
         return slices
