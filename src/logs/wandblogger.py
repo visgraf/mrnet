@@ -652,7 +652,7 @@ class WandBLogger3D(WandBLogger):
         return pred_pixels
 
     def log_imagetensor(self, pixels:torch.Tensor, label:str):
-        image = wandb.Image(pixels.numpy())
+        image = wandb.Image(pixels.detach().cpu().numpy())
         wandb.log({label: image})
 
     def log_detailtensor(self, pixels:torch.Tensor, label:str):
@@ -724,21 +724,26 @@ class WandBLogger3D(WandBLogger):
             point_cloud, _ = trimesh.sample.sample_surface(
                                     mesh, self.hyper['ntestpoints'])
             point_cloud = torch.from_numpy(point_cloud).float()
-            # center at the origin and rescale to fit a sphere of radius 0.8
+            # center at the origin and rescale to fit a sphere of radius
+            scale_radius = self.hyper.get('scale_radius', 0.9)
             point_cloud = point_cloud - torch.mean(point_cloud, dim=0)
-            scale = 0.8 / torch.max(torch.abs(point_cloud))
+            scale = scale_radius / torch.max(torch.abs(point_cloud))
             point_cloud = scale * point_cloud
         else:
             point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
             point_cloud = (point_cloud / torch.linalg.vector_norm(
-                                    point_cloud, dim=-1).unsqueeze(-1)) * 0.8
-        colors = []
-        for batch in BatchSampler(point_cloud, 
-                                  self.hyper['batch_size'], drop_last=False):
-            batch = torch.stack(batch)
-            with torch.no_grad():
-                colors.append(model(batch.to(device))['model_out'])
-        colors = torch.concat(colors) * 255
+                                    point_cloud, dim=-1).unsqueeze(-1)) * scale_radius
+        # colors = []
+        # for batch in BatchSampler(point_cloud, 
+        #                           self.hyper['batch_size'], drop_last=False):
+        #     batch = torch.stack(batch)
+        #     with torch.no_grad():
+        #         colors.append(model(batch.to(device))['model_out'])
+        # colors = torch.concat(colors) * 255
+        with  torch.no_grad():
+            colors = output_on_batched_grid(model, point_cloud, 
+                                        self.hyper['batch_size'], device)
+        colors = (colors.cpu().clamp(0, 1) * 255)
         if self.hyper['channels'] == 1:
             colors = torch.concat([colors, colors, colors], 1)
         
