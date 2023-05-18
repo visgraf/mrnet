@@ -397,7 +397,7 @@ class MRFactory:
             mrmodule.load_state_dict(
                 checkpoint[f'module{stage}_state_dict'])
             model_stages.append(mrmodule)
-            singledict['prevknowledge'] = mrmodule.hidden_features     
+            singledict['prevknowledge'] = mrmodule.hidden_features[-1]     
         
         model.stages = nn.ModuleList(model_stages)
         model.eval()

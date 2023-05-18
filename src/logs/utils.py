@@ -27,6 +27,13 @@ def output_on_batched_grid(model, grid, batch_size, device):
         output.append(model(batch)['model_out'])
     return torch.concat(output)
 
+def output_on_batched_points(model, points, batch_size, device):
+    output = []
+    for batch in BatchSampler(points, batch_size, drop_last=False):
+        batch = torch.stack(batch).to(device)
+        output.append(model(batch)['model_out'])
+    return torch.concat(output)
+
 def ycbcr_to_rgb(image: torch.Tensor) -> torch.Tensor:
     r"""Convert an YCbCr image to RGB.
 
