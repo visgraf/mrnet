@@ -4,8 +4,8 @@ model: M
 # Network
 in_features: 3
 out_features: 3
-hidden_layers: 1
-hidden_features: [[256, 256], [512, 256], [512, 512]]
+hidden_layers: 3
+hidden_features: [256, [512, 256], [512, 512]]
 bias: True
 max_stages: 1
 
@@ -14,6 +14,7 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
+omega_0: [4, 12, 24]
 omega_0: [4, 12, 24]
 hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: False
@@ -33,14 +34,14 @@ opt_method: Adam
 lr: 0.001
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [10, 150, 100, 5]
+max_epochs_per_stage: [80, 150, 100, 5]
 batch_size: 256 * 256 * 2
 
 # Image
-filename: colorful_noise3d128.npy
-width: 64
-height: 64
-depth: 64
+filename: voronoi #colorful_noise3d128.npy
+width: 128
+height: 128
+depth: 128
 channels: 3
 
 test_mesh: bunny.obj
@@ -48,7 +49,7 @@ ntestpoints: 290000
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
-eval_device: cpu
+eval_device: cuda
 
 # Etc
 save_format: 'general'
