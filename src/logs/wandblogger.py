@@ -18,8 +18,8 @@ from datasets.sampler import make_grid_coords
 from datasets.utils import make_domain_slices
 
 from .logger import Logger
-from .utils import (output_on_batched_dataset, output_on_batched_grid, rgb_to_grayscale,
-                     ycbcr_to_rgb, RESIZING_FILTERS)
+from datasets.utils import (output_on_batched_dataset, 
+                            output_on_batched_grid, rgb_to_grayscale, ycbcr_to_rgb, RESIZING_FILTERS, INVERSE_COLOR_MAPPING)
 from networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
 import time
@@ -32,16 +32,7 @@ MODELS_DIR = 'models'
 MESHES_DIR = 'meshes'
 
 
-class WandBLogger(Logger):
-    def __init__(self, project: str, 
-                        name: str, 
-                        hyper: dict,
-                        basedir: str, 
-                        entity=None, 
-                        config=None, 
-                        settings=None):
-        super().__init__(project, name, hyper, 
-                         basedir, entity, config, settings)
+class WandBLogger(Logger):    
 
     def on_stage_start(self, current_model, stage_number, updated_hyper=None):
         if updated_hyper:
@@ -138,11 +129,18 @@ class WandBLogger(Logger):
         if len(pixels) != len(captions):
             raise ValueError("label and pixels should have the same size")
         
-        images = [
-            wandb.Image(pixels[i].detach().cpu(
-                                        ).clamp(0, 1).squeeze(-1).numpy(),
-                            caption=captions[i]) for i in range(len(pixels))
-        ]
+        print(self.hyper['color_space'], 'COLOR SPACE')
+        color_transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
+        pixels = [color_transform(p.cpu().clamp(0, 1)).clamp(0, 1) 
+                  for p in pixels]
+        # images = []
+        # for i in range(len(pixels)):
+        #     values = pixels[i].detach().cpu().clamp(0, 1).squeeze(-1).numpy()
+        #     img = Image.fromarray((values * 255).astype(np.uint8), 
+        #                         mode=self.hyper.get("color_space", 'RGB'))
+        #     images.append(img.convert('RGB'))
+        images = [wandb.Image(pixels[i].squeeze(-1).numpy(),
+                              caption=captions[i]) for i in range(len(pixels))]
         wandb.log({label: images})
 
     def log_detailtensor(self, pixels:torch.Tensor, label:str):
@@ -649,8 +647,10 @@ class WandBLogger3D(WandBLogger):
         pred_slices = []
         grads = []
         for slice in domain_slices:
-            output_dict = model(slice.view(-1, channels).to(device))
-            model_out = output_dict['model_out'].clamp(0, 1)
+            print(slice.shape, channels, "LOG PRED")
+            slice = slice.view(-1, self.hyper['in_features']).to(device)
+            output_dict = model(slice)
+            model_out = output_dict['model_out']
             grads.append(gradient(model_out, 
                                   output_dict['model_in']).detach().cpu().view(dims[0], dims[1], 3))
             pred_slices.append(
@@ -684,9 +684,10 @@ class WandBLogger3D(WandBLogger):
         if not isinstance(slices, Sequence):
             slices = [slices]
         if self.hyper['channels'] == 3:
-            if self.hyper.get('YCbCr', False):
+            color_space = self.hyper.get('color_space', 'RGB')
+            if color_space == 'RGB':
                 slices = [rgb_to_grayscale(s) for s in slices]
-            else:
+            elif color_space == 'YCbCr':
                 slices = [s[..., 0] for s in slices]
         imgs = []
         for pixels in slices:
@@ -770,13 +771,17 @@ class WandBLogger3D(WandBLogger):
             point_cloud = (point_cloud / torch.linalg.vector_norm(
                                     point_cloud, dim=-1).unsqueeze(-1)) * scale_radius
             
-        with  torch.no_grad():
-            colors = output_on_batched_grid(model, point_cloud, 
-                                        self.hyper['batch_size'], device)
-        colors = (colors.cpu().clamp(0, 1) * 255)
+        with torch.no_grad():
+            colors = output_on_batched_grid(model, 
+                                            point_cloud, 
+                                            self.hyper['batch_size'], 
+                                            device).cpu().clamp(0, 1)
         if self.hyper['channels'] == 1:
             colors = torch.concat([colors, colors, colors], 1)
-        
+        else:
+            color_transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
+            colors = color_transform(colors)
+        colors = (colors * 255).int()
         point_cloud = torch.concat((point_cloud, colors), 1)
 
         wandb.log({"point_cloud": wandb.Object3D(point_cloud.numpy())})

@@ -5,7 +5,7 @@ model: M
 in_features: 3
 out_features: 3
 hidden_layers: 1
-hidden_features: [[512, 1024], [512, 256], [512, 512]]
+hidden_features: [256, [512, 256], [512, 512]]
 bias: True
 max_stages: 1
 
@@ -32,16 +32,17 @@ loss_weights: {'d0': 1, 'd1': 0}
 opt_method: Adam
 lr: 0.0001
 loss_tol: 0.000000000001
-diff_tol: 0.0001
-max_epochs_per_stage: [250]
-batch_size: 512 * 512 * 2
+diff_tol: 0.000000001
+max_epochs_per_stage: [140, 150, 100, 5]
+batch_size: 256 * 256 * 2
 
 # Image
 filename: marble #colorful_noise3d128.npy
-width: 64
-height: 64
-depth: 64
-channels: 3
+width: 32
+height: 32
+depth: 32
+channels: 0
+color_space: YCbCr # L, RGB, YCbCr
 
 test_mesh: bunny.obj
 ntestpoints: 290000

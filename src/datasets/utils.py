@@ -1,8 +1,17 @@
 import torch 
 import numpy as np
 from typing import Sequence, Union
+from torch.utils.data import BatchSampler
+from PIL import Image
 
 # Adapted from https://github.com/makeyourownalgorithmicart/makeyourownalgorithmicart/blob/master/blog/perlin_gradient_noise/1d_perlin.ipynb
+
+RESIZING_FILTERS = {
+    'nearest': Image.Resampling.NEAREST,
+    'linear': Image.Resampling.BILINEAR,
+    'cubic': Image.Resampling.BICUBIC,
+}
+
 
 
 def make_grid_coords(nsamples, start, end, dim, flatten=True):
@@ -19,60 +28,6 @@ def make_grid_coords(nsamples, start, end, dim, flatten=True):
                    for i in range(dim)])
     grid = torch.stack(torch.meshgrid(*dir_samples, indexing='ij'), dim=-1)
     return grid.reshape(-1, dim) if flatten else grid
-
-def rotation_matrix(axis, theta):
-    """
-    This function returns a 3x3 rotation matrix of an angle theta around one of the main axes in 3D.
-    
-    Args:
-    - axis: str, the axis to rotate around, 'x', 'y', or 'z'
-    - theta: float, the angle in radians to rotate by
-    
-    Returns:
-    - rot_mat: torch.Tensor of shape (3,3), the rotation matrix
-    """
-    assert axis in ['x', 'y', 'z'], "Axis must be 'x', 'y', or 'z'"
-    
-    if axis == 'x':
-        rot_mat = torch.tensor([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta), np.cos(theta)]])
-    elif axis == 'y':
-        rot_mat = torch.tensor([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
-    else: # axis == 'z'
-        rot_mat = torch.tensor([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
-    
-    return rot_mat.float()
-
-def blend(x):
-  return 6*x**5 - 15*x**4 + 10*x**3
-
-def noise(scale, samples):
-    # create a list of 2d vectors
-    angles = torch.rand(scale) * 2*np.pi
-    gradients = torch.stack((torch.cos(angles), torch.sin(angles)), dim=1)
-
-    x = torch.linspace(0, scale-1, samples)
-    noise_values = []
-    for value in x[:-1]:
-        i = int(np.floor(value))
-        lower, upper = gradients[i], gradients[i+1]
-
-        dot1 = torch.dot(lower, torch.tensor([value - i, 0]))
-        dot2 = torch.dot(upper, torch.tensor([value - i - 1, 0]))
-        # TODO: review interpolation
-        k1 = blend(value-i)
-        k2 = blend(i+1 - value)
-        interpolated = k1*dot2 + k2*dot1 
-        noise_values.append(interpolated.item())
-    
-    noise_values.append(0.0)
-    return torch.tensor(noise_values)
-
-def perlin_noise(samples, scale=10, octaves=1, p=1):
-    pnoise = 0
-    for i in range(octaves):
-        partial = noise(2**i * scale, samples)/(p**i)
-        pnoise = partial + pnoise
-    return pnoise
 
 # only works for plane slices in 3D for now
 def make_domain_slices(nsamples, start, end, slice_views, slice_idx={}):
@@ -109,41 +64,130 @@ def make_domain_slices(nsamples, start, end, slice_views, slice_idx={}):
 
     return slices
 
-# def checker(res, scale=10):
-#     tensors = tuple(3 * [torch.linspace(-1, 1, steps=res)])
-#     grid = torch.stack(torch.meshgrid(*tensors, indexing='ij'), dim=-1)
-#     grid = grid.reshape(-1, 3)
+def rotation_matrix(axis, theta):
+    """
+    This function returns a 3x3 rotation matrix of an angle theta around one of the main axes in 3D.
+    
+    Args:
+    - axis: str, the axis to rotate around, 'x', 'y', or 'z'
+    - theta: float, the angle in radians to rotate by
+    
+    Returns:
+    - rot_mat: torch.Tensor of shape (3,3), the rotation matrix
+    """
+    assert axis in ['x', 'y', 'z'], "Axis must be 'x', 'y', or 'z'"
+    
+    if axis == 'x':
+        rot_mat = torch.tensor([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta), np.cos(theta)]])
+    elif axis == 'y':
+        rot_mat = torch.tensor([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+    else: # axis == 'z'
+        rot_mat = torch.tensor([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]])
+    
+    return rot_mat.float()
 
-#     volume = torch.sin(scale * grid)
-#     volume = grid[:, 0] * grid[:, 1] * grid[:, 2]
-#     volume[volume < 0] = 0.0
-#     volume[volume > 0] = 1.0
-#     return volume.view(res, res, res).numpy()
+def output_on_batched_dataset(model, dataset, device):
+    model_out = []
+    with torch.no_grad():
+        for batch in dataset:
+            input, _ = batch['c0']
+            output_dict = model(input['coords'].to(device))
+            model_out.append(output_dict['model_out'])
+    return torch.concat(model_out)
 
-def checker(texsize, cubesize):
-    # Create a 3D grid of coordinates
-    x, y, z = np.mgrid[0:texsize, 0:texsize, 0:texsize]
+def output_on_batched_grid(model, grid, batch_size, device):
+    output = []
+    for batch in BatchSampler(grid, batch_size, drop_last=False):
+        batch = torch.stack(batch).to(device)
+        output.append(model(batch)['model_out'])
+    return torch.concat(output)
 
-    # Generate a sine wave pattern in each dimension
-    sine_x = np.sin(2 * np.pi * x / cubesize)
-    sine_y = np.sin(2 * np.pi * y / cubesize)
-    sine_z = np.sin(2 * np.pi * z / cubesize)
+def output_on_batched_points(model, points, batch_size, device):
+    output = []
+    for batch in BatchSampler(points, batch_size, drop_last=False):
+        batch = torch.stack(batch).to(device)
+        output.append(model(batch)['model_out'])
+    return torch.concat(output)
 
-    # Combine the sine waves and threshold to create checkerboard pattern
-    return ((sine_x + sine_y + sine_z) > 0).astype(np.float32)
+def ycbcr_to_rgb(image: torch.Tensor, channel_dim=-1) -> torch.Tensor:
+    r"""Convert an YCbCr image to RGB.
 
+    The image data is assumed to be in the range of (0, 1).
 
-def solid_texture(N, noise_scale=0.1):
-    x, y, z = np.ogrid[-1:1:N*1j, -1:1:N*1j, -1:1:N*1j]
-    r = np.sqrt(x**2 + y**2 + z**2)
-    solid = np.zeros_like(r)
-    solid[r < 0.5] = 1
-    noise = noise_scale * np.random.randn(N, N, N)
-    solid += noise
-    solid[solid < 0] = 0
-    solid[solid > 1] = 1
-    return solid.astype(np.float32)
+    Args:
+        image: YCbCr Image to be converted to RGB with shape :math:`(H, W, 3)`.
 
+    Returns:
+        RGB version of the image with shape :math:`(H, W, 3)`.
+    based on: https://kornia.readthedocs.io/en/latest/_modules/kornia/color/ycbcr.html
+    """
+    if channel_dim == -1:
+        y = image[..., 0]
+        cb = image[..., 1]
+        cr = image[..., 2]
+    elif channel_dim == 0:
+        y = image[0, ...]
+        cb = image[1, ...]
+        cr = image[2, ...]
+    else:
+        raise ValueError(f"Invalid channel_dim: {channel_dim}")
+
+    delta: float = 0.5
+    cb_shifted = cb - delta
+    cr_shifted = cr - delta
+
+    r = y + 1.403 * cr_shifted
+    g = y - 0.714 * cr_shifted - 0.344 * cb_shifted
+    b = y + 1.773 * cb_shifted
+    return torch.stack([r, g, b], channel_dim)
+
+def rgb_to_grayscale(image, channel_dim=-1):
+    if channel_dim == -1:
+        r = image[..., 0:1]
+        g = image[..., 1:2]
+        b = image[..., 2:3]
+    elif channel_dim == 0:
+        r = image[0:1, ...]
+        g = image[1:2, ...]
+        b = image[2:3, ...]
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+def rgb_to_ycbcr(image: torch.Tensor, channel_dim=-1) -> torch.Tensor:
+    r"""Convert an RGB image to YCbCr.
+
+    Args:
+        image: RGB Image to be converted to YCbCr with shape :math:`(*, 3, H, W)`.
+
+    Returns:
+        YCbCr version of the image with shape :math:`(*, 3, H, W)`.
+
+    """
+    if channel_dim == -1:
+        r = image[..., 0]
+        g = image[..., 1]
+        b = image[..., 2]
+    elif channel_dim == 0:
+        r = image[0, ...]
+        g = image[1, ...]
+        b = image[2, ...]
+
+    delta: float = 0.5
+    y = 0.299 * r + 0.587 * g + 0.114 * b
+    cb = (b - y) * 0.564 + delta
+    cr = (r - y) * 0.713 + delta
+    return torch.stack([y, cb, cr], channel_dim)
+
+COLOR_MAPPING = {
+    'RGB': lambda x: x,
+    'L': rgb_to_grayscale,
+    'YCbCr': rgb_to_ycbcr
+}
+
+INVERSE_COLOR_MAPPING = {
+    'RGB': lambda x: x,
+    'L': lambda x: x,
+    'YCbCr': lambda x: ycbcr_to_rgb(x)
+}
 
 if __name__ == '__main__':
     from PIL import Image
