@@ -12,3 +12,5 @@ wandb/*
 img/kodak/*
 img/pexels_textures/*
 meshes/*
+img/temp/*
+img/untracked/*

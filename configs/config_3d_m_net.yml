@@ -4,7 +4,7 @@ model: M
 # Network
 in_features: 3
 out_features: 3
-hidden_layers: 3
+hidden_layers: 1
 hidden_features: [256, [512, 256], [512, 512]]
 bias: True
 max_stages: 1
@@ -14,7 +14,6 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [4, 12, 24]
 omega_0: [4, 12, 24]
 hidden_omega_0: [30, 30, 30, 30]
 superposition_w0: False
@@ -34,15 +33,16 @@ opt_method: Adam
 lr: 0.001
 loss_tol: 0.000000000001
 diff_tol: 0.000000001
-max_epochs_per_stage: [80, 150, 100, 5]
+max_epochs_per_stage: [140, 150, 100, 5]
 batch_size: 256 * 256 * 2
 
 # Image
-filename: voronoi #colorful_noise3d128.npy
-width: 128
-height: 128
-depth: 128
-channels: 3
+filename: marble #colorful_noise3d128.npy
+width: 32
+height: 32
+depth: 32
+channels: 0
+color_space: YCbCr # L, RGB, YCbCr
 
 test_mesh: bunny.obj
 ntestpoints: 290000
