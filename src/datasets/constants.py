@@ -21,6 +21,7 @@ class Sampling(Enum):
     POISSON_DISC = auto()
     STRATIFIED = auto()
     REFLECT = auto()
+    PROCEDURAL = auto()
 
 SAMPLING_DICT = {
     'regular': Sampling.REGULAR,

@@ -6,12 +6,12 @@ from PIL import Image
 from torchvision.transforms.functional import to_tensor, to_pil_image
 from pathlib import Path
 from .constants import SAMPLING_DICT, Sampling
-from datasets.sampler import SamplerFactory, make_grid_coords
+from datasets.sampler import SamplerFactory, ProceduralSampler
 from scipy.ndimage import sobel
 from torch.utils.data import BatchSampler
 from scipy.interpolate import RegularGridInterpolator, interpn
-from .utils import rotation_matrix, make_domain_slices
-
+from datasets.utils import (rotation_matrix, make_domain_slices, 
+                            COLOR_MAPPING, make_grid_coords)
 
 def make_mask(srcpath, mask_color):
     img = np.array(Image.open(srcpath))
@@ -265,36 +265,35 @@ class VolumeSignal(BaseSignal):
         return slices
 
     
-# TODO make a procedural sampler
 class Procedural3DSignal(Dataset):
     def __init__(self, procedure,
                  dims,
                  channels,
                  domain=[-1, 1],
                  attributes=[], 
-                 sampling_scheme=Sampling.REGULAR,
+                 sampling_scheme=Sampling.PROCEDURAL,
                  batch_size=0,
-                 YCbCr=False):
+                 color_space='RGB'):
         
-        self.procedure = procedure
+        color_transform = COLOR_MAPPING[color_space]
+        self.procedure =  lambda x: color_transform(procedure(x))
+        self.color_space = color_space
         self.dims = dims
         self.channels = channels
         # TODO use shuffle
         self.domain = domain
         self.batch_size = batch_size
         self.attributes = attributes
-        self.ycbcr = YCbCr
-        self.data_attributes = {}
         
-        RANDOM_SEED = 777
-        self.rng = np.random.default_rng(RANDOM_SEED)
-
-        prod = dims[0] * dims[1] * dims[2]
-        self._num_samples =  prod // batch_size
-        if prod % batch_size != 0:
-            self._num_samples += 1
-
-
+        self.data_attributes = {}
+        pseudo_shape = (channels, *dims)
+        
+        self.sampler = ProceduralSampler(
+                                self.procedure, 
+                                domain,
+                                attributes,
+                                batch_size,
+                                pseudo_shape)
 
     def size(self):
         return (self.channels, *self.dims)
@@ -304,19 +303,10 @@ class Procedural3DSignal(Dataset):
         return self.size()
     
     def __len__(self):
-        return self._num_samples
+        return len(self.sampler)
 
     def __getitem__(self, idx):
-        if idx >= len(self):
-            raise StopIteration
-        possible_values = torch.linspace(*self.domain, self.shape[1])
-        coords = self.rng.choice(possible_values, 
-                            (self.batch_size, self.channels),
-                            replace=True)
-        coords = torch.from_numpy(coords)
-        in_dict = {'coords': coords}
-        out_dict = {'d0': self.procedure(coords)}
-        return {'c0': (in_dict, out_dict)}
+        return self.sampler[idx]
     
     def type_code(self):
         return 'P'

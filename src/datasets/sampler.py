@@ -7,22 +7,8 @@ import torchvision.transforms as T
 from .poisson_disc import PoissonDisc
 
 from .constants import Sampling
+from .utils import make_grid_coords
 
-
-def make_grid_coords(nsamples, start, end, dim, flatten=True):
-    if not isinstance(nsamples, Sequence):
-        nsamples = dim * [nsamples]
-    if not isinstance(start, Sequence):
-        start = dim * [start]
-    if not isinstance(end, Sequence):
-        end = dim * [end]
-    if len(nsamples) != dim or len(start) != dim or len(end) != dim:
-        raise ValueError("'nsamples'; 'start'; and 'end' should be a single value or have same  length as 'dim'")
-    
-    dir_samples = tuple([torch.linspace(start[i], end[i], steps=nsamples[i]) 
-                   for i in range(dim)])
-    grid = torch.stack(torch.meshgrid(*dir_samples, indexing='ij'), dim=-1)
-    return grid.reshape(-1, dim) if flatten else grid
 
 class Sampler:
     def __init__(self, data, domain, attributes, batch_size, shuffle=False):
@@ -55,6 +41,7 @@ class Sampler:
     
     def scheme(self):
         raise NotImplemented()
+    
     
 class RegularSampler(Sampler):
 
@@ -158,6 +145,49 @@ class ReflectSampler(RegularSampler):
     def scheme(self):
         return Sampling.REFLECT
 
+class ProceduralSampler:
+    def __init__(self, procedure, 
+                        domain, 
+                        attributes, 
+                        batch_size, 
+                        pseudo_shape) -> None:
+        self.procedure = procedure
+        self.domain = domain
+        self.attributes = attributes
+        
+        RANDOM_SEED = 777
+        self.rng = np.random.default_rng(RANDOM_SEED)
+        self._pseudo_shape = pseudo_shape
+
+        dims = pseudo_shape[1:]
+        prod = dims[0] * dims[1] * dims[2]
+        self._num_samples =  prod // batch_size
+        if prod % batch_size != 0:
+            self._num_samples += 1
+        self.batch_size = (batch_size if batch_size > 0 
+                            else prod * pseudo_shape[0])
+
+    def __len__(self):
+        return self._num_samples
+
+    def __getitem__(self, idx):
+        if idx >= len(self):
+            raise StopIteration
+        possible_values = torch.linspace(*self.domain, self.shape[1])
+        channels = self.shape[0]
+        coords = self.rng.choice(possible_values, 
+                            (self.batch_size, 3),
+                            replace=True)
+        coords = torch.from_numpy(coords)
+        in_dict = {'coords': coords}
+        out_dict = {'d0': self.procedure(coords)}
+        return {'c0': (in_dict, out_dict)}
+    
+    @property
+    def shape(self):
+        return self._pseudo_shape
+
+
 # TODO: refactor and extend to work with multiple dimensions
 class PoissonDiscSampler(RegularSampler):
     def __init__(self, img_data, attributes = [], 
@@ -207,6 +237,7 @@ class PoissonDiscSampler(RegularSampler):
         samples = {self.key_group:(in_dict, out_dict)}
 
         return samples 
+
 
 # TODO: refactor and extend to work with multiple dimensions
 class StratifiedSampler:
