@@ -749,17 +749,22 @@ class WandBLogger3D(WandBLogger):
         self.log_images(pred_slices, 'Extrapolation', captions)
 
     def log_point_cloud(self, model, device):
+        scale_radius = self.hyper.get('scale_radius', 0.9)
         if self.hyper.get('test_mesh', ""):
-            mesh = trimesh.load_mesh(os.path.join(self.basedir, MESHES_DIR, 
-                                                  self.hyper['test_mesh']))
-            point_cloud, _ = trimesh.sample.sample_surface(
-                                    mesh, self.hyper['ntestpoints'])
-            point_cloud = torch.from_numpy(point_cloud).float()
-            # center at the origin and rescale to fit a sphere of radius
-            scale_radius = self.hyper.get('scale_radius', 0.9)
-            point_cloud = point_cloud - torch.mean(point_cloud, dim=0)
-            scale = scale_radius / torch.max(torch.abs(point_cloud))
-            point_cloud = scale * point_cloud
+            try:
+                mesh = trimesh.load_mesh(os.path.join(self.basedir, MESHES_DIR, 
+                                                    self.hyper['test_mesh']))
+                point_cloud, _ = trimesh.sample.sample_surface(
+                                        mesh, self.hyper['ntestpoints'])
+                point_cloud = torch.from_numpy(point_cloud).float()
+                # center at the origin and rescale to fit a sphere of radius
+                point_cloud = point_cloud - torch.mean(point_cloud, dim=0)
+                scale = scale_radius / torch.max(torch.abs(point_cloud))
+                point_cloud = scale * point_cloud
+            except:
+                point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
+                point_cloud = (point_cloud / torch.linalg.vector_norm(
+                                    point_cloud, dim=-1).unsqueeze(-1)) * scale_radius
         else:
             point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
             point_cloud = (point_cloud / torch.linalg.vector_norm(
