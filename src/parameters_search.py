@@ -2,7 +2,6 @@ from typing import Sequence
 import torch
 import os
 from pathlib import Path
-
 import wandb
 from logs.wandblogger import WandBLogger3D 
 from training.trainer import MRTrainer
@@ -14,10 +13,29 @@ from datasets.procedural import voronoi_texture, marble_texture
 from copy import deepcopy
 
 
-os.environ["WANDB_NOTEBOOK_NAME"] = "train3d.ipynb"
-BASE_DIR = Path('.').absolute().parents[0]
+BASE_DIR = Path('.').absolute()
 VOXEL_PATH = BASE_DIR.joinpath('vox')
 MODEL_PATH = BASE_DIR.joinpath('models')
+
+def procedural_multiresolution(base_signal, max_stages, decimate, seed):
+    mr_stack = [base_signal]
+    domain_length = base_signal.domain[1] - base_signal.domain[0]
+    base_dim = base_signal.shape[-1]
+    for i in range(1, max_stages):
+        torch.manual_seed(seed)
+        new_dim = (base_dim // 2**i)
+        pixelsize = domain_length / new_dim
+        procedure = marble_texture(pixelsize)
+        dims = ((new_dim, new_dim, new_dim) if decimate 
+                    else (base_dim, base_dim, base_dim))
+        mr_stack.append(Procedural3DSignal(procedure,
+                                           dims,
+                                           base_signal.channels,
+                                           base_signal.domain,
+                                           base_signal.attributes,
+                                           batch_size=base_signal.batch_size,
+                                           color_space=base_signal.color_space))
+    return mr_stack
 
 def run_experiment(hyper, project_name, seed):
     torch.manual_seed(seed)
@@ -33,10 +51,17 @@ def run_experiment(hyper, project_name, seed):
         (dim, dim, dim),
         channels=hyper['channels'],
         domain=hyper['domain'],
-        batch_size=hyper['batch_size']
+        batch_size=hyper['batch_size'],
+        color_space=hyper['color_space']
     )
-    train_dataset = [base_signal]
-    test_dataset = [base_signal]
+    train_dataset = procedural_multiresolution(base_signal, 
+                                               hyper['max_stages'], 
+                                               True,
+                                               seed)
+    test_dataset = procedural_multiresolution(base_signal, 
+                                               hyper['max_stages'], 
+                                               False,
+                                               seed)
 
     filename = os.path.basename(hyper['filename'])
     wandblogger = WandBLogger3D(project_name,
@@ -51,34 +76,45 @@ def run_experiment(hyper, project_name, seed):
 
 
 if __name__ == '__main__':
-    project_name = "params-search"
-    config_file = 'configs/config_3d_m_net.yml'
+    project_name = "solid-texture"
+    config_file = 'configs/siggraph_asia/config_solid_texture.yml'
     with open(config_file) as f:
         hyper = yaml.load(f, Loader=SafeLoader)
         if isinstance(hyper['batch_size'], str):
             hyper['batch_size'] = eval(hyper['batch_size'])
+        if hyper['channels'] == 0:
+            hyper['channels'] = hyper['out_features']
         print(hyper)
+
+    for hidden_features in [ [[512, 256], [256, 512], [512, 768], [768, 768]],
+                             [[512, 256], [512, 256], [512, 256], [512, 256]],
+                             [[512, 256], [768, 512], [1024, 768], [1280, 768]],
+                             [[512, 384], [768, 512], [1024, 768], [2048, 1024]],
+                             [256, 384, 512, 1024] ]:
+        exp = {'hidden_features': hidden_features}
+        exp_hyper = deepcopy(hyper)
+        exp.update(exp)
+        run_experiment(exp_hyper, project_name, seed=777)
     
-    
-    for hidden_features in [[2048, 1024, 1024, 512], [2048, 1024, 512, 256], [256, 512, 1024]]:
-        exp = {}
-        if isinstance(hidden_features, Sequence):
-            exp['hidden_layers'] = len(hidden_features) - 1
-        else:
-            exp['hidden_layers'] = 1
-        exp['hidden_features'] = [hidden_features]
-        for omega_0 in [8, 16, 24, 32]:
-            exp['omega_0'] = [omega_0]
-            for res in [256, 512]:
-                exp["width"] = res 
-                exp["height"] = res
-                exp["depth"] = res
-                try:
-                    exp_hyper = deepcopy(hyper)
-                    exp_hyper.update(exp)
-                    run_experiment(exp_hyper, 
-                                   project_name, seed=777)
-                except Exception as e:
-                    print(e, hidden_features, omega_0, res)
-                    wandb.finish()
+    # for hidden_features in [[2048, 1024, 1024, 512], [2048, 1024, 512, 256], [256, 512, 1024]]:
+    #     exp = {}
+    #     if isinstance(hidden_features, Sequence):
+    #         exp['hidden_layers'] = len(hidden_features) - 1
+    #     else:
+    #         exp['hidden_layers'] = 1
+    #     exp['hidden_features'] = [hidden_features]
+    #     for omega_0 in [8, 16, 24, 32]:
+    #         exp['omega_0'] = [omega_0]
+    #         for res in [256, 512]:
+    #             exp["width"] = res 
+    #             exp["height"] = res
+    #             exp["depth"] = res
+    #             try:
+    #                 exp_hyper = deepcopy(hyper)
+    #                 exp_hyper.update(exp)
+    #                 run_experiment(exp_hyper, 
+    #                                project_name, seed=777)
+    #             except Exception as e:
+    #                 print(e, hidden_features, omega_0, res)
+    #                 wandb.finish()
                     

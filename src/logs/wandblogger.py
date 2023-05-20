@@ -656,7 +656,6 @@ class WandBLogger3D(WandBLogger):
         pred_slices = []
         grads = []
         for slice in domain_slices:
-            print(slice.shape, channels, "LOG PRED")
             slice = slice.view(-1, self.hyper['in_features']).to(device)
             output_dict = model(slice)
             model_out = output_dict['model_out']
