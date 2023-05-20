@@ -113,10 +113,15 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
         
 
 if __name__ == '__main__':
+    run_experiment('siggraph_asia', 
+                   'img/siggraph_asia', 
+                   'config_siggraph_imgs.yml',
+                   WandBLogger2D)
+
     # prepare_dataset('E:\Workspace\impa\mrnet\img\pexels_textures', 1024, 
     #                 resize=True, rename_to="pic")
-    run_experiment('pexels1024', 'img/pexels_textures', 
-                   'config_textures_m_net.yml', WandBLogger2D)
+    # run_experiment('pexels1024', 'img/pexels_textures', 
+    #                'config_textures_m_net.yml', WandBLogger2D)
     # run_experiment('pexels1024', 'img/pexels_textures', 
     #                'config_textures_l_net.yml', WandBLogger2D)
     # run_experiment('pexels1024', 'img/pexels_textures', 

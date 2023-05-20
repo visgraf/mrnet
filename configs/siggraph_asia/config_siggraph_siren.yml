@@ -1,0 +1,57 @@
+# Model Class (S, L, M)
+model: M
+positive_freqs: False
+
+# Network
+in_features: 2
+out_features: 3
+hidden_layers: 3
+hidden_features: [256]
+bias: True
+max_stages: 1
+
+period: 0
+pmode: "wrap"
+domain: [-1, 1]
+# mask_color: 130
+
+# Frequency Initialization
+omega_0: [30, 3, 6, 12, 18, 32, 64]
+hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
+superposition_w0: False
+
+# Sampling
+sampling_scheme: regular
+decimation: True
+filter: gauss # vary between none, laplace and gauss
+attributes: ['d0', 'd1']
+
+# Loss
+loss_function: 'hermite'
+loss_weights: {'d0': 1, 'd1': 0.0}
+
+# Training
+opt_method: Adam
+lr: 0.0001
+loss_tol: 0.000000000001
+diff_tol: 0.000001
+max_epochs_per_stage: [500]
+batch_size: 256 * 256
+
+# Image
+image_name: siggraph_asia/leopard.jpg
+width: 512
+height: 512
+channels: 0
+color_space: RGB
+
+# Computation (Only vary between 'cpu' and 'cuda')
+device: cuda
+eval_device: cpu
+
+# Etc
+save_format: 'general'
+visualize_grad: True
+extrapolate: [-2, 2]
+zoom: [2, 4]
+zoom_filters: ['linear', 'cubic', 'nearest']

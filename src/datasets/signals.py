@@ -28,13 +28,13 @@ class BaseSignal(Dataset):
                  attributes=[], 
                  sampling_scheme=Sampling.REGULAR,
                  batch_size=0,
-                 YCbCr=False,
+                 color_space='RGB',
                  shuffle=True):
         
         self.data = data
         self.domain = domain
         self.attributes = attributes
-        self.ycbcr = YCbCr
+        self.color_space = color_space
         self.data_attributes = {}
         if 'd1' in self.attributes:
             self.compute_derivatives()
@@ -91,7 +91,7 @@ class BaseSignal(Dataset):
                     other.attributes, 
                     other.sampler.scheme(),
                     other.sampler.batch_size,
-                    other.ycbcr,
+                    other.color_space,
                     shuffle)
         
 
@@ -123,17 +123,16 @@ class ImageSignal(BaseSignal):
                       attributes=[], 
                       maskpath=None,
                       batch_size=0,
-                      YCbCr=False):
+                      color_space='RGB'):
         img = Image.open(imagepath)
-        if channels == 1:
-            img = img.convert('L')
-        if channels == 3 and YCbCr:
-            img = img.convert('YCbCr')
+        img.mode
+        if color_space != img.mode:
+            img = img.convert(color_space)
 
-        if width is not None or height is not None:
-            if height is None:
+        if width or height:
+            if not height:
                 height = img.height
-            if width is None:
+            if not width:
                 width = img.width
             if width > img.width or height > img.height:
                 warnings.warn(f"Resizing to a higher resolution ({width}x{height})", RuntimeWarning)
@@ -149,7 +148,7 @@ class ImageSignal(BaseSignal):
                             sampling_scheme=sampling_scheme,
                             attributes=attributes,
                             batch_size=batch_size,
-                            YCbCr=YCbCr)
+                            color_space=color_space)
                             #domain_mask=mask)
 
     def compute_derivatives(self):
@@ -160,7 +159,7 @@ class ImageSignal(BaseSignal):
                 torch.from_numpy(sobel(self.data, d, mode='wrap'))
                 )
         # channels x N x dims
-        if self.ycbcr:
+        if self.color_space == 'YCbCr':
             self.data_attributes = {'d1': torch.stack(directions, dim=-1)[0:1, ...]} #GAMBIARRA YCbCr
         else:
             self.data_attributes = {'d1': torch.stack(directions, dim=-1)}

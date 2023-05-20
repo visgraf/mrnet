@@ -6,13 +6,12 @@ positive_freqs: True
 in_features: 1
 out_features: 1
 hidden_layers: 1
-hidden_features: [[4, 32], [64, 24], 8, 16, 32]
+hidden_features: [[16, 32]]
 bias: True
 max_stages: 1
 
 period: 2
 domain: [-1, 1]
-# mask_color: 130
 
 # Frequency Initialization
 omega_0: [32, 128, 16, 32, 64]
@@ -34,12 +33,12 @@ opt_method: Adam
 lr: 0.0005
 loss_tol: 0.00000000000001
 diff_tol: 0.00000000001
-max_epochs_per_stage: [4000, 1000, 401, 401, 401, 401, 401]
-batch_size: 128 * 128
+max_epochs_per_stage: [2000]
+batch_size: 256 * 256
 
 # Signal
 image_name: freqs
-width: 512
+width: 256
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')

@@ -102,18 +102,34 @@ class WandBLogger(Logger):
         wandb.log_artifact(artifact)
 
     def log_PSNR(self, gt, pred):
-        mse = torch.mean((gt - pred)**2)
-        psnr = 10 * torch.log10(1 / mse + 1e-15)
+        clamped = pred.clamp(0, 1)
+        mse = torch.mean((gt - clamped)**2)
+        psnr = 10 * torch.log10(1 / mse)
+
+        # sanity check
+        transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
+        int_gt = (transform(gt) * 255).numpy().astype(np.uint8)
+        int_pred = (transform(clamped).clamp(0, 1) * 255
+                                ).numpy().astype(np.uint8)
+        ski_psnr = skimage.metrics.peak_signal_noise_ratio(int_gt, 
+                                                           int_pred,
+                                                           data_range=255)
+        print(ski_psnr)
         
         label = f"Stage {self.hyper['stage']}"
-        table = wandb.Table(data=[(label, psnr)], columns = ["Stage", "PSNR"])
+        table = wandb.Table(data=[(label, psnr, ski_psnr)], 
+                            columns = ["Stage", "PSNR", "uint8_PSNR"])
         wandb.log({"psnr_value" : wandb.plot.bar(table, "Stage", "PSNR",
                                     title="PSNR for reconstruction")})
+        
 
     def log_SSIM(self, gt, pred):
-        ssim = skimage.metrics.structural_similarity(gt.detach().cpu().numpy(), 
-                                                    pred.detach().cpu().numpy(),
-                                                    data_range=1, channel_axis=-1)
+        clamped = pred.clamp(0, 1)
+        transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
+        ssim = skimage.metrics.structural_similarity(
+                        (transform(gt).cpu().numpy() * 255).astype(np.uint8), 
+                        (transform(clamped).clamp(0, 1).cpu().numpy() * 255).astype(np.uint8),
+                        data_range=1, channel_axis=-1)
         label = f"Stage {self.hyper['stage']}"
         table = wandb.Table(data=[(label, ssim)], columns = ["Stage", "SSIM"])
         wandb.log({"ssim_value" : wandb.plot.bar(table, "Stage", "SSIM",
@@ -129,16 +145,10 @@ class WandBLogger(Logger):
         if len(pixels) != len(captions):
             raise ValueError("label and pixels should have the same size")
         
-        print(self.hyper['color_space'], 'COLOR SPACE')
         color_transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
         pixels = [color_transform(p.cpu().clamp(0, 1)).clamp(0, 1) 
                   for p in pixels]
-        # images = []
-        # for i in range(len(pixels)):
-        #     values = pixels[i].detach().cpu().clamp(0, 1).squeeze(-1).numpy()
-        #     img = Image.fromarray((values * 255).astype(np.uint8), 
-        #                         mode=self.hyper.get("color_space", 'RGB'))
-        #     images.append(img.convert('RGB'))
+        
         images = [wandb.Image(pixels[i].squeeze(-1).numpy(),
                               caption=captions[i]) for i in range(len(pixels))]
         wandb.log({label: images})
@@ -384,7 +394,8 @@ class WandBLogger2D(WandBLogger):
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Train Data')
         else:
-            self.log_imagetensor(pixels, 'Train Data')
+            # self.log_imagetensor(pixels, 'Train Data')
+            self.log_images([pixels], 'Train Data', [f"{list(train_loader.shape)}"])
     
     def log_groundtruth(self, test_loader):
         gtdata = test_loader.data.view(-1, self.hyper['channels'])
@@ -393,14 +404,16 @@ class WandBLogger2D(WandBLogger):
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Ground Truth')
         else:
-            self.log_imagetensor(pixels, 'Ground Truth')
+            # self.log_imagetensor(pixels, 'Ground Truth')
+            self.log_images([pixels], 'Ground Truth', [f"{list(test_loader.shape)}"])
         
         self.log_fft(pixels, 'FFT Ground Truth')
 
         if 'd1' in self.hyper['attributes']:
             grads = test_loader.data_attributes['d1']
             if self.hyper['channels'] == 3:
-                if self.hyper['YCbCr']:
+                if (self.hyper.get('YCbCr', False) 
+                    or self.hyper.get('color_space', 'RGB') == 'YCbCr'):
                     grads = grads[0, ...]
                 else:
                     grads = (0.2126 * grads[0, ...] 
@@ -442,10 +455,11 @@ class WandBLogger2D(WandBLogger):
         h, w = test_loader.size()[1:]
         pred_pixels = pixels.reshape((h, w, self.hyper['channels']))
         norm_weights = []
-        if (self.hyper['channels'] == 1 
-            and self.hyper['loss_weights']['d0'] == 0):
-            norm_weights = [torch.min(test_loader.data), torch.max(test_loader.data)]
-        self.log_imagetensor(pred_pixels, 'Prediction', norm_weights)
+        # if (self.hyper['channels'] == 1 
+        #     and self.hyper['loss_weights']['d0'] == 0):
+        #     norm_weights = [torch.min(test_loader.data), torch.max(test_loader.data)]
+        # self.log_imagetensor(pred_pixels, 'Prediction', norm_weights)
+        self.log_images([pred_pixels], 'Prediction')
         self.log_fft(pred_pixels, 'FFT Prediction')
 
         # model_grads = gradient(model_out, output_dict['model_in'])
@@ -500,21 +514,25 @@ class WandBLogger2D(WandBLogger):
         
         ext_domain = make_grid_coords((neww, newh), start, end, dim=2)
         with torch.no_grad():
-            pixels = []
-            for batch in BatchSampler(ext_domain, 
-                                      self.hyper['batch_size'], 
-                                      drop_last=False):
-                batch = torch.stack(batch)
-                output_dict = model(batch.to(device))
-                pixels.append(output_dict['model_out'].detach().cpu().clamp(0, 1))
-            pixels = torch.concat(pixels)
+            pixels = output_on_batched_grid(model, 
+                                            ext_domain, 
+                                            self.hyper['batch_size'], 
+                                            device)
+            # for batch in BatchSampler(ext_domain, 
+            #                           self.hyper['batch_size'], 
+            #                           drop_last=False):
+            #     batch = torch.stack(batch)
+            #     output_dict = model(batch.to(device))
+            #     pixels.append(output_dict['model_out'].detach().cpu().clamp(0, 1))
+            # pixels = torch.concat(pixels)
 
         pixels = pixels.view((newh, neww, self.hyper['channels']))
-        norm_weights = []
-        if (self.hyper['channels'] == 1 
-            and self.hyper['loss_weights']['d0'] == 0):
-            norm_weights = [0, 1]
-        self.log_imagetensor(pixels, 'Extrapolation', norm_weights)
+        self.log_images(pixels, 'Extrapolation', f"{self.hyper['domain']}")
+        # norm_weights = []
+        # if (self.hyper['channels'] == 1 
+        #     and self.hyper['loss_weights']['d0'] == 0):
+        #     norm_weights = [0, 1]
+        # self.log_imagetensor(pixels, 'Extrapolation', norm_weights)
 
     def log_zoom(self, model, test_loader, zoom_factor, device):
         w, h = test_loader.shape[1:]
@@ -541,10 +559,10 @@ class WandBLogger2D(WandBLogger):
         crop_rectangle = tuple(np.array([left, top, right, bottom]) // 2)
         gt_pixels = test_loader.data.permute((1, 2, 0))
         
-
-        if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
-            pixels = ycbcr_to_rgb(pixels)
-            gt_pixels = ycbcr_to_rgb(gt_pixels)
+        color_space = self.hyper['color_space']
+        color_transform = INVERSE_COLOR_MAPPING[color_space]
+        pixels = color_transform(pixels)
+        gt_pixels = color_transform(gt_pixels)
 
         pixels = (pixels.clamp(0, 1) * 255).squeeze(-1).numpy().astype(np.uint8)
         images = [
@@ -559,17 +577,8 @@ class WandBLogger2D(WandBLogger):
                 wandb.Image(resized, 
                             caption=f"Baseline - {filter} interpolation")
             )
-        # print(pixels.shape, gt.shape)
-        # from IPython import embed
-        # embed()
-        # imgs = torch.hstack([pixels.clamp(0, 1), 
-        #                      to_tensor(gt).permute((1, 2, 0))])
-        # imgs = wandb.Image(imgs.squeeze(-1),
-        #                     caption="Pred (left); GT - bicubic (right)")
-        # images = [wandb.Image(pixels.clamp(0, 1).numpy(), caption='Pred'),
-        #           wandb.Image(gt, caption='GT (bicubic)')
-        #           ]
         wandb.log({f"Zoom {zoom_factor}x": images})
+        
 
 
 class WandBLogger3D(WandBLogger):
@@ -618,7 +627,7 @@ class WandBLogger3D(WandBLogger):
                 slices = torch.vstack((torch.hstack(slices[:2]), 
                                        torch.hstack(slices[2:])))
             else:
-                captions = ["Slice {view} = k" for view in views]
+                captions = [f"Slice {view} = k" for view in views]
 
             self.log_images(slices, label, captions)
 
