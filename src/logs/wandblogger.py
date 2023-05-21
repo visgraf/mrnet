@@ -399,6 +399,7 @@ class WandBLogger2D(WandBLogger):
             self.log_images([pixels], 'Train Data', [f"{list(train_loader.shape)}"])
     
     def log_groundtruth(self, dataset):
+        # permute to H x W x C
         pixels = dataset.data.permute((1, 2, 0))
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Ground Truth')
@@ -406,24 +407,35 @@ class WandBLogger2D(WandBLogger):
             self.log_images([pixels], 
                             'Ground Truth', 
                             [f"{list(dataset.shape)}"])
+            
+        color_space = self.hyper['color_space']
+        if color_space == 'YCbCr':
+            gray_pixels = pixels[..., 0]
+        elif color_space == 'RGB':
+            gray_pixels = rgb_to_grayscale(pixels).squeeze(-1)
+        elif color_space == 'L':
+            gray_pixels == pixels.squeeze(-1)
+        else:
+            raise ValueError(f"Invalid color space: {color_space}")
         
-        self.log_fft(pixels, 'FFT Ground Truth')
+        self.log_fft(gray_pixels, 'FFT Ground Truth')
 
         if 'd1' in self.hyper['attributes']:
             grads = dataset.data_attributes['d1']
-            color_space = self.hyper['color_space']
+            
             if color_space == 'YCbCr':
                     grads = grads[0, ...]
             elif color_space == 'RGB':
                 grads = (0.2126 * grads[0, ...] 
-                    + 0.7152 * grads[1, ...] 
-                    + 0.0722 * grads[2, ...])
-            else:
+                        + 0.7152 * grads[1, ...] 
+                        + 0.0722 * grads[2, ...])
+            elif color_space == 'L':
                 grads = grads.squeeze(0)
+
             mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
-                    grads[:, :, 1].squeeze(-1).numpy())
-            gmin, gmax = np.min(mag), np.max(mag)
-            img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
+                           grads[:, :, 1].squeeze(-1).numpy())
+            vmin, vmax = np.min(mag), np.max(mag)
+            img = Image.fromarray(255 * (mag - vmin) / (vmax - vmin)).convert('L')
             wandb.log({f'Gradient Magnitude - {"GT"}': wandb.Image(img)})
         return dataset.data.permute((1, 2, 0)
                                     ).reshape(-1, self.hyper['channels'])
@@ -450,20 +462,26 @@ class WandBLogger2D(WandBLogger):
 
             grads.append(gradient(value, 
                                   output_dict['model_in']).detach().cpu())
+        
         pixels = torch.concat(pixels)
-        grads = torch.concat(grads)
-        h, w = test_loader.shape[1:]
-        pred_pixels = pixels.reshape((h, w, self.hyper['channels']))
-        # norm_weights = []
-        # if (self.hyper['channels'] == 1 
-        #     and self.hyper['loss_weights']['d0'] == 0):
-        #     norm_weights = [torch.min(test_loader.data), torch.max(test_loader.data)]
-        # self.log_imagetensor(pred_pixels, 'Prediction', norm_weights)
+        pred_pixels = pixels.reshape((*datashape, self.hyper['channels']))
         self.log_images(pred_pixels, 'Prediction')
-        self.log_fft(pred_pixels, 'FFT Prediction')
+        
+        
+        if color_space == 'YCbCr':
+            gray_pixels = pred_pixels[..., 0]
+        elif color_space == 'RGB':
+            gray_pixels = rgb_to_grayscale(pred_pixels).squeeze(-1)
+        elif color_space == 'L':
+            gray_pixels == pred_pixels.squeeze(-1)
+        else:
+            raise ValueError(f"Invalid color space: {color_space}")
+        
+        self.log_fft(gray_pixels, 'FFT Prediction')
 
+        grads = torch.concat(grads)
         # model_grads = gradient(model_out, output_dict['model_in'])
-        grads = grads.reshape((h, w, 2))
+        grads = grads.reshape((*datashape, 2))
         self.log_gradmagnitude(grads, 'Prediction - Gradient')
         return pixels
 
@@ -479,19 +497,16 @@ class WandBLogger2D(WandBLogger):
         img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
     
-    def log_fft(self, pixels:torch.Tensor, label:str):
-        color_space = self.hyper['color_space']
-        if color_space == 'YCbCr':
-            pixels = pixels[..., 0].clamp(0, 1)
-        elif color_space == 'RGB':
-            pixels = rgb_to_grayscale(pixels.clamp(0, 1))
-        fourier_tensor = torch.fft.fftshift(
-                        torch.fft.fft2(pixels.squeeze(-1)))
-        magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-15)
-        mmin, mmax = np.min(magnitude), np.max(magnitude)
-        magnitude = (magnitude - mmin) / (mmax - mmin)
-        graymap = cm.get_cmap('gray')
-        img = Image.fromarray(np.uint8(graymap(magnitude) * 255))
+    def log_fft(self, pixels:torch.Tensor, label:str, captions=None):
+        '''Assumes a grayscale version of the image'''
+        
+        fft_pixels = torch.fft.fft2(pixels)
+        fft_shifted = torch.fft.fftshift(fft_pixels).numpy()
+        magnitude =  np.log(1 + abs(fft_shifted))
+        # normalization to visualize as image
+        vmin, vmax = np.min(magnitude), np.max(magnitude)
+        magnitude = (magnitude - vmin) / (vmax - vmin)
+        img = Image.fromarray((magnitude * 255).astype(np.uint8))
         wandb.log({label: wandb.Image(img)})
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
@@ -682,27 +697,25 @@ class WandBLogger3D(WandBLogger):
         for pixels in slices:
             fourier_tensor = torch.fft.fftshift(
                             torch.fft.fft2(pixels.squeeze(-1)))
-            magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-14)
+            magnitude = np.log(1 + abs(fourier_tensor.numpy()))
             vmin, vmax = np.min(magnitude), np.max(magnitude)
             magnitude = (magnitude - vmin) / (vmax - vmin)
-            graymap = cm.get_cmap('gray')
-            imgs.append(magnitude)
+            imgs.append((magnitude * 255).astype(np.uint8))
         if len(imgs) == 1:
-            img = Image.fromarray(np.uint8(graymap(imgs[0]) * 255))
+            img = Image.fromarray(imgs[0])
         else:
             if self.hyper.get('join_views', False):
                 magnitude = np.vstack((np.hstack(imgs[:2]), 
                                        np.hstack(imgs[2:])))
                 img = wandb.Image(
-                    Image.fromarray(np.uint8(graymap(magnitude) * 255)),
+                    Image.fromarray(magnitude),
                     caption=captions
                 )
             else:
                 if captions is None:
                     captions = [None] * len(imgs)
-                img = [wandb.Image(
-                            Image.fromarray(np.uint8(graymap(imgs[i]) * 255)),
-                            caption=captions[i]) 
+                img = [wandb.Image(Image.fromarray(imgs[i]), 
+                                   caption=captions[i]) 
                         for i in range(len(imgs))]
 
         wandb.log({label: img})
