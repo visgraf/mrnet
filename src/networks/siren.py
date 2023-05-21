@@ -50,17 +50,28 @@ class SineLayer(nn.Module):
                     self.linear.weight.uniform_(-np.sqrt(6 / self.in_features) / self.omega_0,
                                                 np.sqrt(6 / self.in_features) / self.omega_0)
                 
-    def init_periodic_weights(self, used_weights=None):
+    def init_periodic_weights(self, used_weights=[]):
+        # don't need to choose the oigin
+        if self.in_features == 2:   
+            discarded_freqs = set([(0, 0)])
+        else:
+            discarded_freqs = set()
+        discarded_freqs = discarded_freqs.union(set(used_weights))
         # used_weights = [-30, -24, -8, -4, 4, 8, 24, 30]
         with torch.no_grad():
             if self.is_first:
                 rng = np.random.default_rng(RANDOM_SEED)
-                possible_frequencies = cartesian_product(
-                    *(self.in_features * [np.array(range(-self.omega_0,
-                                                         self.omega_0 + 1))])
+                if self.in_features == 2:
+                    possible_frequencies = cartesian_product(
+                        np.arange(0, self.omega_0 + 1), 
+                        np.arange(-self.omega_0, self.omega_0 + 1))
+                else:
+                    possible_frequencies = cartesian_product(
+                        *(self.in_features * [np.array(range(-self.omega_0,
+                                                            self.omega_0 + 1))])
                     # np.arange(1, self.omega_0 + 1) * a, np.arange(1, self.omega_0 + 1) * b
                 )
-                if used_weights is not None:
+                if discarded_freqs:
                     possible_frequencies = np.array(list(
                         set(tuple(map(tuple, possible_frequencies))) - set(used_weights)
                     ))

@@ -335,7 +335,7 @@ class WandBLogger1D(WandBLogger):
                     / (2 * np.pi))
             frequencies.append(freqs)
         frequencies = np.concatenate(frequencies)
-        print(frequencies.shape, frequencies)
+        # print(frequencies.shape, frequencies)
         values = np.zeros_like(all_freqs)
         values[np.in1d(all_freqs, frequencies.astype(np.int32)).nonzero()] = 1
         wandb.log(
@@ -366,6 +366,8 @@ class WandBLogger2D(WandBLogger):
         current_model.eval()
         current_model.to(device)
         start_time = time.time()
+        if current_model.period > 0:
+            self.log_chosen_frequencies(current_model)
         self.log_traindata(train_loader)
         gt = self.log_groundtruth(test_loader)
         pred = self.log_prediction(current_model, test_loader, device)
@@ -379,7 +381,9 @@ class WandBLogger2D(WandBLogger):
         zoom = self.hyper.get('zoom', [])
         for zfactor in zoom:
             self.log_zoom(current_model, test_loader, zfactor, device)
-            
+
+        # if current_model.period > 0:
+        #     self.log_chosen_frequencies(current_model)
         
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
         current_model.train()
@@ -574,6 +578,22 @@ class WandBLogger2D(WandBLogger):
                             caption=f"Baseline - {filter} interpolation")
             )
         wandb.log({f"Zoom {zoom_factor}x": images})
+
+    def log_chosen_frequencies(self, model: MRNet):
+        frequencies = []
+        for stage in model.stages:
+            last_stage_frequencies = stage.first_layer.linear.weight
+            frequencies.append(last_stage_frequencies)
+        frequencies = torch.cat(frequencies).cpu().numpy()
+        frequencies = (frequencies * model.period 
+                       / (2 * np.pi)).astype(np.int32)
+        h, w = self.hyper['width'], self.hyper['height']
+        frequencies = frequencies + np.array((h//2, w//2))
+        img = Image.new('L', (h, w))
+        for f in frequencies:
+            img.putpixel(f, 255)
+        img = wandb.Image(img)
+        wandb.log({"Chosen Frequencies": img})
         
 
 
