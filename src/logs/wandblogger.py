@@ -145,7 +145,8 @@ class WandBLogger(Logger):
         if len(pixels) != len(captions):
             raise ValueError("label and pixels should have the same size")
         
-        color_transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
+        color_transform = INVERSE_COLOR_MAPPING[self.hyper.get(
+                                                'color_space', 'RGB')]
         pixels = [color_transform(p.cpu().clamp(0, 1)).clamp(0, 1) 
                   for p in pixels]
         
@@ -368,7 +369,7 @@ class WandBLogger2D(WandBLogger):
         self.log_traindata(train_loader)
         gt = self.log_groundtruth(test_loader)
         pred = self.log_prediction(current_model, test_loader, device)
-        self.log_PSNR(gt.to(device), pred.to(device))
+        self.log_PSNR(gt.cpu(), pred.cpu())
         self.log_SSIM(gt.cpu(), pred.cpu())
 
         extrapolation_interval = self.hyper.get('extrapolate', None)
@@ -397,28 +398,26 @@ class WandBLogger2D(WandBLogger):
             # self.log_imagetensor(pixels, 'Train Data')
             self.log_images([pixels], 'Train Data', [f"{list(train_loader.shape)}"])
     
-    def log_groundtruth(self, test_loader):
-        gtdata = test_loader.data.view(-1, self.hyper['channels'])
-        #pixels = self.as_imagetensor(torch.clamp(gtdata, 0, 1))
-        pixels = test_loader.data.permute((1, 2, 0))
+    def log_groundtruth(self, dataset):
+        pixels = dataset.data.permute((1, 2, 0))
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Ground Truth')
         else:
-            # self.log_imagetensor(pixels, 'Ground Truth')
-            self.log_images([pixels], 'Ground Truth', [f"{list(test_loader.shape)}"])
+            self.log_images([pixels], 
+                            'Ground Truth', 
+                            [f"{list(dataset.shape)}"])
         
         self.log_fft(pixels, 'FFT Ground Truth')
 
         if 'd1' in self.hyper['attributes']:
-            grads = test_loader.data_attributes['d1']
-            if self.hyper['channels'] == 3:
-                if (self.hyper.get('YCbCr', False) 
-                    or self.hyper.get('color_space', 'RGB') == 'YCbCr'):
+            grads = dataset.data_attributes['d1']
+            color_space = self.hyper['color_space']
+            if color_space == 'YCbCr':
                     grads = grads[0, ...]
-                else:
-                    grads = (0.2126 * grads[0, ...] 
-                        + 0.7152 * grads[1, ...] 
-                        + 0.0722 * grads[2, ...])
+            elif color_space == 'RGB':
+                grads = (0.2126 * grads[0, ...] 
+                    + 0.7152 * grads[1, ...] 
+                    + 0.0722 * grads[2, ...])
             else:
                 grads = grads.squeeze(0)
             mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
@@ -426,7 +425,8 @@ class WandBLogger2D(WandBLogger):
             gmin, gmax = np.min(mag), np.max(mag)
             img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
             wandb.log({f'Gradient Magnitude - {"GT"}': wandb.Image(img)})
-        return gtdata
+        return dataset.data.permute((1, 2, 0)
+                                    ).reshape(-1, self.hyper['channels'])
     
     def log_prediction(self, model, test_loader, device):
         datashape = test_loader.shape[1:]
@@ -435,6 +435,7 @@ class WandBLogger2D(WandBLogger):
                                   len(datashape))
         pixels = []
         grads = []
+        color_space = self.hyper['color_space']
         for batch in BatchSampler(coords, 
                                   self.hyper['batch_size'], 
                                   drop_last=False):
@@ -442,42 +443,29 @@ class WandBLogger2D(WandBLogger):
             output_dict = model(batch.to(device))
             pixels.append(output_dict['model_out'].detach().cpu())
             value = output_dict['model_out']
-            if self.hyper['channels'] == 3:
-                if self.hyper.get('YCbCr', False):
-                    value = value[:, 0:1]
-                else:
-                    value = rgb_to_grayscale(value)
+            if color_space == 'YCbCr':
+                value = value[:, 0:1]
+            elif color_space == 'RGB':
+                value = rgb_to_grayscale(value)
 
             grads.append(gradient(value, 
                                   output_dict['model_in']).detach().cpu())
         pixels = torch.concat(pixels)
         grads = torch.concat(grads)
-        h, w = test_loader.size()[1:]
+        h, w = test_loader.shape[1:]
         pred_pixels = pixels.reshape((h, w, self.hyper['channels']))
-        norm_weights = []
+        # norm_weights = []
         # if (self.hyper['channels'] == 1 
         #     and self.hyper['loss_weights']['d0'] == 0):
         #     norm_weights = [torch.min(test_loader.data), torch.max(test_loader.data)]
         # self.log_imagetensor(pred_pixels, 'Prediction', norm_weights)
-        self.log_images([pred_pixels], 'Prediction')
+        self.log_images(pred_pixels, 'Prediction')
         self.log_fft(pred_pixels, 'FFT Prediction')
 
         # model_grads = gradient(model_out, output_dict['model_in'])
         grads = grads.reshape((h, w, 2))
         self.log_gradmagnitude(grads, 'Prediction - Gradient')
         return pixels
-
-    def log_imagetensor(self, pixels:torch.Tensor, label:str, norm_weights=[]):
-        if norm_weights:
-            vmin, vmax = norm_weights
-            pmin, pmax = torch.min(pixels), torch.max(pixels)
-            pixels = (pixels - pmin) / (pmax - pmin)
-            pixels = pixels * (vmax - vmin) + vmin
-
-        if self.hyper.get('YCbCr', False) and self.hyper['channels'] == 3:
-            pixels = ycbcr_to_rgb(pixels)
-        image = wandb.Image(pixels.clamp(0, 1).numpy())
-        wandb.log({label: image})
 
     def log_detailtensor(self, pixels:torch.Tensor, label:str):
         pixels = (pixels + 1.0) / (2.0)
@@ -492,14 +480,14 @@ class WandBLogger2D(WandBLogger):
         wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
     
     def log_fft(self, pixels:torch.Tensor, label:str):
-        if self.hyper['channels'] == 3:
-            if self.hyper.get('YCbCr', False):
-                pixels = pixels[..., 0]
-            else:
-                pixels = rgb_to_grayscale(pixels)
+        color_space = self.hyper['color_space']
+        if color_space == 'YCbCr':
+            pixels = pixels[..., 0].clamp(0, 1)
+        elif color_space == 'RGB':
+            pixels = rgb_to_grayscale(pixels.clamp(0, 1))
         fourier_tensor = torch.fft.fftshift(
                         torch.fft.fft2(pixels.squeeze(-1)))
-        magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-14)
+        magnitude = 20 * np.log(abs(fourier_tensor.numpy()) + 1e-15)
         mmin, mmax = np.min(magnitude), np.max(magnitude)
         magnitude = (magnitude - mmin) / (mmax - mmin)
         graymap = cm.get_cmap('gray')
@@ -518,16 +506,9 @@ class WandBLogger2D(WandBLogger):
                                             ext_domain, 
                                             self.hyper['batch_size'], 
                                             device)
-            # for batch in BatchSampler(ext_domain, 
-            #                           self.hyper['batch_size'], 
-            #                           drop_last=False):
-            #     batch = torch.stack(batch)
-            #     output_dict = model(batch.to(device))
-            #     pixels.append(output_dict['model_out'].detach().cpu().clamp(0, 1))
-            # pixels = torch.concat(pixels)
 
         pixels = pixels.view((newh, neww, self.hyper['channels']))
-        self.log_images(pixels, 'Extrapolation', f"{self.hyper['domain']}")
+        self.log_images(pixels, 'Extrapolation', f"{interval}")
         # norm_weights = []
         # if (self.hyper['channels'] == 1 
         #     and self.hyper['loss_weights']['d0'] == 0):
@@ -612,9 +593,9 @@ class WandBLogger3D(WandBLogger):
             # apparently, we need to finish the run when running on script
             wandb.finish()
        
-    def log_data(self, train_loader, label, test=False):
+    def log_data(self, dataset, label, test=False):
         views = self.hyper['slice_views']
-        slices = train_loader.get_slices(views)
+        slices = dataset.get_slices(views)
         captions = f"{views}"
         
         join_views = self.hyper.get("join_views", False)

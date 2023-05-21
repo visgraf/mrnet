@@ -39,7 +39,7 @@ max_epochs_per_stage: [1400, 1000, 800, 600, 400, 200]
 batch_size: 128 * 128 * 2
 
 # Image
-image_name: siggraph_asia/autumm.jpg
+image_name: pexels_txtures/pic6.png #siggraph_asia/redknitwear.jpg
 width: 0
 height: 0
 channels: 0

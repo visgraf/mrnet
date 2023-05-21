@@ -61,17 +61,20 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
     models_path = os.path.join(logs_path, project_name, 'models')
     DATASET_PATH = os.path.join(base_dir, dataset_relpath)
 
-    config_file = os.path.join(base_dir, 'configs', configfile)
+    config_file = os.path.join(base_dir, 'configs/siggraph_asia', configfile)
 
     filenames = os.listdir(DATASET_PATH)
     os.makedirs(models_path, exist_ok=True)
     print(len(filenames), "imagens")
     for name in filenames:
+        torch.manual_seed(777)
         with open(config_file) as f:
             hyper = yaml.load(f, Loader=SafeLoader)
             print(hyper)
             if isinstance(hyper['batch_size'], str):
                 hyper['batch_size'] = eval(hyper['batch_size'])
+            if hyper['channels'] == 0:
+                hyper['channels'] = hyper['out_features']
             print(hyper)
         hyper['image_name'] = name
         imgpath = os.path.join(DATASET_PATH, hyper['image_name'])
@@ -83,7 +86,9 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
                     sampling_scheme=hyper['sampling_scheme'],
                     attributes=hyper['attributes'],
                     batch_size=hyper['batch_size'],
-                    YCbCr=hyper.get('YCbCr', False))
+                    color_space=hyper['color_space'])
+        hyper['width'], hyper['height'] = base_signal.shape[1:]
+
         train_dataloader = create_MR_structure(base_signal, 
                                                hyper['max_stages'],
                                                 hyper['filter'], 
@@ -93,10 +98,9 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
                                               hyper['filter'], False)
 
         logger = LoggerClass(project_name,
-                                    f"{hyper['model']}{hyper['filter'][0].upper()}{name[0:5]}{'YUV' if hyper['YCbCr'] else ''}",
+                                    f"{hyper['model']}{hyper['filter'][0].upper()}{name[0:5]}{hyper['color_space'][0]}",
                                     hyper,
                                     base_dir) 
-                                    #to_file=True)
         mrmodel = MRFactory.from_dict(hyper)
         print("Model: ", type(mrmodel))
         mrtrainer = MRTrainer.init_from_dict(mrmodel, 
@@ -106,16 +110,16 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
         mrtrainer.train(hyper['device'])
         print("DONE", name)
 
-        # filename = f"{hyper['model']}{hyper['image_name'][0:4]}.pth"
-        # path = os.path.join(models_path, filename)
-
-        # MRFactory.save(mrmodel, path)
-        
 
 if __name__ == '__main__':
     run_experiment('siggraph_asia', 
                    'img/siggraph_asia', 
                    'config_siggraph_imgs.yml',
+                   WandBLogger2D)
+    
+    run_experiment('siggraph_asia', 
+                   'img/siggraph_asia', 
+                   'config_siggraph_imgs_rgb.yml',
                    WandBLogger2D)
 
     # prepare_dataset('E:\Workspace\impa\mrnet\img\pexels_textures', 1024, 
