@@ -36,7 +36,7 @@ lr: 0.0005
 loss_tol: 0.000000000001
 diff_tol: 0.00001
 max_epochs_per_stage: [1400, 1000, 800, 600, 400, 200]
-batch_size: 128 * 128 * 2
+batch_size: 512 * 512
 
 # Image
 image_name: siggraph_asia/autumm.jpg
