@@ -389,9 +389,13 @@ class MRFactory:
         updict = {k: checkpoint[k][0] for k in module_keys}
         singledict.update(updict)
         model = MRFactory.from_dict(singledict)
+        print(model)
         model_stages = []
+        singledict['prevknowledge'] = 0
         for stage in range(checkpoint['stages']):
             updict = {k: checkpoint[k][stage] for k in module_keys}
+            # GAMBIARRA
+            updict['hidden_features'][0] -= singledict['prevknowledge']
             singledict.update(updict)
             mrmodule = MRFactory.module_from_dict(singledict, stage)
             mrmodule.load_state_dict(
