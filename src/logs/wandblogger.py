@@ -147,7 +147,7 @@ class WandBLogger(Logger):
         
         color_transform = INVERSE_COLOR_MAPPING[self.hyper.get(
                                                 'color_space', 'RGB')]
-        pixels = [color_transform(p.cpu().clamp(0, 1)).clamp(0, 1) 
+        pixels = [color_transform(p.cpu()).clamp(0, 1) 
                   for p in pixels]
         
         images = [wandb.Image(pixels[i].squeeze(-1).numpy(),
@@ -418,7 +418,7 @@ class WandBLogger2D(WandBLogger):
         elif color_space == 'RGB':
             gray_pixels = rgb_to_grayscale(pixels).squeeze(-1)
         elif color_space == 'L':
-            gray_pixels == pixels.squeeze(-1)
+            gray_pixels = pixels.squeeze(-1)
         else:
             raise ValueError(f"Invalid color space: {color_space}")
         
@@ -477,7 +477,7 @@ class WandBLogger2D(WandBLogger):
         elif color_space == 'RGB':
             gray_pixels = rgb_to_grayscale(pred_pixels).squeeze(-1)
         elif color_space == 'L':
-            gray_pixels == pred_pixels.squeeze(-1)
+            gray_pixels = pred_pixels.squeeze(-1)
         else:
             raise ValueError(f"Invalid color space: {color_space}")
         

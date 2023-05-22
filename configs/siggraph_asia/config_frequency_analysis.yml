@@ -38,7 +38,7 @@ batch_size: 256 * 256
 
 # Signal
 image_name: freqs
-width: 256
+width: 128
 channels: 1
 
 # Computation (Only vary between 'cpu' and 'cuda')
