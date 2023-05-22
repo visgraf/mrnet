@@ -6,9 +6,9 @@ positive_freqs: False
 in_features: 2
 out_features: 3
 hidden_layers: 1
-hidden_features: [[24, 32], [48, 32], [80, 64], [192, 160], [256, 256], [512, 512]]
+hidden_features: [[24, 32], [48, 32], [80, 64], [192, 160], [256, 256], [384, 256]]
 bias: True
-max_stages: 1
+max_stages: 5
 
 period: 4
 pmode: "reflect"
@@ -36,12 +36,12 @@ lr: 0.0005
 loss_tol: 0.000000000001
 diff_tol: 0.00001
 max_epochs_per_stage: [1400, 1000, 800, 600, 400, 200]
-batch_size: 128 * 128 * 2
+batch_size: 256 * 256
 
 # Image
 image_name: siggraph_asia/wood.png
-width: 0
-height: 0
+width: 256
+height: 256
 channels: 0
 color_space: RGB
 
