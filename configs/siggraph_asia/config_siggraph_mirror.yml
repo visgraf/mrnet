@@ -8,7 +8,7 @@ out_features: 3
 hidden_layers: 1
 hidden_features: [[24, 32], [48, 32], [80, 64], [192, 160], [256, 256], [512, 512]]
 bias: True
-max_stages: 1
+max_stages: 6
 
 period: 4
 pmode: "reflect"
