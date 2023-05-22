@@ -6,7 +6,7 @@ positive_freqs: False
 in_features: 2
 out_features: 3
 hidden_layers: 1
-hidden_features: [[24, 32], [48, 32], [80, 64], [192, 160], [256, 256], [512, 512]]
+hidden_features: [[24, 32], [48, 32], [64, 48], [96, 64], [128, 96], [256, 192]]
 bias: True
 max_stages: 6
 
@@ -16,7 +16,7 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [3, 6, 12, 24, 48, 96]
+omega_0: [3, 6, 12, 24, 32, 64]
 hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
 superposition_w0: False
 
@@ -39,7 +39,7 @@ max_epochs_per_stage: [1400, 1000, 800, 600, 400, 200]
 batch_size: 128 * 128 * 2
 
 # Image
-image_name: siggraph_asia/autumm.jpg
+image_name: siggraph_asia/dirtymetal.jpg
 width: 0
 height: 0
 channels: 0
