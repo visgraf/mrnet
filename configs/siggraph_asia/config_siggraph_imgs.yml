@@ -6,7 +6,7 @@ positive_freqs: False
 in_features: 2
 out_features: 3
 hidden_layers: 1
-hidden_features: [[24, 32], [48, 32], [64, 48], [96, 64], [128, 96], [256, 192]]
+hidden_features: [[24, 32], [48, 32], [64, 48], [96, 64], [160, 128], [384, 256]]
 bias: True
 max_stages: 6
 
@@ -39,11 +39,11 @@ max_epochs_per_stage: [1400, 1000, 800, 600, 400, 200]
 batch_size: 128 * 128 * 2
 
 # Image
-image_name: siggraph_asia/dirtymetal.jpg
+image_name: siggraph_asia/rusty.jpg
 width: 0
 height: 0
 channels: 0
-color_space: RGB
+color_space: YCbCr
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
