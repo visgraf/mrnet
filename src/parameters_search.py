@@ -95,11 +95,11 @@ if __name__ == '__main__':
     hyper['width'] = 512
     hyper['height'] = 512
     hyper['depth'] = 512
-    hyper['max_stages'] = 5
-    hyper['omega_0'] = [16, 24, 32, 64, 96]
-    hyper['hidden_features'] = [[256, 512], [512, 512], [1024, 512], [1024, 512], [512, 1024]]
+    hyper['max_stages'] = 1
+    hyper['omega_0'] = [64, 24, 32, 64, 96]
+    hyper['hidden_features'] = [[2048, 1024, 512], [256, 512], [512, 512], [1024, 512], [1024, 512], [512, 1024]]
     hyper['color_space'] = 'YCbCr'
-    hyper['max_epochs_per_stage'] = [5, 5, 5, 5, 5]
+    hyper['max_epochs_per_stage'] = [14, 5, 5, 5, 5]
     run_experiment(hyper, project_name, 777)
 
     # for hidden_features in [
