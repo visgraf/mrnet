@@ -235,7 +235,8 @@ class MRTrainer:
         self.model.train()
 
         self.logger.on_train_start()
-        for stage in range(1, self.max_stages + 1):
+        initial_stage = self.model.n_stages()
+        for stage in range(initial_stage, self.max_stages + 1):
 
             if self.train_type == MRTrainType.STAGES:
                 mrweights = torch.zeros(stage)

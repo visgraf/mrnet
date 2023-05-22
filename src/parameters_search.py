@@ -9,7 +9,7 @@ from datasets.signals import Procedural3DSignal
 from networks.mrnet import MRFactory
 import yaml
 from yaml.loader import SafeLoader
-from datasets.procedural import voronoi_texture, marble_texture
+from datasets.procedural import voronoi_texture, marble_texture, marble_color
 from copy import deepcopy
 
 
@@ -19,13 +19,15 @@ MODEL_PATH = BASE_DIR.joinpath('models')
 
 def procedural_multiresolution(base_signal, max_stages, decimate, seed):
     mr_stack = [base_signal]
-    domain_length = base_signal.domain[1] - base_signal.domain[0]
+    domain_length = 2 #base_signal.domain[1] - base_signal.domain[0]
     base_dim = base_signal.shape[-1]
+    cmap = lambda k: marble_color(torch.sin(2 * k * torch.pi))
     for i in range(1, max_stages):
         torch.manual_seed(seed)
         new_dim = (base_dim // 2**i)
         pixelsize = domain_length / new_dim
-        procedure = marble_texture(pixelsize)
+
+        procedure = marble_texture(pixelsize, cmap)
         dims = ((new_dim, new_dim, new_dim) if decimate 
                     else (base_dim, base_dim, base_dim))
         mr_stack.append(Procedural3DSignal(procedure,
@@ -37,12 +39,13 @@ def procedural_multiresolution(base_signal, max_stages, decimate, seed):
                                            color_space=base_signal.color_space))
     return mr_stack
 
-def run_experiment(hyper, project_name, seed):
+def run_experiment(hyper, project_name, seed, mrmodel=None):
     torch.manual_seed(seed)
     
     dim = hyper['width']
     if hyper['filename'] == 'marble':
-        proc = marble_texture(2/dim)
+        cmap = lambda k: marble_color(torch.sin(2 * k * torch.pi))
+        proc = marble_texture(2/dim, cmap)
     elif hyper['filename'] == 'voronoi':
         proc = voronoi_texture(16)
     
@@ -56,7 +59,7 @@ def run_experiment(hyper, project_name, seed):
     )
     train_dataset = procedural_multiresolution(base_signal, 
                                                hyper['max_stages'], 
-                                               True,
+                                               False,
                                                seed)
     test_dataset = procedural_multiresolution(base_signal, 
                                                hyper['max_stages'], 
@@ -68,15 +71,18 @@ def run_experiment(hyper, project_name, seed):
                                 f"{hyper['model']}{hyper['filter'][0].upper()}{filename[0:5]}",
                                 hyper,
                                 BASE_DIR)
-    mrmodel = MRFactory.from_dict(hyper)
+    if mrmodel is None:
+        mrmodel = MRFactory.from_dict(hyper)
     print("Model: ", type(mrmodel))
     mrtrainer = MRTrainer.init_from_dict(mrmodel, 
                                          train_dataset, test_dataset, wandblogger, hyper)
     mrtrainer.train(hyper['device'])
+    path = 'C:\\Users\\hallpaz\\Workspace\\mrnet\\models\\siggraph'
+    MRFactory.save(mrmodel, os.path.join(path, f'marble{mrmodel.n_stages()}.pth'))
 
 
 if __name__ == '__main__':
-    project_name = "solid-texture"
+    project_name = "solid-incremental"
     config_file = 'configs/siggraph_asia/config_solid_texture.yml'
     with open(config_file) as f:
         hyper = yaml.load(f, Loader=SafeLoader)
@@ -86,15 +92,25 @@ if __name__ == '__main__':
             hyper['channels'] = hyper['out_features']
         print(hyper)
 
-    for hidden_features in [ [[512, 256], [256, 512], [512, 768], [768, 768]],
-                             [[512, 256], [512, 256], [512, 256], [512, 256]],
-                             [[512, 256], [768, 512], [1024, 768], [1280, 768]],
-                             [[512, 384], [768, 512], [1024, 768], [2048, 1024]],
-                             [256, 384, 512, 1024] ]:
-        exp = {'hidden_features': hidden_features}
-        exp_hyper = deepcopy(hyper)
-        exp.update(exp)
-        run_experiment(exp_hyper, project_name, seed=777)
+    hyper['width'] = 512
+    hyper['height'] = 512
+    hyper['depth'] = 512
+    hyper['max_stages'] = 5
+    hyper['omega_0'] = [16, 24, 32, 64, 96]
+    hyper['hidden_features'] = [[256, 512], [512, 512], [1024, 512], [1536, 512], [2048, 512]]
+    hyper['color_space'] = 'YCbCr'
+    hyper['max_epochs_per_stage'] = [5, 5, 5, 5, 5]
+    run_experiment(hyper, project_name, 777)
+
+    # for hidden_features in [
+    #                          [[512, 256], [768, 384], [1024, 512], [1536, 768], [2048, 1024]],
+    #                          [512, 768, 1024, 1280, 1600],
+    #                          [512, 1024, 1536, 2048, 2048],
+    #                          [512, [1024, 512], [1024, 512], [2048, 1024], [2048, 1024]] ]:
+    #     exp = {'hidden_features': hidden_features}
+    #     exp_hyper = deepcopy(hyper)
+    #     exp_hyper.update(exp)
+    #     run_experiment(exp_hyper, project_name, seed=777)
     
     # for hidden_features in [[2048, 1024, 1024, 512], [2048, 1024, 512, 256], [256, 512, 1024]]:
     #     exp = {}
