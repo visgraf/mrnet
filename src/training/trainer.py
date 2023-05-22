@@ -274,6 +274,24 @@ class MRTrainer:
                     out_dict = self.model(X['coords'].to(device), mrweights)
                     
                     loss_dict = self.loss_function(out_dict, gt_dict, device)
+                    if loss_dict.get('mirror', 0):
+                        mirror_loss = 0.0
+                        offset = self.model.period / 2
+                        for k in range(self.model.in_features + 1):
+                            if k == 0:
+                                dirx = 2 - X['coords'][..., 0]
+                                diry = 0 + X['coords'][..., 1]
+                            elif k == 1:
+                                dirx = 0 + X['coords'][..., 0]
+                                diry = 2 - X['coords'][..., 1]
+                            else: 
+                                dirx = 2 - X['coords'][..., 0]
+                                diry = 2 - X['coords'][..., 1]
+                            mirror_x =  torch.stack([dirx, diry], dim=-1)
+                            out_mirror = self.model(mirror_x.to(device), mrweights)
+                            mirror_loss += F.mse_loss(out_mirror['model_out'],
+                                                    out_dict['model_out'])
+                        loss_dict['mirror'] = mirror_loss / 2
                     loss = sum([loss_dict[key] * self._loss_weights[key] 
                                 for key in loss_dict.keys()])
                     # loss = sum(loss_dict.values())
