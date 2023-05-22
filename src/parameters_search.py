@@ -97,7 +97,7 @@ if __name__ == '__main__':
     hyper['depth'] = 512
     hyper['max_stages'] = 5
     hyper['omega_0'] = [16, 24, 32, 64, 96]
-    hyper['hidden_features'] = [[256, 512], [512, 512], [1024, 512], [1536, 512], [2048, 512]]
+    hyper['hidden_features'] = [[256, 512], [512, 512], [1024, 512], [1024, 512], [512, 1024]]
     hyper['color_space'] = 'YCbCr'
     hyper['max_epochs_per_stage'] = [5, 5, 5, 5, 5]
     run_experiment(hyper, project_name, 777)

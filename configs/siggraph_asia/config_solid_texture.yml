@@ -34,7 +34,7 @@ lr: [0.0001, 0.0001, 0.00005, 0.00005, 0.00001]
 loss_tol: 0.000000000001
 diff_tol: 0.00001
 max_epochs_per_stage: [800, 400, 100, 20, 10]
-batch_size: 256 * 256
+batch_size: 128 * 128
 
 # Image
 filename: marble #colorful_noise3d128.npy
