@@ -53,6 +53,7 @@ class RegularSampler(Sampler):
         self.coords = make_grid_coords(self.data_shape(), 
                                        *self.domain, dim=len(self.data_shape()))
         self.shuffle = True #GAMB
+        n = len(self.coords)
         if domain_mask is None:
             sampled_indices = (torch.randperm(n) if self.shuffle 
                                else torch.arange(0, n, dtype=torch.long))
