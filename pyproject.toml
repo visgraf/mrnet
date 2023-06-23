@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mrnet"
+packages = ["datasets", "logs", "networks", "training"]
+version = "0.0.1"
+authors = [
+  { name="Hallison Paz", email="hallpaz@impa.br" },
+]
+description = "MR-Net for internal use"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://visgraf.github.io/mrnet-img/"

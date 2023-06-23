@@ -5,8 +5,8 @@ from torchvision.transforms.functional import to_tensor
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import scipy.ndimage
-from src.networks.mrnet import MRFactory
-from src.datasets.imagesignal import make_grid_coords
+from mrnet.networks.mrnet import MRFactory
+from mrnet.datasets.imagesignal import make_grid_coords
 
 def load_image(path:str):
     img = Image.open(path).convert('L')
