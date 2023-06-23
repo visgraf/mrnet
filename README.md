@@ -2,6 +2,11 @@
 
 ## Installation Instructions
 
+pip install git+https://github.com/visgraf/mrnet.git@dev
+
+---
+**or**
+
 cd [parent_dir]  
 git clone https://github.com/visgraf/mrnet.git   
 cd mrimg
