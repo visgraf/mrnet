@@ -1,6 +1,6 @@
 import numpy as np
 from PIL import Image
-from noise import snoise3
+from noise import snoise3, pnoise3
 from typing import Sequence
 from scipy.spatial import cKDTree
 import torch
@@ -52,11 +52,11 @@ def colorful_texture(size):
     print(texture.shape)
     return texture
 
-def marble_texture(pixelsize=1/64, color_map=None):
+def marble_texture(pixelsize=1/64, color_map=None, variation=0):
     if color_map is None:
         color_map = lambda k: marble_color(torch.sin(k * torch.pi))
     def procedure(point):
-        x = point[..., 0] + turbulence(point, pixelsize)
+        x = point[..., 0] + turbulence(point, pixelsize) + variation
         # return marble_color(np.sin(x * np.pi))
         return color_map(x)
     return procedure

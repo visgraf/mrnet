@@ -42,6 +42,9 @@ class Sampler:
     def scheme(self):
         raise NotImplemented()
     
+    def add_mask(self, mask):
+        self.make_samples(mask)
+    
     
 class RegularSampler(Sampler):
 
@@ -49,14 +52,27 @@ class RegularSampler(Sampler):
         self.key_group = 'c0'
         self.coords = make_grid_coords(self.data_shape(), 
                                        *self.domain, dim=len(self.data_shape()))
-        
+        n = len(self.coords)
+        # from PIL import Image
+        # from torchvision.transforms.functional import to_tensor
+        # w = self.data_shape()[0]
+        # tst_mask = Image.open(f"E:\Workspace\impa\mrnet\img\masks\sanity{w}.png")
+        # tst_mask = to_tensor(tst_mask).squeeze(0).bool()
         if domain_mask is None:
-            n = len(self.coords)
             sampled_indices = (torch.randperm(n) if self.shuffle 
                                else torch.arange(0, n, dtype=torch.long))
+            
+            # sampled_indices = sampled_indices[tst_mask.view(-1)]
+            # mask = torch.ones(n, dtype=bool)
+            # print("AQUI", all(tst_mask.view(-1) == mask))
         else:
             # TODO: permute; flatten domain_mask?
-            sampled_indices = torch.tensor(range(len(self.coords)))[domain_mask]
+            sampled_indices = torch.arange(0, n, dtype=torch.long)[domain_mask.view(-1)]
+            print("ACOLA")
+        # soma = sum(sampled_indices - torch.arange(n)) > 0
+        # if soma:
+        #     print(soma, len(sampled_indices), "!!!!!!!")
+        #     exit()
         
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)

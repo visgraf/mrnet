@@ -32,9 +32,10 @@ def onemul_frequencies(x, freqs):
     return torch.sin(m * 2*torch.pi * x) * res
 
 def composition(x, freqs):
-    res = summed_frequencies(x, freqs[:-1])
-    m = freqs[-1]
-    return torch.sin(m * 2*torch.pi * res)
+    # res = summed_frequencies(x, freqs[:-1])
+    res = summed_frequencies(x, freqs)
+    # m = freqs[-1]
+    return torch.sin(2*torch.pi * res)
 
 def load_config_file(config_path):
     with open(config_path) as f:
@@ -46,9 +47,14 @@ def load_config_file(config_path):
         print(hyper)
     return hyper
 
+def sin_mul_frequencies(x, freqs):
+    res = allmul_frequencies(x, freqs)
+    return torch.sin(x) * res
+
 func_map = {'S': summed_frequencies, 
             'A': allmul_frequencies, 
-            'O': onemul_frequencies, 
+            'O': onemul_frequencies,
+            'M': sin_mul_frequencies, 
             'C': composition}
 
 if __name__ == '__main__':

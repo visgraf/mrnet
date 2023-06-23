@@ -1,22 +1,24 @@
 # Model Class (S, L, M)
 model: M
 positive_freqs: False
+project_name: img_masked
+mask: sanity550
 
 # Network
 in_features: 2
 out_features: 3
 hidden_layers: 1
-hidden_features: [[24, 32], [48, 32], [80, 64], [192, 160], [256, 256], [512, 512]]
+hidden_features: [[256, 128]]
 bias: True
-max_stages: 6
+max_stages: 1
 
-period: 2
+period: 1
 pmode: "wrap"
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [3, 6, 12, 24, 48, 96]
+omega_0: [24, 12]
 hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
 superposition_w0: False
 
@@ -32,18 +34,18 @@ loss_weights: {'d0': 1, 'd1': 0.0}
 
 # Training
 opt_method: Adam
-lr: 0.0005
+lr: [0.00001, 0.00001]
 loss_tol: 0.000000000001
-diff_tol: 0.00001
-max_epochs_per_stage: [1400, 1000, 800, 600, 400, 200]
-batch_size: 128 * 128 * 2
+diff_tol: 0.000000001
+max_epochs_per_stage: [10000, 400, 200, 600, 400, 200]
+batch_size: 128 * 128
 
 # Image
-image_name: pexels_textures/pic6.png #siggraph_asia/redknitwear.jpg
-width: 0
-height: 0
+image_name:  siggraph_asia/cvitoriano.jpg
+width: 550
+height: 550
 channels: 0
-color_space: RGB
+color_space: YCbCr
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda
@@ -52,6 +54,6 @@ eval_device: cuda
 # Etc
 save_format: 'general'
 visualize_grad: True
-extrapolate: [-2, 2]
+extrapolate: [2, 6]
 zoom: [2, 4]
 zoom_filters: ['linear', 'cubic', 'nearest']

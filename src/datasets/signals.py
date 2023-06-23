@@ -36,6 +36,7 @@ class BaseSignal(Dataset):
         self.attributes = attributes
         self.color_space = color_space
         self.data_attributes = {}
+        self.domain_mask = None
         if 'd1' in self.attributes:
             self.compute_derivatives()
         if isinstance(sampling_scheme, str):
@@ -58,6 +59,10 @@ class BaseSignal(Dataset):
 
     def size(self):
         return self.data.shape
+    
+    def add_mask(self, mask):
+        self.domain_mask = mask
+        self.sampler.add_mask(mask)
     
     @property
     def shape(self):
@@ -121,7 +126,6 @@ class ImageSignal(BaseSignal):
                       sampling_scheme=Sampling.REGULAR,
                       width=None, height=None,
                       attributes=[], 
-                      maskpath=None,
                       batch_size=0,
                       color_space='RGB'):
         img = Image.open(imagepath)
@@ -139,7 +143,8 @@ class ImageSignal(BaseSignal):
             img = img.resize((width, height))
         img_tensor = to_tensor(img)
         
-        mask = to_tensor(Image.open(maskpath).resize((width, height))) if maskpath else None
+        # mask = (to_tensor(Image.open(maskpath).resize((width, height))) 
+        #         if maskpath else None)
         if isinstance(sampling_scheme, str):
             sampling_scheme = SAMPLING_DICT[sampling_scheme]
 
@@ -149,7 +154,6 @@ class ImageSignal(BaseSignal):
                             attributes=attributes,
                             batch_size=batch_size,
                             color_space=color_space)
-                            #domain_mask=mask)
 
     def compute_derivatives(self):
         dims = len(self.data.shape[1:])
@@ -163,6 +167,10 @@ class ImageSignal(BaseSignal):
             self.data_attributes = {'d1': torch.stack(directions, dim=-1)[0:1, ...]} #GAMBIARRA YCbCr
         else:
             self.data_attributes = {'d1': torch.stack(directions, dim=-1)}
+
+    def load_mask(self, maskpath):
+        mask = to_tensor(Image.open(maskpath)).squeeze(0).bool()
+        self.add_mask(mask)
 
     def image_pil(self):
         return to_pil_image(self.data)

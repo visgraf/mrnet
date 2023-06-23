@@ -399,8 +399,30 @@ class WandBLogger2D(WandBLogger):
         if re.match('laplace_*', self.hyper['filter']) and self.hyper['stage'] > 1:
             self.log_detailtensor(pixels, 'Train Data')
         else:
-            # self.log_imagetensor(pixels, 'Train Data')
-            self.log_images([pixels], 'Train Data', [f"{list(train_loader.shape)}"])
+            # try:
+            #     color_transform = INVERSE_COLOR_MAPPING[
+            #                 self.hyper.get('color_space', 'RGB')]
+            #     pixels = color_transform(pixels.cpu()).clamp(0, 1)
+            #     print("AQUI????")
+            #     img = wandb.Image(pixels.squeeze(-1).numpy(), 
+            #                 masks={"mask_data": train_loader.domain_mask})
+            #     wandb.log({"Train Data": img})
+            # except Exception as e:
+            if train_loader.domain_mask is not None:
+                # print(e, "???")
+                # pixels = pixels.cpu()
+                mask = train_loader.domain_mask.float().unsqueeze(-1)
+                # print(mask.shape, "mask")
+                # avg = pixels.mean(dim=-1).unsqueeze(-1)
+                # print(avg.shape, "avg")
+                #pixels[mask] = avg[mask]
+                pixels = pixels * mask
+                values = [pixels]
+                captions = [f"{list(train_loader.shape)}"]
+            else: 
+                values = [pixels]
+                captions = [f"{list(train_loader.shape)}"]
+            self.log_images(values, 'Train Data', captions)
     
     def log_groundtruth(self, dataset):
         # permute to H x W x C
