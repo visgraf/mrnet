@@ -102,14 +102,13 @@ class WandBLogger(Logger):
         wandb.log_artifact(artifact)
 
     def log_PSNR(self, gt, pred):
-        clamped = pred.clamp(0, 1)
-        mse = torch.mean((gt - clamped)**2)
+        mse = torch.mean((gt - pred)**2)
         psnr = 10 * torch.log10(1 / mse)
 
         # sanity check
         transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
         int_gt = (transform(gt) * 255).numpy().astype(np.uint8)
-        int_pred = (transform(clamped).clamp(0, 1) * 255
+        int_pred = (transform(pred).clamp(0, 1) * 255
                                 ).numpy().astype(np.uint8)
         ski_psnr = skimage.metrics.peak_signal_noise_ratio(int_gt, 
                                                            int_pred,
@@ -124,11 +123,11 @@ class WandBLogger(Logger):
         
 
     def log_SSIM(self, gt, pred):
-        clamped = pred.clamp(0, 1)
+        #clamped = pred.clamp(0, 1)
         transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
         ssim = skimage.metrics.structural_similarity(
                         (transform(gt).cpu().numpy() * 255).astype(np.uint8), 
-                        (transform(clamped).clamp(0, 1).cpu().numpy() * 255).astype(np.uint8),
+                        (transform(pred).clamp(0, 1).cpu().numpy() * 255).astype(np.uint8),
                         data_range=1, channel_axis=-1)
         label = f"Stage {self.hyper['stage']}"
         table = wandb.Table(data=[(label, ssim)], columns = ["Stage", "SSIM"])
@@ -583,8 +582,8 @@ class WandBLogger2D(WandBLogger):
         
         color_space = self.hyper['color_space']
         color_transform = INVERSE_COLOR_MAPPING[color_space]
-        pixels = color_transform(pixels)
-        gt_pixels = color_transform(gt_pixels)
+        pixels = color_transform(pixels).clamp(0, 1)
+        gt_pixels = color_transform(gt_pixels).clamp(0, 1)
 
         pixels = (pixels.clamp(0, 1) * 255).squeeze(-1).numpy().astype(np.uint8)
         images = [

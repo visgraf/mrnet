@@ -52,12 +52,7 @@ class RegularSampler(Sampler):
         self.key_group = 'c0'
         self.coords = make_grid_coords(self.data_shape(), 
                                        *self.domain, dim=len(self.data_shape()))
-        n = len(self.coords)
-        # from PIL import Image
-        # from torchvision.transforms.functional import to_tensor
-        # w = self.data_shape()[0]
-        # tst_mask = Image.open(f"E:\Workspace\impa\mrnet\img\masks\sanity{w}.png")
-        # tst_mask = to_tensor(tst_mask).squeeze(0).bool()
+        self.shuffle = True #GAMB
         if domain_mask is None:
             sampled_indices = (torch.randperm(n) if self.shuffle 
                                else torch.arange(0, n, dtype=torch.long))

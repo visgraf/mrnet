@@ -112,14 +112,9 @@ def run_experiment(project_name, dataset_relpath, configfile, LoggerClass):
 
 
 if __name__ == '__main__':
-    # run_experiment('siggraph_asia_search', 
-    #                'img/siggraph_asia', 
-    #                'config_siggraph_masked.yml',
-    #                WandBLogger2D)
-    
-    run_experiment('siggraph_asia_search2', 
-                   'img/siggraph_asia', 
-                   'config_siggraph_masked.yml',
+    run_experiment('siggraph_asia_siren', 
+                   'img/allin', 
+                   'config_siren.yml',
                    WandBLogger2D)
     
     # run_experiment('siggraph_asia', 
