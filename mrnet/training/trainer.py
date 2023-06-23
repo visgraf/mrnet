@@ -5,9 +5,9 @@ from enum import Enum, auto
 from torch.utils.data import DataLoader
 from typing import Sequence, Union
 
-from networks.mrnet import MRNet
-import training.loss as mrloss
-from logs.logger import Logger
+from mrnet.networks.mrnet import MRNet
+import mrnet.training.loss as mrloss
+from mrnet.logs.logger import Logger
 
 
 class MRMode(Enum):

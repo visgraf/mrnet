@@ -1,4 +1,4 @@
-from networks.mrnet import MRNet, MRFactory
+from mrnet.networks.mrnet import MRNet, MRFactory
 from .logger import Logger
 
 import os
@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from PIL import Image
-from training.loss import gradient
+from mrnet.training.loss import gradient
 from typing import Sequence, Tuple
 import yaml
 import skimage

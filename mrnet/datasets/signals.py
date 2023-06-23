@@ -6,11 +6,11 @@ from PIL import Image
 from torchvision.transforms.functional import to_tensor, to_pil_image
 from pathlib import Path
 from .constants import SAMPLING_DICT, Sampling
-from datasets.sampler import SamplerFactory, ProceduralSampler
+from mrnet.datasets.sampler import SamplerFactory, ProceduralSampler
 from scipy.ndimage import sobel
 from torch.utils.data import BatchSampler
 from scipy.interpolate import RegularGridInterpolator, interpn
-from datasets.utils import (rotation_matrix, make_domain_slices, 
+from mrnet.datasets.utils import (rotation_matrix, make_domain_slices, 
                             COLOR_MAPPING, make_grid_coords)
 
 def make_mask(srcpath, mask_color):

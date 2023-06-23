@@ -13,14 +13,14 @@ from typing import Sequence, Union
 from torch.utils.data import BatchSampler
 
 import warnings
-from training.loss import gradient
-from datasets.sampler import make_grid_coords
-from datasets.utils import make_domain_slices
+from mrnet.training.loss import gradient
+from mrnet.datasets.sampler import make_grid_coords
+from mrnet.datasets.utils import make_domain_slices
 
 from .logger import Logger
-from datasets.utils import (output_on_batched_dataset, 
+from mrnet.datasets.utils import (output_on_batched_dataset, 
                             output_on_batched_grid, rgb_to_grayscale, ycbcr_to_rgb, RESIZING_FILTERS, INVERSE_COLOR_MAPPING)
-from networks.mrnet import MRNet, MRFactory
+from mrnet.networks.mrnet import MRNet, MRFactory
 from copy import deepcopy
 import time
 import trimesh
