@@ -6,7 +6,7 @@ positive_freqs: False
 
 # Network
 in_features: 2
-out_features: 1
+out_features: 3
 hidden_layers: 1
 hidden_features: [[256, 128]]
 bias: True
@@ -18,8 +18,8 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [16, 3, 6, 12, 18, 32, 64]
-hidden_omega_0: [30, 30, 30, 30, 30, 30, 30]
+omega_0: [16]
+hidden_omega_0: [30]
 superposition_w0: False
 
 # Sampling
@@ -37,16 +37,16 @@ opt_method: Adam
 lr: 0.0001
 loss_tol: 0.00000000001
 diff_tol: 0.0000001
-max_epochs_per_stage: [800]
+max_epochs_per_stage: 800
 batch_size: 128 * 128
 
 # Image
 image_name: kodak512/girl_with_painted_face.png
 width: 128
 height: 128
-channels: 1
+channels: 3
 #see: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
-color_space: L
+color_space: RGB
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cpu
