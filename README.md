@@ -62,16 +62,16 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 ## Hyperparameters
 
 #### Naming
-- project_name: a name for a set of experiments; if logging to Weights and Biases, this will be the name of the project created.
+- **project_name**: a name for a set of experiments; if logging to Weights and Biases, this will be the name of the project created.
 
 #### Network
-- model: the model subclass; M for M-Net; L for L-Net; S-Net will be incorporated to this code later.
-- in_features: dimension of the input layer (ex: 2 for an image)
-- out_features: dimension of the output layer (ex: 3 for three color channels)
-- hidden_layers: number off hidden layers (ex: 1)
-- hidden_features: number of features in the hidden layers; should be a list with 1 value for each hidden layer (ex: [256]) or a list with a pair [input, output] for each hidden layer (ex: [128, 256]).
-- bias: boolean that states whether to have a bias in the first layer or not.
-- max_stages: maximum number of stages to be added to the network (ex: 3)
+- **model**: the model subclass; M for M-Net; L for L-Net; S-Net will be incorporated to this code later.
+- **in_features**: dimension of the input layer (ex: 2 for an image)
+- **out_features**: dimension of the output layer (ex: 3 for three color channels)
+- **hidden_layers**: number off hidden layers (ex: 1)
+- **hidden_features**: number of features in the hidden layers; should be a list with 1 value for each hidden layer (ex: [256]) or a list with a pair [input, output] for each hidden layer (ex: [128, 256]).
+- **bias**: boolean that states whether to have a bias in the first layer or not.
+- **max_stages**: maximum number of stages to be added to the network (ex: 3)
 
 #### Frequency Initialization
 - omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the first layer of the network.
@@ -80,12 +80,12 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - superposition_w0: if it is `False`, a frequency chosen in the initialization of a stage will not appear in the initialization of subsequent stages; it only works for periodic signals, where this frequencies are based on integers.
 
 #### Sampling
-sampling_scheme: regular
-decimation: True
-filter: gauss # vary between none, laplace and gauss
-attributes: ['d0', 'd1']
-pmode: "wrap"
-domain: [-1, 1]
+- sampling_scheme: regular
+- decimation: True
+- filter: gauss # vary between none, laplace and gauss
+- attributes: ['d0', 'd1']
+- pmode: "wrap"
+- domain: [-1, 1]
 
 ##### Loss
 - loss_function: 'hermite'
