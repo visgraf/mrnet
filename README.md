@@ -22,7 +22,7 @@ In the module `trainer`, you will find the `MRTrainer` class, which encapsulates
 
 ## Installation Instructions
 
-MRNet was tested on version of Python $\ge$ 3.9.
+MRNet was tested with Python3.9 and Python3.11.
 
 #### Dependencies
 
@@ -61,17 +61,17 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 
 ## Hyperparameters
 
-##### W & B
-project_name: a name for a set of experiments
+#### Naming
+- project_name: a name for a set of experiments; if logging to Weights and Biases, this will be the name of the project created.
 
-##### Network
-model: the model subclass; M for M-Net; L for L-Net; S-Net will be incorporated to this code later.
-in_features: dimension of the input layer (ex: 2 for an image)
-out_features: dimension of the output layer (ex: 3 for three color channels)
-hidden_layers: number off hidden layers (ex: 1)
-hidden_features: number of features in the hidden layers; should be a list with 1 value for each hidden layer (ex: [256]) or a list with a pair [input, output] for each hidden layer (ex: [128, 256]).
-bias: boolean that states whether to have a bias in the first layer or not.
-max_stages: maximum number of stages to be added to the network (ex: 3)
+#### Network
+- model: the model subclass; M for M-Net; L for L-Net; S-Net will be incorporated to this code later.
+- in_features: dimension of the input layer (ex: 2 for an image)
+- out_features: dimension of the output layer (ex: 3 for three color channels)
+- hidden_layers: number off hidden layers (ex: 1)
+- hidden_features: number of features in the hidden layers; should be a list with 1 value for each hidden layer (ex: [256]) or a list with a pair [input, output] for each hidden layer (ex: [128, 256]).
+- bias: boolean that states whether to have a bias in the first layer or not.
+- max_stages: maximum number of stages to be added to the network (ex: 3)
 
 # Frequency Initialization
 omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the first layer of the network.
