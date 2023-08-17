@@ -73,56 +73,50 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - bias: boolean that states whether to have a bias in the first layer or not.
 - max_stages: maximum number of stages to be added to the network (ex: 3)
 
-# Frequency Initialization
-omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the first layer of the network.
-hidden_omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the hidden layers of the network.
-period: a number; if period $\gt$ 0, the first layer of each stage will be initialized with integer multiples of this period and the network will be periodic; otherwise, we draw frequencies from a "real" (floating-point) interval.
-superposition_w0: if it is `False`, a frequency chosen in the initialization of a stage will not appear in the initialization of subsequent stages; it only works for periodic signals, where this frequencies are based on integers.
+#### Frequency Initialization
+- omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the first layer of the network.
+- hidden_omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the hidden layers of the network.
+- period: a number; if period $\gt$ 0, the first layer of each stage will be initialized with integer multiples of this period and the network will be periodic; otherwise, we draw frequencies from a "real" (floating-point) interval.
+- superposition_w0: if it is `False`, a frequency chosen in the initialization of a stage will not appear in the initialization of subsequent stages; it only works for periodic signals, where this frequencies are based on integers.
 
-##### Signal
-
-pmode: "wrap"
-domain: [-1, 1]
-
-# Sampling
+#### Sampling
 sampling_scheme: regular
 decimation: True
 filter: gauss # vary between none, laplace and gauss
 attributes: ['d0', 'd1']
+pmode: "wrap"
+domain: [-1, 1]
 
-# Loss
-loss_function: 'hermite'
-loss_weights: {'d0': 1, 'd1': 0.0}
+##### Loss
+- loss_function: 'hermite'
+- loss_weights: {'d0': 1, 'd1': 0.0}
 
-# Training
-opt_method: Adam
-lr: 0.0001
-loss_tol: 0.00000000001
-diff_tol: 0.0000001
-max_epochs_per_stage: 800
-batch_size: 128 * 128
+##### Training
+- opt_method: Adam
+- lr: 0.0001
+- loss_tol: 0.00000000001
+- diff_tol: 0.0000001
+- max_epochs_per_stage: 800
+- batch_size: 128 * 128
 
-# Image
-image_name: kodak512/girl_with_painted_face.png
-width: 128
-height: 128
-channels: 3
-#see: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
-color_space: RGB
+##### Image
+- image_name: kodak512/girl_with_painted_face.png
+- width: 128
+- height: 128
+- channels: 3
+<!-- # see: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes -->
+- color_space: RGB
 
-# Computation (Only vary between 'cpu' and 'cuda')
-device: cpu
-eval_device: cpu
+#### Computation (Only vary between 'cpu' and 'cuda')
+- device: cpu
+- eval_device: cpu
 
-# Etc
-save_format: 'general'
-visualize_grad: True
-extrapolate: [-2, 2]
-zoom: [2, 4]
-zoom_filters: ['linear', 'cubic', 'nearest']
-
-<!-- positive_freqs: False -->
-
+#### Etc
+- save_format: 'general'
+- visualize_grad: True
+- extrapolate: [-2, 2]
+- zoom: [2, 4]
+- zoom_filters: ['linear', 'cubic', 'nearest']
 
 
 ## Citing
