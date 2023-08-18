@@ -54,8 +54,9 @@ python tests/test_image.py
 
 ## Using MR-Net
 
-You can use any component of the MR-Net framework individually in your project. However, we povide a complete framework for training signals in multiresolution and a convenient way of changing the necessary hyperparameters fo a variety of experiments. An example for image representation is available in the following notebook:
+You can find a sample notebook showing [how to use the MR-Net framework here](https://colab.research.google.com/drive/1Q88hgGa4Pvt-CsBjqI0dHs3wrEYJKMFo?usp=sharing).
 
+You can use any component of the MR-Net framework individually in your project. However, we povide a complete framework for training signals in multiresolution and a convenient way of changing the necessary hyperparameters fo a variety of experiments. An example for image representation is available in the following notebook:
 
 The hyperparameters are listed in an YAML file. This way, you can configure many experiments witout having to change your code.
 
@@ -74,49 +75,46 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - **max_stages**: maximum number of stages to be added to the network (ex: 3)
 
 #### Frequency Initialization
-- omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the first layer of the network.
-- hidden_omega_0: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the hidden layers of the network.
-- period: a number; if period $\gt$ 0, the first layer of each stage will be initialized with integer multiples of this period and the network will be periodic; otherwise, we draw frequencies from a "real" (floating-point) interval.
-- superposition_w0: if it is `False`, a frequency chosen in the initialization of a stage will not appear in the initialization of subsequent stages; it only works for periodic signals, where this frequencies are based on integers.
+- **omega_0**: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the first layer of the network.
+- **hidden_omega_0**: a list with 1 number for each stage of the network (ex: [16]); the range of frequencies from where we sample frequencies to initialize the hidden layers of the network.
+- **period**: a number; if period $\gt$ 0, the first layer of each stage will be initialized with integer multiples of this period and the network will be periodic; otherwise, we draw frequencies from a "real" (floating-point) interval.
+- **superposition_w0**: if it is `False`, a frequency chosen in the initialization of a stage will not appear in the initialization of subsequent stages; it only works for periodic signals, where this frequencies are based on integers.
 
 #### Sampling
-- sampling_scheme: regular
-- decimation: True
-- filter: gauss # vary between none, laplace and gauss
-- attributes: ['d0', 'd1']
-- pmode: "wrap"
-- domain: [-1, 1]
+- **sampling_scheme**: regular
+- **decimation**: True
+- **filter**: gauss # vary between none, laplace and gauss
+- **attributes**: ['d0', 'd1']
+- **pmode**: "wrap"
+- **domain**: [-1, 1]
 
-##### Loss
+#### Loss
 - loss_function: 'hermite'
 - loss_weights: {'d0': 1, 'd1': 0.0}
 
 ##### Training
-- opt_method: Adam
-- lr: 0.0001
-- loss_tol: 0.00000000001
-- diff_tol: 0.0000001
-- max_epochs_per_stage: 800
-- batch_size: 128 * 128
+- **opt_method**: Adam
+- **lr**: 0.0001
+- **max_epochs_per_stage**: 800
+- **batch_size**: 128 * 128
+- **loss_tol**: 0.00000000001
+- **diff_tol**: 0.0000001
 
 ##### Image
-- image_name: kodak512/girl_with_painted_face.png
-- width: 128
-- height: 128
-- channels: 3
-<!-- # see: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes -->
-- color_space: RGB
-
-#### Computation (Only vary between 'cpu' and 'cuda')
-- device: cpu
-- eval_device: cpu
+- **image_name**: kodak512/girl_with_painted_face.png
+- **width**: 128
+- **height**: 128
+- **channels**: 3
+- **color_space**: RGB; for valid values, see: [Pillow docs](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes)
 
 #### Etc
-- save_format: 'general'
-- visualize_grad: True
-- extrapolate: [-2, 2]
-- zoom: [2, 4]
-- zoom_filters: ['linear', 'cubic', 'nearest']
+- **device**: device used for computation during training (ex: cuda)
+- **eval_device**: device used for computation during inference for logging results (e: cpu)
+- **save_format**: 'general'
+- **visualize_grad**: True
+- **extrapolate**: a pair of values representing an interval to visualize the learned signal (ex: [-2, 2]); in higher dimensions, you can specify a pair for each direction (ex: [[-2, 2], [-3, 3]] would be $[-2, 2] \times [-3, 3]$)
+- **zoom**: [2, 4]
+- **zoom_filters**: ['linear', 'cubic', 'nearest']
 
 
 ## Citing
