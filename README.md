@@ -1,12 +1,12 @@
 # MR-Net - Multiresolution Sinusoidal Neural Networks
 
-MR-Net is a framework that implements the family of neural networks described in XXXX, and the components for training multi-stage architectures for multiresolution signal representation
+MR-Net is a framework that implements the family of neural networks described in [[1]](#1), and the components for training multi-stage architectures for multiresolution signal representation
 
 This framework has 3 big components:
 
 ### Networks
 
-Here, you will find the implementations of M-Net, L-Net, and a modified version of Siren [XXXX], as we build on top of their sinusoidal layer. You can create instances of the MR-Net subclasses directly importing them from the `mrnet` module.
+Here, you will find the implementations of M-Net, L-Net, and a modified version of Siren [[2]](#2), as we build on top of their sinusoidal layer. You can create instances of the MR-Net subclasses directly importing them from the `mrnet` module.
 
 ### Datasets
 
@@ -47,6 +47,17 @@ After installing the dependencies, install the MR-Net package as follows:
 ```
     pip install git+https://github.com/visgraf/mrnet.git@dev
 ```
+
+#### Optional
+
+If you want to log your results to [Weights and Biases](https://wandb.ai), you should also install the wandb package:
+
+```
+    pip install wandb
+```
+
+If you want to run the sample Jupyter notebooks locally, please, follow the [installation instruction from the Jupyter project page](https://jupyter.org/install).
+
 
 ## Testing
 
@@ -94,27 +105,32 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 
 ##### Training
 - **opt_method**: Adam
-- **lr**: 0.0001
-- **max_epochs_per_stage**: 800
-- **batch_size**: 128 * 128
-- **loss_tol**: 0.00000000001
-- **diff_tol**: 0.0000001
+- **lr**: a float (ex: 0.0001) for the learning rate used in the optimization.
+- **max_epochs_per_stage**: an integer (ex: 800) for the maximum number of epochs to train each stage of the network.
+- **batch_size**: an integer or an expression (ex: 128 * 128) for the number of samples (coordinates) of the signal used in each batch.
+- `loss_tol`: a float (ex: 1e-10); if the loss function reaches a value below **loss_tol**, the training of the current stage will be interrupted.
+- **diff_tol**: a float (ex: 1e-7); if the difference between the values of the loss function in two successive epochs is lower than **diff_tol**, the training of the current stage will be interrupted.
 
 ##### Image
-- **image_name**: kodak512/girl_with_painted_face.png
-- **width**: 128
-- **height**: 128
-- **channels**: 3
+- **image_name**: the path to the image file.
+- **width**: an integer value (ex: 128) representing the *width* of the image signal; if it is greater than zero, the image will be resized; otherwise, its original size will be preserved.
+- **height**: an integer value (ex: 128) representing the *height* of the image signal; if it is greater than zero, the image will be resized; otherwise, its original size will be preserved.
+- **channels**: an integer value (ex: 3) representing the number of channels in the signal; should match `out_features`.
 - **color_space**: RGB; for valid values, see: [Pillow docs](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes)
 
 #### Etc
-- **device**: device used for computation during training (ex: cuda)
-- **eval_device**: device used for computation during inference for logging results (e: cpu)
-- **save_format**: 'general'
-- **visualize_grad**: True
+- **device**: device used for computation during training (ex: cuda).
+- **eval_device**: device used for computation during inference for logging results (ex: cpu).
+- **visualize_grad**: a boolean (ex: True) representing wether it should generate visualizations of the magnitude of the gradients of the signal.
 - **extrapolate**: a pair of values representing an interval to visualize the learned signal (ex: [-2, 2]); in higher dimensions, you can specify a pair for each direction (ex: [[-2, 2], [-3, 3]] would be $[-2, 2] \times [-3, 3]$)
-- **zoom**: [2, 4]
-- **zoom_filters**: ['linear', 'cubic', 'nearest']
+- **zoom**: a list of number (ex: [2, 4]); for each value $z$ in the list, a visualization of the signal with a zoom factor of $z\times$ will be generated.
+- **zoom_filters**: a list of baseline filters for evaluation of the zoom quality; should have values from: `['linear', 'cubic', 'nearest']`
+
+## References
+
+<a id="1">[1]</a> Hallison Paz, Daniel Perazzo, Tiago Novello, Guilherme Schardong, Luiz Schirmer, Vinícius da Silva, Daniel Yukimura, Fabio Chagas, Hélio Lopes, Luiz Velho. MR-Net: Multiresolution sinusoidal neural networks. Computers & Graphics, Volume 114, 2023, Pages 387-400.
+
+<a id="2">[2]</a> Vincent Sitzmann, Julien N.P. Martel, Alexander W. Bergman, David B. Lindell, and Gordon Wetzstein. Implicit neural representations with peri- odic activation functions. In Proc. NeurIPS, 2020.
 
 
 ## Citing
@@ -135,4 +151,3 @@ author = {Hallison Paz and Daniel Perazzo and Tiago Novello and Guilherme Schard
 keywords = {Multiresolution, Level of detail, Neural networks, Imaging}
 }
 ```
-
