@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import scipy.ndimage
 from mrnet.networks.mrnet import MRFactory
-from mrnet.datasets.imagesignal import make_grid_coords
+from mrnet.datasets.signals import make_grid_coords
 
 def load_image(path:str):
     img = Image.open(path).convert('L')
