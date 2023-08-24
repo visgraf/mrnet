@@ -46,7 +46,7 @@ def get_incremental_name(path):
 
 def make_runname(hyper, name):
     hyper = hyper
-    stage = f"{hyper['stage']}/{hyper['max_stages']}"
+    stage = f"{hyper['stage']}-{hyper['max_stages']}"
     w0 = f"w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}"
     hl = f"hl{hyper['hidden_layers']}"
     epochs = f"MEp{hyper['max_epochs_per_stage']}"
@@ -130,14 +130,12 @@ class LocalLogger(BaseLogger):
         }
         
         self.savedir = os.path.join(logs_path, self.runname)
-        
+
+    def prepare(self, model):
+        self.make_dirs()
         hypercontent = yaml.dump(self.hyper)
         with open(os.path.join(self.savedir, "hyper.yml"), "w") as hyperfile:
             hyperfile.write(hypercontent)
-
-
-    def prepare(self, model):
-        self.make_dirs(self.savedir)
 
     # def log_image(self, image, label):
     #     if "ground truth" in label.lower():
@@ -145,6 +143,11 @@ class LocalLogger(BaseLogger):
     #     else:
     #         path = os.path.join(self.savedir, self.subpaths['pred'])
     #     image.save(os.path.join(path, label), bitmap_format='png')
+
+    def loglosses(self, log_dict):
+        # wandb.log(log_dict)
+        # TODO: log losses
+        pass
 
     def log_images(self, pixels, category, label, captions=None):
         super().log_images(pixels, category, label, captions)
@@ -222,6 +225,9 @@ class WandBLogger:
                     settings=self.settings)
         wandb.watch(model, log_freq=10, log='all')
 
+    def loglosses(self, log_dict):
+        wandb.log(log_dict)
+
     def log_image(image, label):
         wandb.log({label: wandb.Image(image)})
 
@@ -266,20 +272,30 @@ class TrainingListener:
                         entity=None, 
                         config=None, 
                         settings=None) -> None:
-        self.logger = LocalLogger(self, 
-                                  project: str, 
-                                    name: str, 
-                                    hyper: dict,
-                                    basedir: str, 
-                                    entity=None, 
-                                    config=None, 
-                                    settings=None)
+        
+        self.project = project
+        self.name = name
+        self.hyper = hyper
+        self.basedir = basedir
+        self.entity = entity
+        self.config = config
+        self.settings = settings
 
-    def on_stage_start(self, current_model, stage_number, updated_hyper=None):
+    def on_train_start(self):
+        pass
+
+    def on_stage_start(self, current_model, 
+                       stage_number, updated_hyper=None):
         if updated_hyper:
             for key in updated_hyper:
                 self.hyper[key] = updated_hyper[key]
-        
+        self.logger = LocalLogger(self.project,
+                                    self.name,
+                                    self.hyper,
+                                    self.basedir, 
+                                    self.entity, 
+                                    self.config, 
+                                    self.settings)
         self.logger.prepare(current_model)
 
     def on_stage_trained(self, current_model: MRNet,
@@ -319,6 +335,8 @@ class TrainingListener:
         current_model.train()
         current_model.to(self.hyper['device'])
 
+    def on_batch_finish(self, batchloss):
+        pass
 
     def on_epoch_finish(self, current_model, epochloss):
         log_dict = {f'{key.upper()} loss': value 
@@ -328,7 +346,7 @@ class TrainingListener:
                             [self.hyper['loss_weights'][k] * epochloss[k] 
                                 for k in epochloss.keys()])
 
-        wandb.log(log_dict)
+        self.logger.loglosses(log_dict)
 
     def on_train_finish(self, trained_model, total_epochs):
         self.logger.finish()
@@ -572,7 +590,7 @@ class TrainingListener:
         for f in frequencies:
             img.putpixel(f, 255)
         
-        self.loggger.log_images(img, "etc", "Chosen Frequencies")
+        self.logger.log_images(img, "etc", "Chosen Frequencies")
         # img = wandb.Image(img)
         # wandb.log({"Chosen Frequencies": img})
         

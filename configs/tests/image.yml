@@ -41,7 +41,7 @@ max_epochs_per_stage: 800
 batch_size: 128 * 128
 
 # Image
-image_name: kodak512/girl_with_painted_face.png
+image_name: img/hallpaz.jpg
 width: 128
 height: 128
 channels: 3
