@@ -80,7 +80,7 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - `model`: the model subclass; M for M-Net; L for L-Net; S-Net will be incorporated to this code later.
 - `in_features`: dimension of the input layer (ex: 2 for an image)
 - `out_features`: dimension of the output layer (ex: 3 for three color channels)
-- `hidden_layers`: number off hidden layers (ex: 1)
+- `hidden_layers`: number of hidden layers (ex: 1)
 - `hidden_features`: number of features in the hidden layers; should be a list with 1 value for each hidden layer (ex: [256]) or a list with a pair [input, output] for each hidden layer (ex: [128, 256]).
 - `bias`: boolean that states whether to have a bias in the first layer or not.
 - `max_stages`: maximum number of stages to be added to the network (ex: 3)
@@ -94,15 +94,15 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 #### Sampling
 - `domain`: a pair of numbers or a list of pairs of numbers (ex: [-1, 1] or [[-1, 1], [-2, 2]]) 
 - `sampling_scheme`: the sampling scheme used for the data; should be one of the values in: [regular, reflect, poisson, stratified]; **regular** applies regular sampling inside the domain interval; **reflect** doubles the domain interval, reflects the signal data and applies regular sampling in the extended signal; **poisson** applies Poisson disk sampling inside the domain; **stratified** (untested!) samples the critical points of the signal and some stochastic points using Poisson disck sampling.
-- `decimation`: True
-- `filter`: gauss # vary between none, laplace and gauss
-- `attributes`: ['d0', 'd1']
-- `pmode`: "wrap"
+- `decimation`: a boolean (ex: True). if **True**, the signal will be downsampled by a factor of 2 after filtering (for pyramids); if **False**, it will not (for towers).
+- `filter`: the filter used to build a multiresolution structure (pyramid or tower); should be one of the values in [gauss, laplace, none]
+- `pmode`: determines how the signal borders are handled; should be one of the valid [values specified here](https://scikit-image.org/docs/stable/api/skimage.transform.html#skimage.transform.pyramid_gaussian).
+- `attributes`: at this moment, should be either  ['d0', 'd1']
 
 
-#### Loss
-- loss_function: 'hermite'
-- loss_weights: {'d0': 1, 'd1': 0.0}
+#### Loss (TODO)
+- `loss_function`: 'hermite'
+- `loss_weights`: {'d0': 1, 'd1': 0.0}
 
 ##### Training
 - `opt_method`: the optimizer class used for training; should be one of the values in: [Adam]
@@ -120,6 +120,7 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - `color_space`: RGB; for valid values, see: [Pillow docs](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes)
 
 #### Etc
+- `logger`: should be **wandb** to log results to Weights and Biases service or a path to a local directory to save the results locally. 
 - `device`: device used for computation during training (ex: cuda).
 - `eval_device`: device used for computation during inference for logging results (ex: cpu).
 - `visualize_grad`: a boolean (ex: True) representing wether it should generate visualizations of the magnitude of the gradients of the signal.
