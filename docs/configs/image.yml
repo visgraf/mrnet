@@ -1,0 +1,60 @@
+# W & B
+project_name: tests
+# Model Class (S, L, M)
+model: M
+positive_freqs: False
+
+# Network
+in_features: 2
+out_features: 3
+hidden_layers: 1
+hidden_features: [[256, 128]]
+bias: True
+max_stages: 1
+
+period: 2
+pmode: "wrap"
+domain: [-1, 1]
+# mask_color: 130
+
+# Frequency Initialization
+omega_0: [16]
+hidden_omega_0: [30]
+superposition_w0: False
+
+# Sampling
+sampling_scheme: regular
+decimation: True
+filter: gauss # vary between none, laplace and gauss
+attributes: ['d0', 'd1']
+
+# Loss
+loss_function: 'hermite'
+loss_weights: {'d0': 1, 'd1': 0.0}
+
+# Training
+opt_method: Adam
+lr: 0.0001
+loss_tol: 0.00000000001
+diff_tol: 0.0000001
+max_epochs_per_stage: 100
+batch_size: 128 * 128
+
+# Image
+image_name: img/hallpaz.jpg
+width: 128
+height: 128
+channels: 3
+#see: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
+color_space: RGB
+
+# Computation (Only vary between 'cpu' and 'cuda')
+device: cpu
+eval_device: cpu
+
+# Etc
+save_format: 'general'
+visualize_grad: True
+extrapolate: [-2, 2]
+zoom: [2, 4]
+zoom_filters: ['linear', 'cubic', 'nearest']

@@ -18,7 +18,7 @@ MODEL_PATH = BASE_DIR.joinpath('models')
 torch.manual_seed(777)
 
 #-- hyperparameters in configs --#
-config_file = 'configs/tests/image.yml'
+config_file = 'docs/configs/image.yml'
 with open(config_file) as f:
     hyper = yaml.load(f, Loader=SafeLoader)
     if isinstance(hyper['batch_size'], str):
