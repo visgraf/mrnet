@@ -11,7 +11,6 @@ from mrnet.networks.mrnet import MRFactory
 from mrnet.datasets.pyramids import create_MR_structure
 
 
-# os.environ["WANDB_NOTEBOOK_NAME"] = "example_image.ipynb"
 BASE_DIR = Path('.').absolute()
 IMAGE_PATH = BASE_DIR.joinpath('img')
 MODEL_PATH = BASE_DIR.joinpath('models')
@@ -26,7 +25,7 @@ with open(config_file) as f:
     if hyper.get('channels', 0) == 0:
             hyper['channels'] = hyper['out_features']
     print(hyper)
-imgpath = hyper['image_name'] #os.path.join(IMAGE_PATH, hyper['image_name'])
+imgpath = hyper['image_name']
 project_name = hyper.get('project_name', 'dev_sandbox')
 hyper['device']
 

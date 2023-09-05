@@ -1,8 +1,9 @@
-import wandb
-import torch
+import csv
+import numpy as np
 import os
 import re
-import numpy as np
+import torch
+import wandb
 import yaml
 
 from scipy.fft import fft, fftfreq
@@ -13,12 +14,10 @@ from pathlib import Path
 from typing import Sequence, Union
 from torch.utils.data import BatchSampler
 
-import warnings
 from mrnet.training.loss import gradient
 from mrnet.datasets.sampler import make_grid_coords
 from mrnet.datasets.utils import make_domain_slices
 
-# from .logger import Logger
 from mrnet.datasets.utils import (output_on_batched_dataset, 
                             output_on_batched_grid, rgb_to_grayscale, ycbcr_to_rgb, RESIZING_FILTERS, INVERSE_COLOR_MAPPING)
 from mrnet.networks.mrnet import MRNet, MRFactory
@@ -81,12 +80,12 @@ class BaseLogger:
         except KeyError:
             self.runname = make_runname(hyper, name)
 
-    def log_images(self, pixels, category, label, captions):
+    def log_images(self, pixels, label, captions=None, **kw):
         if not isinstance(pixels, Sequence):
             pixels = [pixels]
         if captions is None:
             captions = [None] * len(pixels)
-        if not isinstance(captions, Sequence):
+        if isinstance(captions, str):
             captions = [captions]
         if len(pixels) != len(captions):
             raise ValueError("label and pixels should have the same size")
@@ -99,6 +98,7 @@ class BaseLogger:
                     for p in pixels]
         except:
             pass
+        return pixels, captions
 
 
 class LocalLogger(BaseLogger):
@@ -137,42 +137,57 @@ class LocalLogger(BaseLogger):
         with open(os.path.join(self.savedir, "hyper.yml"), "w") as hyperfile:
             hyperfile.write(hypercontent)
 
-    # def log_image(self, image, label):
-    #     if "ground truth" in label.lower():
-    #         path = os.path.join(self.savedir, self.subpaths['gt'])
-    #     else:
-    #         path = os.path.join(self.savedir, self.subpaths['pred'])
-    #     image.save(os.path.join(path, label), bitmap_format='png')
+    def loglosses(self, log_dict:dict):
+        filepath = os.path.join(self.savedir, 'losses.csv')
+        file_exists = os.path.isfile(filepath)
+        with open(filepath, 'a') as f:
+            writer = csv.DictWriter(f, fieldnames=log_dict.keys())
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(log_dict)
+            
 
-    def loglosses(self, log_dict):
-        # wandb.log(log_dict)
-        # TODO: log losses
-        pass
-
-    def log_images(self, pixels, category, label, captions=None):
-        super().log_images(pixels, category, label, captions)
+    def log_images(self, pixels, label, captions=None, **kw):
+        category = kw['category']
+        pixels, captions = super().log_images(pixels, label, captions)
         path = os.path.join(self.savedir, self.subpaths[category])
         os.makedirs(path, exist_ok=True)
 
         for i, image in enumerate(pixels):
-            filename = (captions[i] if captions
-                        else f"{get_incremental_name(path):02d}")
             try:
-                image.save(filename, bitmap_format='png')
+                filename = kw["fnames"][i]
+            except (KeyError, IndexError):
+                slug = '_'.join(label.lower().split())
+                filename = f"{slug}{get_incremental_name(path):02d}"
+            
+            if captions:
+                with open(os.path.join(path, 'captions.txt'), 'a') as capfile:
+                    capfile.write(f"{filename}; {captions[i]}\n")
+            
+            filepath = os.path.join(path, filename + ".png")
+            try:
+                image.save(filepath)
             # if it is not a PIL Image
-            except AttributeError:   
-                image = Image.fromarray(image.squeeze(-1).numpy())
-                image.save(filename, bitmap_format='png')
+            except AttributeError:
+                array = image.squeeze(-1).numpy()
+                if array.dtype != np.uint8 and np.max(array) <= 1.0:
+                    array = (array * 255).astype(np.uint8)
+                Image.fromarray(array).save(filepath)
+                
 
     def log_metric(self, metric_name, value, label):
-        logpath = os.path.join(self.basepath, f"{metric_name}.csv")
+        logpath = os.path.join(self.savedir, f"{metric_name}.csv")
         with open(logpath, "a") as metricfile:
-            metricfile.write(f"{label}, {value}")
+            metricfile.write(f"{label}, {value}\n")
 
-    def log_model(self, model, filename, **kwargs):
-        logpath = os.path.join(self.basepath, filename)
+    def log_model(self, model, **kw):
+        try:
+            filename = kw['fname']
+        except KeyError:
+            filename = "final"
+        logpath = os.path.join(self.savedir, self.subpaths['models'])
         os.makedirs(logpath, exist_ok=True)
-        MRFactory.save(model, logpath)
+        MRFactory.save(model, os.path.join(logpath, filename + ".pth"))
 
     def log_point_cloud(self, model, device):
         scale_radius = self.hyper.get('scale_radius', 0.9)
@@ -214,7 +229,7 @@ class LocalLogger(BaseLogger):
     def finish(self):
         pass
 
-class WandBLogger:
+class WandBLogger(BaseLogger):
 
     def prepare(self, model):
         wandb.finish()
@@ -228,11 +243,11 @@ class WandBLogger:
     def loglosses(self, log_dict):
         wandb.log(log_dict)
 
-    def log_image(image, label):
-        wandb.log({label: wandb.Image(image)})
-
-    def log_images(pixels, label, captions):
-        images = [wandb.Image(pixels[i].squeeze(-1).numpy(),
+    def log_images(self, pixels, label, captions=None, **kw):
+        pixels, captions = super().log_images(pixels, label, captions)
+        if isinstance(pixels[0], torch.Tensor):
+            pixels = [p.squeeze(-1).numpy() for p in pixels]
+        images = [wandb.Image(pixels[i],
                               caption=captions[i]) for i in range(len(pixels))]
         wandb.log({label: images})
 
@@ -244,9 +259,11 @@ class WandBLogger:
                                 table, "Stage", metric_name.upper(),
                                 title=f"{metric_name} for reconstruction")})
         
-    def log_model(self, model, filename, **kwargs):
-        path = kwargs['path']
-        logpath = os.path.join(path, filename)
+    def log_model(self, model, **kwargs):
+        temp_path = kwargs['path']
+        os.makedirs(temp_path, exist_ok=True)
+        filename = kwargs.get('fname', 'final')
+        logpath = os.path.join(temp_path, filename + '.pth')
         MRFactory.save(model, logpath)
 
         artifact = wandb.Artifact(filename, type='model')
@@ -254,9 +271,6 @@ class WandBLogger:
         wandb.log_artifact(artifact)
 
     def log_pointcloud():
-        pass
-
-    def log_zoom():
         pass
 
     def finish(self):
@@ -289,7 +303,11 @@ class TrainingListener:
         if updated_hyper:
             for key in updated_hyper:
                 self.hyper[key] = updated_hyper[key]
-        self.logger = LocalLogger(self.project,
+
+        LoggerClass = (WandBLogger 
+                       if self.hyper['logger'].lower() == 'wandb' 
+                       else LocalLogger)
+        self.logger = LoggerClass(self.project,
                                     self.name,
                                     self.hyper,
                                     self.basedir, 
@@ -302,6 +320,7 @@ class TrainingListener:
                                 train_loader,
                                 test_loader):
         device = self.hyper.get('eval_device', 'cpu')
+        current_stage = current_model.n_stages()
         current_model.eval()
         current_model.to(device)
         
@@ -309,14 +328,12 @@ class TrainingListener:
         if current_model.period > 0:
             self.log_chosen_frequencies(current_model)
         
-        self.log_traindata(train_loader)
+        self.log_traindata(train_loader, stage=current_stage)
         gt = self.log_groundtruth(test_loader)
         pred = self.log_prediction(current_model, test_loader, device)
-        
-        # rewritten
         self.log_PSNR(gt.cpu(), pred.cpu())
         self.log_SSIM(gt.cpu(), pred.cpu())
-        # ---------
+
         try:
             self.log_extrapolation(current_model, 
                                    self.hyper['extrapolate'], 
@@ -349,16 +366,14 @@ class TrainingListener:
         self.logger.loglosses(log_dict)
 
     def on_train_finish(self, trained_model, total_epochs):
+        self.log_model(trained_model)
         self.logger.finish()
         print(f'Total model parameters = ', trained_model.total_parameters())
         print(f'Training finished after {total_epochs} epochs')
 
-    def log_model(self, model, save_format):
-        filename = f"{self.runname}.pth".replace('/', '-')
-        modelpath = os.path.join(self.basedir, MODELS_DIR)
-        Path(modelpath).mkdir(parents=True, exist_ok=True)
-
-        self.logger.log_model(model, filename, path=modelpath)
+    def log_model(self, model):
+        temp_path = os.path.join(self.basedir, 'runs/tmp')
+        self.logger.log_model(model, path=temp_path)
         
     def log_PSNR(self, gt, pred):
         mse = torch.mean((gt - pred)**2)
@@ -366,7 +381,6 @@ class TrainingListener:
         
         label = f"Stage {self.hyper['stage']}"
         self.logger.log_metric("psnr", psnr, label)
-        
 
     def log_SSIM(self, gt, pred):
         #clamped = pred.clamp(0, 1)
@@ -377,43 +391,26 @@ class TrainingListener:
                         data_range=1, channel_axis=-1)
         label = f"Stage {self.hyper['stage']}"
         self.logger.log_metric("ssim", ssim, label)
-        
-    # def log_images(self, pixels, label, captions=None):
-    #     if isinstance(pixels, torch.Tensor):
-    #         pixels = [pixels]
-    #     if captions is None:
-    #         captions = [None] * len(pixels)
-    #     if isinstance(captions, str):
-    #         captions = [captions]
-    #     if len(pixels) != len(captions):
-    #         raise ValueError("label and pixels should have the same size")
-        
-    #     color_transform = INVERSE_COLOR_MAPPING[self.hyper.get(
-    #                                             'color_space', 'RGB')]
-    #     pixels = [color_transform(p.cpu()).clamp(0, 1) 
-    #               for p in pixels]
-        
-    #     self.logger.log_images(pixels, label, captions)
        
-    def log_traindata(self, train_loader):
+    def log_traindata(self, train_loader, **kw):
         pixels = train_loader.data.permute((1, 2, 0))
+        print(pixels.shape, "DEBUG 1")
         if train_loader.domain_mask is not None:
             mask = train_loader.domain_mask.float().unsqueeze(-1)
             pixels = pixels * mask
-            values = [pixels]
-            captions = [f"{list(train_loader.shape)}"]
-        else: 
-            values = [pixels]
-            captions = [f"{list(train_loader.shape)}"]
-        self.logger.log_images(values, 'gt', 'Train Data', captions)
+        values = [pixels]
+        captions = [f"{list(train_loader.shape)}"]
+        
+        self.logger.log_images(values, 'Train Data', captions, category='gt')
     
     def log_groundtruth(self, dataset):
         # permute to H x W x C
         pixels = dataset.data.permute((1, 2, 0))
         
-        self.logger.log_images([pixels], 'gt', 
+        self.logger.log_images([pixels], 
                             'Ground Truth', 
-                            [f"{list(dataset.shape)}"])
+                            [f"{list(dataset.shape)}"],
+                            category='gt')
             
         color_space = self.hyper['color_space']
         if color_space == 'YCbCr':
@@ -425,7 +422,7 @@ class TrainingListener:
         else:
             raise ValueError(f"Invalid color space: {color_space}")
         
-        self.log_fft(gray_pixels, 'gt', 'FFT Ground Truth')
+        self.log_fft(gray_pixels, 'FFT Ground Truth', category='gt')
 
         if 'd1' in self.hyper['attributes']:
             grads = dataset.data_attributes['d1']
@@ -440,18 +437,14 @@ class TrainingListener:
             elif color_space == 'L':
                 grads = grads.squeeze(0)
             
-            self.log_gradmagnitude(grads, 'gt', 'GT ')
-            # mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
-            #                grads[:, :, 1].squeeze(-1).numpy())
-            # vmin, vmax = np.min(mag), np.max(mag)
-            # img = Image.fromarray(255 * (mag - vmin) / (vmax - vmin)).convert('L')
-            # wandb.log({f'Gradient Magnitude - {"GT"}': wandb.Image(img)})
+            self.log_gradmagnitude(grads, 'Gradient Magnitude GT', category='gt')
             
         return dataset.data.permute((1, 2, 0)
                                     ).reshape(-1, self.hyper['channels'])
     
     def log_prediction(self, model, test_loader, device):
         datashape = test_loader.shape[1:]
+        
         coords = make_grid_coords(datashape, 
                                   *self.hyper['domain'],
                                   len(datashape))
@@ -472,11 +465,10 @@ class TrainingListener:
 
             grads.append(gradient(value, 
                                   output_dict['model_in']).detach().cpu())
-        
+            
         pixels = torch.concat(pixels)
         pred_pixels = pixels.reshape((*datashape, self.hyper['channels']))
-        self.log_images(pred_pixels, 'Prediction')
-        
+        self.logger.log_images(pred_pixels, 'Prediction', category='pred')
         
         if color_space == 'YCbCr':
             gray_pixels = pred_pixels[..., 0]
@@ -487,24 +479,22 @@ class TrainingListener:
         else:
             raise ValueError(f"Invalid color space: {color_space}")
         
-        self.log_fft(gray_pixels, 'FFT Prediction')
+        self.log_fft(gray_pixels, 'FFT Prediction', category='pred')
 
         grads = torch.concat(grads)
-        # model_grads = gradient(model_out, output_dict['model_in'])
         grads = grads.reshape((*datashape, 2))
-        self.log_gradmagnitude(grads, 'Prediction - Gradient')
+        self.log_gradmagnitude(grads, 'Gradient Magnitude Pred', category='pred')
         return pixels
     
-    def log_gradmagnitude(self, grads:torch.Tensor, category, label: str):
+    def log_gradmagnitude(self, grads:torch.Tensor, label: str, **kw):
         mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
                         grads[:, :, 1].squeeze(-1).numpy())
         gmin, gmax = np.min(mag), np.max(mag)
         img = Image.fromarray(255 * (mag - gmin) / (gmax - gmin)).convert('L')
-        # wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
-        self.logger.log_images(img, category, label)
+        self.logger.log_images([img], label, **kw)
     
-    def log_fft(self, pixels:torch.Tensor, category:str, 
-                label:str, captions=None):
+    def log_fft(self, pixels:torch.Tensor, label:str, 
+                    captions=None, **kw):
         '''Assumes a grayscale version of the image'''
         
         fft_pixels = torch.fft.fft2(pixels)
@@ -514,7 +504,7 @@ class TrainingListener:
         vmin, vmax = np.min(magnitude), np.max(magnitude)
         magnitude = (magnitude - vmin) / (vmax - vmin)
         img = Image.fromarray((magnitude * 255).astype(np.uint8))
-        self.logger.log_images(img, category, label)
+        self.logger.log_images([img], label, **kw)
 
     def log_extrapolation(self, model, interval, dims, device='cpu'):
         w, h = dims
@@ -530,7 +520,7 @@ class TrainingListener:
                                             device)
 
         pixels = pixels.view((newh, neww, self.hyper['channels']))
-        self.log_images(pixels, 'pred', 'Extrapolation', f"{interval}")
+        self.logger.log_images([pixels], 'Extrapolation', [f"{interval}"], category='pred')
 
     def log_zoom(self, model, test_loader, zoom_factor, device):
         w, h = test_loader.shape[1:]
@@ -565,15 +555,18 @@ class TrainingListener:
         pixels = (pixels.clamp(0, 1) * 255).squeeze(-1).numpy().astype(np.uint8)
         
         images = [Image.fromarray(pixels)]
-        captions = [f'{zoom_factor} Reconstruction (Ours)']
+        captions = [f'{zoom_factor}x Reconstruction (Ours)']
+        fnames = [f'zoom_{zoom_factor}x_ours']
         gt_pixels = (gt_pixels * 255).squeeze(-1).numpy().astype(np.uint8)
         cropped = Image.fromarray(gt_pixels).crop(crop_rectangle)
         for filter in self.hyper.get('zoom_filters', ['linear']):
             resized = cropped.resize((w, h), RESIZING_FILTERS[filter])
             images.append(resized)
-            captions.append(f"{zoom_factor} Baseline - {filter} interpolation")
+            captions.append(f"{zoom_factor}x Baseline - {filter} interpolation")
+            fnames.append(f'zoom_{zoom_factor}x_{filter}')
              
-        self.logger.log_images(images, 'zoom', f"{zoom_factor}x", captions)
+        self.logger.log_images(images, f"Zoom {zoom_factor}x", captions, 
+                                    fnames=fnames, category='zoom')
 
     def log_chosen_frequencies(self, model: MRNet):
         # changes with dimensions
@@ -590,188 +583,4 @@ class TrainingListener:
         for f in frequencies:
             img.putpixel(f, 255)
         
-        self.logger.log_images(img, "etc", "Chosen Frequencies")
-        # img = wandb.Image(img)
-        # wandb.log({"Chosen Frequencies": img})
-        
-    # def log_detailtensor(self, pixels:torch.Tensor, label:str):
-    #     pixels = (pixels + 1.0) / (2.0)
-    #     image = wandb.Image(pixels.numpy())    
-    #     wandb.log({label: image})
-
-
-class WandBLogger3D(WandBLogger):
-
-    def on_stage_trained(self, current_model: MRNet,
-                                train_loader,
-                                test_loader):
-        super().on_stage_trained(current_model, train_loader, test_loader)
-        device = self.hyper.get('eval_device', 'cpu')
-        rng = np.random.default_rng()
-        self.w_slice = rng.integers(0, test_loader.size()[-1])
-        start_time = time.time()
-        
-        self.log_data(train_loader, "Train Data")
-        gt = self.log_data(test_loader, "Ground Truth", True)   
-        pred = self.log_prediction(current_model, test_loader, device)
-        self.log_PSNR(gt.cpu(), pred.cpu())
-        self.log_SSIM(gt.cpu(), pred.cpu())
-        self.log_point_cloud(current_model, device)
-
-        extrapolation_interval = self.hyper.get('extrapolate', None)
-        if extrapolation_interval is not None:
-            self.log_extrapolation(current_model, 
-                                   extrapolation_interval, 
-                                    test_loader.shape[1:], device)
-        print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
-        current_model.train()
-        current_model.to(self.hyper['device'])
-        
-        if current_model.n_stages() < self.hyper['max_stages']:
-            # apparently, we need to finish the run when running on script
-            wandb.finish()
-       
-    def log_data(self, dataset, label, test=False):
-        views = self.hyper['slice_views']
-        slices = dataset.get_slices(views)
-        captions = f"{views}"
-        
-        join_views = self.hyper.get("join_views", False)
-
-        if (re.match('laplace_*', self.hyper['filter']) 
-            and self.hyper['stage'] > 1):
-            self.log_detailtensor(slices, label)
-        else:
-            if join_views:
-                slices = torch.vstack((torch.hstack(slices[:2]), 
-                                       torch.hstack(slices[2:])))
-            else:
-                captions = [f"Slice {view} = k" for view in views]
-
-            self.log_images(slices, label, captions)
-
-        if not test:
-            return
-
-        if test:
-            self.log_fft(slices, f'FFT {label}', views)
-            # if self.visualize_gt_grads:
-
-            #     try:
-            #         gt_grads = test_loader.sampler.img_grad
-            #         self.log_gradmagnitude(gt_grads, 'Ground Truth - Gradient')
-            #     except:
-            #         print(f'No gradients in sampler and visualization is True. Set visualize_grad to False')
-        return slices if join_views else torch.concat(slices)
-    
-    def log_prediction(self, model, test_loader, device):
-        views = self.hyper['slice_views']
-        captions = f"{views}"
-        dims = test_loader.shape[1:]
-        channels = test_loader.shape[0]
-        domain_slices = make_domain_slices(dims[0], 
-                                           *self.hyper['domain'],
-                                           views)
-        pred_slices = []
-        grads = []
-        for slice in domain_slices:
-            slice = slice.view(-1, self.hyper['in_features']).to(device)
-            output_dict = model(slice)
-            model_out = output_dict['model_out']
-            grads.append(gradient(model_out, 
-                                  output_dict['model_in']).detach().cpu().view(dims[0], dims[1], 3))
-            pred_slices.append(
-                model_out.view(dims[0], dims[1], channels).detach().cpu())
-
-        join_views = self.hyper.get("join_views", False)
-        if join_views:
-            pred_slices = torch.vstack(
-                (torch.hstack(pred_slices[:2]), torch.hstack(pred_slices[2:])))
-        else:
-            captions = [f"Slice {view} = k" for view in views]
-        
-        self.log_images(pred_slices, 'Prediction', captions)
-        self.log_fft(pred_slices, 'FFT Prediction', captions)
-        self.log_gradmagnitude(grads, 'Prediction - Gradient')
-        
-        return pred_slices if join_views else torch.concat(pred_slices)
-    
-    def log_gradmagnitude(self, grads:torch.Tensor, label: str):
-        # TODO: add option to not stack
-        grads = torch.vstack((torch.hstack(grads[:2]), 
-                                    torch.hstack(grads[2:])))
-        mag = torch.sqrt(grads[:, :, 0]**2 
-                         + grads[:, :, 1]**2 
-                         + grads[:, :, 2]**2).numpy()
-        gmin, gmax = np.min(mag), np.max(mag)
-        img = Image.fromarray(255 * (mag - gmin) / gmax).convert('L')
-        wandb.log({f'Gradient Magnitude - {label}': wandb.Image(img)})
-    
-    def log_fft(self, slices, label:str, captions=None):
-        if not isinstance(slices, Sequence):
-            slices = [slices]
-        if self.hyper['channels'] == 3:
-            color_space = self.hyper.get('color_space', 'RGB')
-            if color_space == 'RGB':
-                slices = [rgb_to_grayscale(s) for s in slices]
-            elif color_space == 'YCbCr':
-                slices = [s[..., 0] for s in slices]
-        imgs = []
-        for pixels in slices:
-            fourier_tensor = torch.fft.fftshift(
-                            torch.fft.fft2(pixels.squeeze(-1)))
-            magnitude = np.log(1 + abs(fourier_tensor.numpy()))
-            vmin, vmax = np.min(magnitude), np.max(magnitude)
-            magnitude = (magnitude - vmin) / (vmax - vmin)
-            imgs.append((magnitude * 255).astype(np.uint8))
-        if len(imgs) == 1:
-            img = Image.fromarray(imgs[0])
-        else:
-            if self.hyper.get('join_views', False):
-                magnitude = np.vstack((np.hstack(imgs[:2]), 
-                                       np.hstack(imgs[2:])))
-                img = wandb.Image(
-                    Image.fromarray(magnitude),
-                    caption=captions
-                )
-            else:
-                if captions is None:
-                    captions = [None] * len(imgs)
-                img = [wandb.Image(Image.fromarray(imgs[i]), 
-                                   caption=captions[i]) 
-                        for i in range(len(imgs))]
-
-        wandb.log({label: img})
-
-
-    def log_extrapolation(self, model, interval, dims, device='cpu'):
-        w, h, d = dims
-        start, end = interval[0], interval[1]
-        scale = (end - start) // 2
-        neww, newh, newd = int(scale * w), int(scale * h), int(scale * d)
-
-        views = self.hyper['slice_views']
-        channels = self.hyper['channels']
-        join_views = self.hyper.get("join_views", False)
-        captions = f"{views}"
-        # TODO different resolutions per axis?
-        domain_slices = make_domain_slices(neww, 
-                                           start, 
-                                           end, 
-                                           views)
-        pred_slices = []
-        for slice in domain_slices:
-            with torch.no_grad():
-                pred_slices.append(
-                    output_on_batched_grid(model, 
-                                        slice, 
-                                        self.hyper['batch_size'], 
-                                        device).view(neww, newh, channels)) 
-        if join_views:
-            pred_slices = torch.vstack((torch.hstack(pred_slices[:2]), 
-                                        torch.hstack(pred_slices[2:])))
-        else:
-            captions = [f"Slices {view} = k" for view in views]
-        self.log_images(pred_slices, 'Extrapolation', captions)
-
-    
+        self.logger.log_images([img], "Chosen Frequencies", category='etc')
