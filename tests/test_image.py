@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
 import torch
-from mrnet.logs.wandblogger import WandBLogger2D
 from mrnet.training.trainer import MRTrainer
 from mrnet.datasets.signals import ImageSignal
 from mrnet.networks.mrnet import MRFactory
 from mrnet.datasets.pyramids import create_MR_structure
+from mrnet.logs.listener import TrainingListener
 import yaml
 from yaml.loader import SafeLoader
 import os
@@ -63,7 +63,7 @@ def train_and_log(hyper, train_dataset, test_dataset):
     img_name = os.path.basename(hyper['image_name'])
     mrmodel = MRFactory.from_dict(hyper)
     print("Model: ", type(mrmodel))
-    wandblogger = WandBLogger2D(project_name,
+    wandblogger = TrainingListener(project_name,
                                 f"{hyper['model']}{hyper['filter'][0].upper()}{img_name[0:5]}{hyper['color_space'][0]}",
                                 hyper,
                                 BASE_DIR)

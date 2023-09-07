@@ -42,7 +42,7 @@ max_epochs_per_stage: 100
 batch_size: 128 * 128
 
 # Image
-image_name: img/hallpaz.jpg
+image_name: data/img/hallpaz.jpg
 width: 256
 height: 256
 channels: 3
@@ -50,8 +50,8 @@ channels: 3
 color_space: RGB
 
 # Computation (Only vary between 'cpu' and 'cuda')
-device: cpu
-eval_device: cpu
+device: cuda
+eval_device: cuda
 
 # Etc
 save_format: 'general'
