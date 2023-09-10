@@ -36,7 +36,7 @@ class TrainingListener:
         self.config = config
         self.settings = settings
 
-        self.handler = DataHandler.from_dict(hyper)
+        self.handler = ResultHandler.from_dict(hyper)
 
     def on_train_start(self):
         pass
@@ -97,7 +97,7 @@ class TrainingListener:
         print(f'Training finished after {total_epochs} epochs')
 
 
-class DataHandler:
+class ResultHandler:
 
     def from_dict(hyper):
         dim = hyper['in_features']
@@ -169,7 +169,7 @@ class DataHandler:
         raise NotImplementedError
 
     
-class ImageHandler(DataHandler):
+class ImageHandler(ResultHandler):
 
     def log_traindata(self, train_loader, **kw):
         pixels = train_loader.data.permute((1, 2, 0))
