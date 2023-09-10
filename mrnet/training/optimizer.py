@@ -48,6 +48,7 @@ class MirrorOptimizationHandler(OptimizationHandler):
         out_dict = self.model(X['coords'].to(device))
         loss_dict = self.loss_function(out_dict, gt_dict, device=device)
         
+        # TODO: revise it; looks like the logic is not good
         mirror_loss = 0.0
         offset = self.model.period / 2
         for k in range(self.model.in_features + 1):
