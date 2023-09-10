@@ -45,7 +45,7 @@ On Linux or Mac OS systems:
 After installing the dependencies, install the MR-Net package as follows:
 
 ```
-    pip install git+https://github.com/visgraf/mrnet.git@dev
+    pip install git+https://github.com/visgraf/mrnet.git@public
 ```
 
 #### Optional
