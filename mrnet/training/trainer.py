@@ -7,7 +7,8 @@ from typing import Sequence, Union
 
 from mrnet.networks.mrnet import MRNet
 import mrnet.training.loss as mrloss
-from mrnet.logs.logger import Logger
+from mrnet.logs.listener import TrainingListener
+from mrnet.training.optimizer import OptimizationHandler
 
 
 class MRMode(Enum):
@@ -18,11 +19,13 @@ class MRTrainType(Enum):
     STACK = auto()
     STAGES = auto()
 
+BIG_VALUE = 10000000
+
 class MRTrainer:
     def __init__(self, model: MRNet, 
                         datasource: Union[DataLoader, Sequence[DataLoader]], 
                         testsource: Union[DataLoader, Sequence[DataLoader]],
-                        logger: Logger,
+                        listener: TrainingListener,
                         omega0: Union[int, Sequence[int]],
                         hidden_omega0: Union[int, Sequence[int]],
                         hidden_features: Union[int, Sequence[int]],
@@ -35,6 +38,7 @@ class MRTrainer:
                         opt_method=torch.optim.Adam,
                         loss_function=F.mse_loss,
                         loss_weights={'d0': 1.0},
+                        handler_class=OptimizationHandler,
                         bias=False,
                         mr_train_type=MRTrainType):
         
@@ -56,7 +60,7 @@ class MRTrainer:
 
         self.model = model
         self.max_stages = max_stages
-        self.logger = logger
+        self.listener = listener
 
         self._datasource = datasource
         self._testsource = testsource
@@ -79,6 +83,7 @@ class MRTrainer:
         
         self.opt_method = opt_method
         self.loss_function = loss_function
+        self._handler_class = handler_class
 
         # training parameters to be exposed
         self.current_loss = None
@@ -92,24 +97,31 @@ class MRTrainer:
     def init_from_dict(model: MRNet, 
                         datasource: Union[DataLoader, Sequence[DataLoader]], 
                         testsource: Union[DataLoader, Sequence[DataLoader]],
-                        logger: Logger,
-                        hyper: dict):
+                        listener: TrainingListener,
+                        hyper: dict,
+                        **kwargs):
         lr = hyper.get('lr', 1e-4)
         # TODO: think of strategy to use string or objects for these hyperparameters:
 
-        if hyper.get('filter',None) == 'laplace':
+        if hyper.get('filter', None) == 'laplace':
             mr_train_type = MRTrainType.STAGES
         else:
             mr_train_type = MRTrainType.STACK
+        
+        try:
+            loss_func = kwargs['loss_function']
+        except KeyError:
+            loss_func = mrloss.get_loss_from_map(hyper['loss_function'])
 
-        
-        
-        loss_func = mrloss.get_loss_from_map(hyper['loss_function'])
+        try:
+            handler_class = kwargs['optim_handler']
+        except KeyError:
+            handler_class = OptimizationHandler
 
         return MRTrainer(model,
                         datasource,
                         testsource,
-                        logger,
+                        listener,
                         hyper['omega_0'],
                         hyper['hidden_omega_0'],
                         hyper['hidden_features'],
@@ -121,11 +133,12 @@ class MRTrainer:
                         learning_rate=lr,
                         loss_function=loss_func,
                         loss_weights=hyper['loss_weights'],
-                        bias=hyper.get('bias',False),
+                        handler_class=handler_class,
+                        bias=hyper.get('bias', False),
                         mr_train_type=mr_train_type)
 
     @property
-    def current_dataloader(self)-> DataLoader:
+    def current_datasource(self)-> DataLoader:
         if self.mode == MRMode.CAPACITY:
             return self._datasource
         return self._datasource[-self.n_stages]
@@ -234,17 +247,10 @@ class MRTrainer:
         self.model.to(device)
         self.model.train()
 
-        self.logger.on_train_start()
+        self.listener.on_train_start()
         initial_stage = self.model.n_stages()
         for stage in range(initial_stage, self.max_stages + 1):
-
-            if self.train_type == MRTrainType.STAGES:
-                mrweights = torch.zeros(stage)
-                mrweights[stage-1]=1
-            else:
-                mrweights = None
-
-            if stage > 1:
+            if stage > initial_stage:
                 self.model.add_stage(
                     self.next_omega0(),
                     self.next_hidden_features(),
@@ -257,56 +263,23 @@ class MRTrainer:
             self.n_stages = stage
             optimizer = self.opt_method(lr=self.current_learning_rate, 
                                 params=self.model.parameters(recurse=False))
+            optim_handler = self._handler_class(self.model, 
+                                                optimizer, 
+                                                self.loss_function,
+                                                self._loss_weights)
+            
             tolerance_reached = False
-
-            self.logger.on_stage_start(self.get_model(),
+            self.listener.on_stage_start(self.get_model(),
                                         self.n_stages, 
                                         self.get_stage_hyper())
-            last_epoch_loss = 10000000
-            print("DATA SIZE", self.current_dataloader.size())
+            last_epoch_loss = BIG_VALUE
+            print("DATA SIZE", self.current_datasource.size())
             for epoch in range(self.current_limit_for_epochs):
-                running_loss = {}
-                for batch in self.current_dataloader:
-                    optimizer.zero_grad()
-                    # not all model's parameters are updated by the optimizer
-                    self.model.zero_grad()
-                    # why c0?
-                    X, gt_dict = batch['c0']
-                    out_dict = self.model(X['coords'].to(device), mrweights)
-                    
-                    loss_dict = self.loss_function(out_dict, gt_dict, device)
-                    if loss_dict.get('mirror', 0):
-                        mirror_loss = 0.0
-                        offset = self.model.period / 2
-                        for k in range(self.model.in_features + 1):
-                            if k == 0:
-                                dirx = 2 - X['coords'][..., 0]
-                                diry = 0 + X['coords'][..., 1]
-                            elif k == 1:
-                                dirx = 0 + X['coords'][..., 0]
-                                diry = 2 - X['coords'][..., 1]
-                            else: 
-                                dirx = 2 - X['coords'][..., 0]
-                                diry = 2 - X['coords'][..., 1]
-                            mirror_x =  torch.stack([dirx, diry], dim=-1)
-                            out_mirror = self.model(mirror_x.to(device), mrweights)
-                            mirror_loss += F.mse_loss(out_mirror['model_out'],
-                                                    out_dict['model_out'])
-                        loss_dict['mirror'] = mirror_loss / 2
-                    loss = sum([loss_dict[key] * self._loss_weights[key] 
-                                for key in loss_dict.keys()])
-                    # loss = sum(loss_dict.values())
+                for batch in self.current_datasource:
+                    running_loss = optim_handler(batch, device)
+                    self.listener.on_batch_finish(running_loss)
 
-                    loss.backward()
-                    optimizer.step()
-
-                    for key, value in loss_dict.items():
-                        running_loss[key] = (running_loss.get(key, 0.0) 
-                                                + value.item())
-                    
-                    self.logger.on_batch_finish(running_loss)
-
-                epoch_loss = {key: value / len(self.current_dataloader)
+                epoch_loss = {key: value / len(self.current_datasource)
                                 for key, value in running_loss.items() }
                 total_epoch_loss = sum(epoch_loss.values())
                 self._total_epochs_trained += 1
@@ -319,15 +292,15 @@ class MRTrainer:
                     tolerance_reached = True
                 
                 last_epoch_loss = total_epoch_loss
-                self.logger.on_epoch_finish(self.get_model(), epoch_loss)
+                self.listener.on_epoch_finish(self.get_model(), epoch_loss)
                 if tolerance_reached:
                     break
-            optimizer = None
-            self.logger.on_stage_trained(self.get_model(), 
-                                        self.current_dataloader,
+            optim_handler = None
+            self.listener.on_stage_trained(self.get_model(), 
+                                        self.current_datasource,
                                         self.current_testloader)
         
-        self.logger.on_train_finish(self.get_model(), 
+        self.listener.on_train_finish(self.get_model(), 
                                     self._total_epochs_trained)
 
 
