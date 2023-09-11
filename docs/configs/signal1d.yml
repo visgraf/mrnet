@@ -1,6 +1,6 @@
 # Logging
 project_name: framework-tests
-logger: wandb
+logger: local
 # Model Class (S, L, M)
 model: M
 positive_freqs: False

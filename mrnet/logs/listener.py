@@ -492,7 +492,7 @@ class Signal1DHandler(ResultHandler):
             self.logger.log_graph([zoom_coords, X],
                                   [values, Y],
                                   f"{zoom_factor}x Zoom - Model vs Naive",
-                                  category='pred',
+                                  category='zoom',
                                   fname=f'zoom_{zoom_factor}x',
                                   captions=captions)
 

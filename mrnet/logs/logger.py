@@ -169,9 +169,27 @@ class LocalLogger(Logger):
             filename = kwargs["fnames"]
         except KeyError:
             filename = slugfy(label)
+
+        if not isinstance(Xs, Sequence):
+            Xs = [Xs] * len(Ys)
+        
+        captions = kwargs['captions']
+        marker = kwargs.get('marker', ['', ''])
+        style = kwargs.get('linestyle', ['-', '--'])
+        width = kwargs.get('linewidth', [2, 2])
         fig, ax = plt.subplots()
-        ax.plot(Xs, Ys, **kwargs)
-        fig.savefig(os.path.join(path, filename + 'png'))
+        for i, (x, y) in enumerate(zip(Xs, Ys)):
+            ax.plot(x, y, 
+                    label=captions[i], 
+                    linestyle=style[i], 
+                    linewidth=width[i], marker=marker[i])
+        ax.set_title(label)
+        ax.set_xlabel(kwargs.get('xname', 'coords'))
+        # ax.set_aspect('equal')
+        ax.grid(True, which='both')
+        # seaborn.despine(ax=ax, offset=0)
+        ax.legend()
+        fig.savefig(os.path.join(path, filename))
 
 
     def log_metric(self, metric_name, value, label):
