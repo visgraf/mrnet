@@ -10,7 +10,6 @@ def load_hyperparameters(config_path):
             hyper['batch_size'] = eval(hyper['batch_size'])
         if hyper.get('channels', 0) == 0:
                 hyper['channels'] = hyper['out_features']
-        print(hyper)
     
     return hyper
 

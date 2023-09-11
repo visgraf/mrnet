@@ -56,10 +56,11 @@ class TrainingListener:
         logger = LoggerClass(self.project,
                                     self.name,
                                     self.hyper,
-                                    self.basedir, 
-                                    self.entity, 
-                                    self.config, 
-                                    self.settings)
+                                    self.basedir,
+                                    stage=stage_number, 
+                                    entity=self.entity, 
+                                    config=self.config, 
+                                    settings=self.settings)
         logger.prepare(current_model)
         self.handler.logger = logger
 
@@ -398,12 +399,13 @@ class Signal1DHandler(ResultHandler):
         
     def log_groundtruth(self, test_loader, train_loader, **kwargs):
         self.log_traindata(train_loader, **kwargs)
-        X = test_loader.coords.view(-1).numpy()
-        testY = test_loader.data.view(-1).numpy()
+        trainX = train_loader.coords.view(-1).numpy()
         trainY = train_loader.data.view(-1).numpy()
+        testX = test_loader.coords.view(-1).numpy()
+        testY = test_loader.data.view(-1).numpy()
         captions = [f"Train samples", "Test signal"]
         
-        self.logger.log_graph(X, [trainY, testY], 
+        self.logger.log_graph([trainX, testX], [trainY, testY], 
                               'Ground Truth',
                               captions=captions,
                               category='gt',

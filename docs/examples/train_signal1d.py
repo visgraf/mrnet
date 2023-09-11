@@ -64,7 +64,7 @@ if __name__ == '__main__':
     print("Model: ", type(mrmodel))
 
     training_listener = TrainingListener(project_name,
-                                f"{hyper['model']}{hyper['filter'][0].upper()}{name[0:5]}",
+                                f"{name[0:7]}{hyper['model']}{hyper['filter'][0].upper()}",
                                 hyper,
                                 Path("runs"))
 

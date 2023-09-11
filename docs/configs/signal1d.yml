@@ -9,9 +9,9 @@ positive_freqs: False
 in_features: 1
 out_features: 1
 hidden_layers: 1
-hidden_features: [[4, 32], [128, 192], [192, 256]]
+hidden_features: [[2, 16], [4, 32], [4, 32]]
 bias: True
-max_stages: 1
+max_stages: 3
 
 period: 2
 pmode: wrap
@@ -19,7 +19,7 @@ domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [6, 12, 32]
+omega_0: [4, 6, 8]
 hidden_omega_0: 30
 superposition_w0: False
 

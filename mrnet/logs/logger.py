@@ -15,8 +15,6 @@ from mrnet.networks.mrnet import MRNet, MRFactory
 
 
 def make_runname(hyper, name):
-    hyper = hyper
-    stage = f"{hyper['stage']}-{hyper['max_stages']}"
     w0 = f"w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}"
     hl = f"hl{hyper['hidden_layers']}"
     epochs = f"MEp{hyper['max_epochs_per_stage']}"
@@ -26,8 +24,10 @@ def make_runname(hyper, name):
         hf = hyper['hidden_features']
     hf = f"hf{hf}"
     per = f"pr{hyper['period']}"
-    timetag = dt.now().strftime("%Y%m%d-%H%M")
-    return f"{name}_{stage}_{w0}_{hf}_{epochs}_{hl}_{per}_{timetag}"
+    stage = f"{hyper['stage']}-{hyper['max_stages']}"
+    if name:
+        return f"{name}_{stage}_{w0}_{hf}_{epochs}_{hl}_{per}"
+    return f"{stage}_{w0}_{hf}_{epochs}_{hl}_{per}"
 
 def get_incremental_name(path):
     names = [nm.split()[0][-3:] for nm in os.listdir(path)]
@@ -47,22 +47,14 @@ class Logger:
                         name: str, 
                         hyper: dict,
                         basedir: str, 
-                        entity=None, 
-                        config=None, 
-                        settings=None):
+                        **kwargs):
         
         self.project = project
         self.name = name
         self.hyper = hyper
         self.basedir = basedir
-        self.entity = entity
-        self.config = config
-        self.settings = settings
+        self.stage = kwargs.get('stage', 0)
 
-        try:
-            self.runname = hyper['run_name']
-        except KeyError:
-            self.runname = make_runname(hyper, name)
 
     def log_images(self, pixels, label, captions=None, **kw):
         if not isinstance(pixels, Sequence):
@@ -103,12 +95,10 @@ class LocalLogger(Logger):
                         name: str, 
                         hyper: dict,
                         basedir: str, 
-                        entity=None, 
-                        config=None, 
-                        settings=None):
+                        **kwargs):
         super().__init__(project, name, hyper, 
-                         basedir, entity, config, settings)
-        self.logs = {}
+                         basedir, **kwargs)
+        
         try: 
             logs_path = hyper['logs_path']
         except KeyError:
@@ -120,8 +110,15 @@ class LocalLogger(Logger):
             "etc": "etc",
             "zoom": "zoom"
         }
-        
-        self.savedir = os.path.join(logs_path, self.runname)
+
+        try:
+            self.runname = hyper['run_name']
+        except KeyError:
+            self.runname = make_runname(hyper, "")
+
+        timetag = dt.now().strftime("%Y%m%d-%H%M")
+        name = f"{timetag}_{name}"
+        self.savedir = os.path.join(logs_path, name, self.runname)
 
     def prepare(self, model):
         self.make_dirs()
@@ -190,6 +187,7 @@ class LocalLogger(Logger):
         # seaborn.despine(ax=ax, offset=0)
         ax.legend()
         fig.savefig(os.path.join(path, filename))
+        plt.close()
 
 
     def log_metric(self, metric_name, value, label):
@@ -247,6 +245,17 @@ class LocalLogger(Logger):
         pass
 
 class WandBLogger(Logger):
+
+    def __init__(self, project: str, name: str, hyper: dict, basedir: str, **kwargs):
+        super().__init__(project, name, hyper, basedir, **kwargs)
+        self.entity = kwargs.get('entity', None)
+        self.config = kwargs.get('config', None) 
+        self.settings = kwargs.get('settings', None)
+
+        try:
+            self.runname = hyper['run_name']
+        except KeyError:
+            self.runname = make_runname(hyper, name)
 
     def prepare(self, model):
         wandb.finish()
