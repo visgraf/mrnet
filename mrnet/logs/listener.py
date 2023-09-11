@@ -1,3 +1,4 @@
+from IPython import embed
 import numpy as np
 import os
 import skimage
@@ -486,9 +487,10 @@ class Signal1DHandler(ResultHandler):
                 values = output_dict['model_out'].cpu().view(-1)
             
             captions = ["Model - refined grid", "Naive - old grid"]
-            c1 = nsamples//(zoom_factor//2)
-            X = test_loader.coords.view(-1)[c1:-c1]
-            Y = test_loader.data.view(-1)[c1:-c1]
+            c1 = nsamples * (zoom_factor - 1) // (2 * zoom_factor)
+            c2 = nsamples * (zoom_factor + 1) // (2 * zoom_factor)
+            X = test_loader.coords.view(-1)[c1:c2]
+            Y = test_loader.data.view(-1)[c1:c2]
             self.logger.log_graph([zoom_coords, X],
                                   [values, Y],
                                   f"{zoom_factor}x Zoom - Model vs Naive",
