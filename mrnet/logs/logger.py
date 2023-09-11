@@ -132,7 +132,7 @@ class LocalLogger(Logger):
     def log_losses(self, log_dict:dict):
         filepath = os.path.join(self.savedir, 'losses.csv')
         file_exists = os.path.isfile(filepath)
-        with open(filepath, 'a') as f:
+        with open(filepath, 'a', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=log_dict.keys())
             if not file_exists:
                 writer.writeheader()
