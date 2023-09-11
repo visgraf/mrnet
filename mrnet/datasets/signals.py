@@ -78,6 +78,10 @@ class BaseSignal(Dataset):
     def batch_size(self):
         return self.sampler.batch_size
     
+    @property
+    def coords(self):
+        return self.sampler.coords
+    
     def type_code(self):
         return 'B'
     
@@ -111,8 +115,22 @@ class Signal1D(BaseSignal):
         if isinstance(sampling_scheme, str):
             sampling_scheme = SAMPLING_DICT[sampling_scheme]
 
+        return Signal1D(torch.from_numpy(data).float().view(1, -1), 
+                        domain, 
+                        attributes,
+                        sampling_scheme,
+                        batch_size)
+    
+    def init_from_procedure(proc,
+                           sample_size,
+                           domain=[-1, 1],  
+                           attributes=[],
+                           sampling_scheme=Sampling.REGULAR,
+                           batch_size=-1):
+        data = proc(sample_size)
         return Signal1D(data.view(1, -1), domain, 
                         attributes, sampling_scheme, batch_size)
+        
     
     def type_code(self):
         return "1D"

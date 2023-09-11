@@ -1,4 +1,5 @@
 from typing import Sequence, Union
+from IPython import embed
 import torch
 import scipy
 import numpy as np
@@ -69,14 +70,15 @@ class RegularSampler(Sampler):
         # if soma:
         #     print(soma, len(sampled_indices), "!!!!!!!")
         #     exit()
-        
+        # embed()
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
         flatdata = {'d0': self.data.view(self.data_channels(), 
                                          -1).permute((1, 0))}
         if 'd1' in self.attributes.keys():
-            flatdata['d1'] = torch.sum(self.attributes['d1'], dim=0).view(-1, 2)
+            flatdata['d1'] = torch.sum(self.attributes['d1'], 
+                                       dim=0).view(-1, self.data_channels())
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]

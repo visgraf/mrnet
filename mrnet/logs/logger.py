@@ -1,4 +1,5 @@
 import csv
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import torch
@@ -24,10 +25,9 @@ def make_runname(hyper, name):
     else:
         hf = hyper['hidden_features']
     hf = f"hf{hf}"
-    res = f"r{hyper['width']}"
     per = f"pr{hyper['period']}"
     timetag = dt.now().strftime("%Y%m%d-%H%M")
-    return f"{name}_{stage}_{w0}_{hf}_{epochs}_{hl}_{res}_{per}_{timetag}"
+    return f"{name}_{stage}_{w0}_{hf}_{epochs}_{hl}_{per}_{timetag}"
 
 def get_incremental_name(path):
     names = [nm.split()[0][-3:] for nm in os.listdir(path)]
@@ -38,6 +38,9 @@ def get_incremental_name(path):
         return int(names[-1]) + 1
     except ValueError:
         return 1
+    
+def slugfy(text):
+    return '_'.join(text.lower().split())
 
 class Logger:
     def __init__(self, project: str,
@@ -80,6 +83,9 @@ class Logger:
         except:
             pass
         return pixels, captions
+    
+    def log_graph(self, Xs, Ys, label, **kwargs):
+        raise NotImplementedError()
 
 
 class LocalLogger(Logger):
@@ -87,6 +93,11 @@ class LocalLogger(Logger):
     def make_dirs(self):
         for key in self.subpaths:
             os.makedirs(os.path.join(self.savedir, self.subpaths[key]), exist_ok=True)
+    
+    def get_path(self, category):
+        path = os.path.join(self.savedir, self.subpaths[category])
+        os.makedirs(path, exist_ok=True)
+        return path
 
     def __init__(self, project: str, 
                         name: str, 
@@ -127,17 +138,15 @@ class LocalLogger(Logger):
                 writer.writeheader()
             writer.writerow(log_dict)
             
-    def log_images(self, pixels, label, captions=None, **kw):
-        category = kw['category']
+    def log_images(self, pixels, label, captions=None, **kwargs):
         pixels, captions = super().log_images(pixels, label, captions)
-        path = os.path.join(self.savedir, self.subpaths[category])
-        os.makedirs(path, exist_ok=True)
+        path = self.get_path(kwargs['category'])
 
         for i, image in enumerate(pixels):
             try:
-                filename = kw["fnames"][i]
+                filename = kwargs["fnames"][i]
             except (KeyError, IndexError):
-                slug = '_'.join(label.lower().split())
+                slug = slugfy(label)
                 filename = f"{slug}{get_incremental_name(path):02d}"
             
             if captions:
@@ -153,7 +162,17 @@ class LocalLogger(Logger):
                 if array.dtype != np.uint8 and np.max(array) <= 1.0:
                     array = (array * 255).astype(np.uint8)
                 Image.fromarray(array).save(filepath)
-                
+
+    def log_graph(self, Xs, Ys, label, **kwargs):
+        path = self.get_path(kwargs['category'])
+        try:
+            filename = kwargs["fnames"]
+        except KeyError:
+            filename = slugfy(label)
+        fig, ax = plt.subplots()
+        ax.plot(Xs, Ys, **kwargs)
+        fig.savefig(os.path.join(path, filename + 'png'))
+
 
     def log_metric(self, metric_name, value, label):
         logpath = os.path.join(self.savedir, f"{metric_name}.csv")
@@ -223,13 +242,27 @@ class WandBLogger(Logger):
     def log_losses(self, log_dict):
         wandb.log(log_dict)
 
-    def log_images(self, pixels, label, captions=None, **kw):
+    def log_images(self, pixels, label, captions=None, **kwargs):
         pixels, captions = super().log_images(pixels, label, captions)
         if isinstance(pixels[0], torch.Tensor):
             pixels = [p.squeeze(-1).numpy() for p in pixels]
         images = [wandb.Image(pixels[i],
                               caption=captions[i]) for i in range(len(pixels))]
         wandb.log({label: images})
+
+    def log_graph(self, Xs, Ys, label, **kwargs):
+        captions = kwargs['captions']
+        name = kwargs.get('fname', slugfy(label))
+        # embed()
+        wandb.log({
+            name: wandb.plot.line_series(
+                xs = Xs,
+                ys = Ys,
+                keys=captions,
+                title=label,
+                xname=kwargs.get('xname', 'coords'),
+            )
+        })
 
     def log_metric(self, metric_name, value, label):
         table = wandb.Table(data=[(label, value)], 

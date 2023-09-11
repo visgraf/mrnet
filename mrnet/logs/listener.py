@@ -5,13 +5,15 @@ import time
 import torch
 from PIL import Image
 from pathlib import Path
+from scipy.fft import fft, fftfreq
 from torch.utils.data import BatchSampler
+from mrnet.datasets.signals import Signal1D
 from mrnet.training.loss import gradient
 from mrnet.datasets.sampler import make_grid_coords
 from mrnet.datasets.utils import (output_on_batched_dataset, 
                             output_on_batched_grid, rgb_to_grayscale, ycbcr_to_rgb, RESIZING_FILTERS, INVERSE_COLOR_MAPPING)
 from mrnet.networks.mrnet import MRNet, MRFactory
-from mrnet.logs.logger import LocalLogger, WandBLogger
+from mrnet.logs.logger import LocalLogger, Logger, WandBLogger
 
 
 MODELS_DIR = 'models'
@@ -71,14 +73,14 @@ class TrainingListener:
         start_time = time.time()
         
         self.handler.log_chosen_frequencies(current_model)
-        self.handler.log_traindata(train_loader, stage=current_stage)
-        gt = self.handler.log_groundtruth(test_loader)
+        gt = self.handler.log_groundtruth(test_loader,
+                                          train_loader,
+                                          stage=current_stage)
         pred = self.handler.log_prediction(current_model, test_loader, device)
-        self.handler.log_PSNR(gt.cpu(), pred.cpu())
-        self.handler.log_SSIM(gt.cpu(), pred.cpu())
-        self.handler.log_extrapolation(current_model, 
-                                   test_loader.size()[1:], 
-                                   device)
+        self.handler.log_metrics(gt.cpu(), pred.cpu())
+        self.handler.log_extrapolation(current_model,
+                                       test_loader,
+                                       device)
         self.handler.log_zoom(current_model, test_loader, device)
         # TODO: check for pointcloud data
         print(f"[Logger] All inference done in {time.time() - start_time}s on {device}")
@@ -101,12 +103,16 @@ class ResultHandler:
 
     def from_dict(hyper):
         dim = hyper['in_features']
-        if dim == 2:
-            return ImageHandler(hyper)
+        HANDLERS = {
+            1: Signal1DHandler,
+            2: ImageHandler
+        }
+        return HANDLERS[dim](hyper)
+        
 
     def __init__(self, hyper, logger=None) -> None:
         self.hyper = hyper
-        self.logger = logger
+        self.logger: Logger = logger
 
     def log_losses(self, epochloss):
         log_dict = {f'{key.upper()} loss': value 
@@ -116,6 +122,9 @@ class ResultHandler:
                             [self.hyper['loss_weights'][k] * epochloss[k] 
                                 for k in epochloss.keys()])
         self.logger.log_losses(log_dict)
+
+    def log_metrics(self, gt, pred):
+        self.log_PSNR(gt, pred)
 
     def log_SSIM(self, gt, pred):
         #clamped = pred.clamp(0, 1)
@@ -142,10 +151,7 @@ class ResultHandler:
     def finish(self):
         self.logger.finish()
 
-    def log_traindata(self, train_loader, **kw):
-        raise NotImplementedError
-
-    def log_groundtruth(self, dataset):
+    def log_groundtruth(self, test_loader, train_loader, **kwargs):
         raise NotImplementedError
 
     def log_prediction(self, model, test_loader, device):
@@ -165,11 +171,15 @@ class ResultHandler:
     def log_zoom(self, model, test_loader, device):
         raise NotImplementedError
     
-    def log_extrapolation(self, model, dims, device='cpu'):
+    def log_extrapolation(self, model, test_loader, device='cpu'):
         raise NotImplementedError
 
     
 class ImageHandler(ResultHandler):
+
+    def log_metrics(self, gt, pred):
+        super().log_metrics(gt, pred)
+        self.log_SSIM(gt, pred)
 
     def log_traindata(self, train_loader, **kw):
         pixels = train_loader.data.permute((1, 2, 0))
@@ -182,13 +192,14 @@ class ImageHandler(ResultHandler):
         
         self.logger.log_images(values, 'Train Data', captions, category='gt')
 
-    def log_groundtruth(self, dataset):
+    def log_groundtruth(self, test_loader, train_loader, **kwargs):
+        self.log_traindata(train_loader, **kwargs)
         # permute to H x W x C
-        pixels = dataset.data.permute((1, 2, 0))
+        pixels = test_loader.data.permute((1, 2, 0))
         
         self.logger.log_images([pixels], 
                             'Ground Truth', 
-                            [f"{list(dataset.shape)}"],
+                            [f"{list(test_loader.shape)}"],
                             category='gt')
             
         color_space = self.hyper['color_space']
@@ -204,7 +215,7 @@ class ImageHandler(ResultHandler):
         self.log_fft(gray_pixels, 'FFT Ground Truth', category='gt')
 
         if 'd1' in self.hyper['attributes']:
-            grads = dataset.data_attributes['d1']
+            grads = test_loader.data_attributes['d1']
             
             # TODO: move to log_gradmagnitude; deal with other color spaces
             if color_space == 'YCbCr':
@@ -218,7 +229,7 @@ class ImageHandler(ResultHandler):
             
             self.log_gradmagnitude(grads, 'Gradient Magnitude GT', category='gt')
             
-        return dataset.data.permute((1, 2, 0)
+        return test_loader.data.permute((1, 2, 0)
                                     ).reshape(-1, self.hyper['channels'])
 
     def log_prediction(self, model, test_loader, device):
@@ -303,12 +314,12 @@ class ImageHandler(ResultHandler):
         img = Image.fromarray((magnitude * 255).astype(np.uint8))
         self.logger.log_images([img], label, **kw)
 
-    def log_extrapolation(self, model, dims, device='cpu'):
+    def log_extrapolation(self, model, test_loader, device='cpu'):
         try:
             interval = self.hyper['extrapolate']
         except KeyError:
             return
-        w, h = dims
+        w, h = test_loader.size()[1:]
         start, end = interval[0], interval[1]
         scale = (end - start) // 2
         neww, newh = int(scale * w), int(scale * h)
@@ -370,3 +381,119 @@ class ImageHandler(ResultHandler):
                 
             self.logger.log_images(images, f"Zoom {zoom_factor}x", captions, 
                                         fnames=fnames, category='zoom')
+            
+class Signal1DHandler(ResultHandler):
+    def log_traindata(self, dataset: Signal1D, **kwargs):
+        X = dataset.coords.view(-1).numpy()
+        Y = dataset.data.view(-1).numpy()
+
+        if dataset.domain_mask is not None:
+            raise NotImplementedError()
+        
+        captions = [f"{list(dataset.shape)}"]
+        self.logger.log_graph([X], [Y], 'Train Data',
+                              captions=captions,
+                              category='gt')
+        
+    def log_groundtruth(self, test_loader, train_loader, **kwargs):
+        self.log_traindata(train_loader, **kwargs)
+        X = test_loader.coords.view(-1).numpy()
+        testY = test_loader.data.view(-1).numpy()
+        trainY = train_loader.data.view(-1).numpy()
+        captions = [f"Train samples", "Test signal"]
+        
+        self.logger.log_graph(X, [trainY, testY], 
+                              'Ground Truth',
+                              captions=captions,
+                              category='gt',
+                              fname='ground_truth',
+                              **kwargs)
+
+        self.log_fft({'train': trainY, 'test': testY}, 
+                     captions=captions,
+                     category='gt',
+                     label="FFT Test vs Train samples", 
+                     fname='fft_test_train',
+                     **kwargs)
+        
+        return torch.from_numpy(testY)
+    
+    def log_prediction(self, model, test_loader, device):
+        X = test_loader.coords
+        testY = test_loader.data.view(-1).numpy()
+
+        output_dict = model(X.to(device))
+        pred = output_dict['model_out'].detach().cpu().view(-1).numpy()
+        captions = ['Test signal', 'Prediction']
+        self.logger.log_graph(X.view(-1).numpy(),
+                              [testY, pred],
+                              "Prediction vs Test signal",
+                              captions=captions,
+                              category='pred',
+                              fname='pred_test')
+        
+        self.log_fft({'test': testY, 'pred': pred},
+                     label="FFT Prediction vs Test signal",
+                     captions=captions,
+                     category='pred',
+                     fname='fft_pred_test')
+        return torch.from_numpy(pred)
+        
+    def log_extrapolation(self, model, test_loader, device='cpu'):
+        try:
+            interval = self.hyper['extrapolate']
+        except KeyError:
+            return
+        X = test_loader.coords.view(-1)
+        Y = test_loader.data.view(-1)
+        start, end = interval[0], interval[1]
+        scale = ((end - start) / 
+                 (test_loader.domain[1] - test_loader.domain[0]))
+        newsamplesize = int(len(X) * scale)
+        
+        ext_x = torch.linspace(start, end, newsamplesize)
+        out_dict = model(ext_x.view(-1, 1).to(device))
+        ext_y = out_dict['model_out'].cpu().view(-1).detach()
+
+        captions = ["TEST data", "Prediction"]
+        self.logger.log_graph([X.numpy(), ext_x.numpy()], 
+                              [Y.numpy(), ext_y.numpy()],
+                              fname='extrapolation',
+                              label="Extrapolation Prediction",
+                              captions=captions,
+                              category='pred')
+
+    def log_fft(self, data, **kwargs):
+        ##FFT plot
+        Xs, Ys = [], []
+        for key, value in data.items():
+            N = len(value)
+            Xs.append(fftfreq(N, 2/N)[:N//2])
+            yf = fft(value)
+            Ys.append(2.0 / N * np.abs(yf[0:N//2]))
+            
+        self.logger.log_graph(Xs, Ys, **kwargs)
+
+    def log_zoom(self, model, test_loader, device):
+        nsamples = len(test_loader.coords)
+        domain = self.hyper.get('domain', [-1, 1])
+        zoom = self.hyper.get('zoom', [])
+        for zoom_factor in zoom:
+            start, end = domain[0]/zoom_factor, domain[1]/zoom_factor
+            zoom_coords = torch.linspace(start, end, nsamples).view(-1, 1)
+            with torch.no_grad():
+                output_dict = model(zoom_coords.to(device))
+                values = output_dict['model_out'].cpu().view(-1)
+            
+            captions = ["Model - refined grid", "Naive - old grid"]
+            c1 = nsamples//(zoom_factor//2)
+            X = test_loader.coords.view(-1)[c1:-c1]
+            Y = test_loader.data.view(-1)[c1:-c1]
+            self.logger.log_graph([zoom_coords, X],
+                                  [values, Y],
+                                  f"{zoom_factor}x Zoom - Model vs Naive",
+                                  category='pred',
+                                  fname=f'zoom_{zoom_factor}x',
+                                  captions=captions)
+
+
