@@ -11,7 +11,7 @@ out_features: 1
 hidden_layers: 1
 hidden_features: [[2, 16], [4, 32], [4, 32]]
 bias: True
-max_stages: 3
+max_stages: 1
 
 period: 2
 pmode: wrap

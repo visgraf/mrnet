@@ -104,6 +104,7 @@ class LocalLogger(Logger):
         except KeyError:
             logs_path = basedir.joinpath('logs')
         self.subpaths = {
+            "loss": "",
             "models": "models",
             "gt": "gt",
             "pred": "pred",
@@ -120,6 +121,10 @@ class LocalLogger(Logger):
         name = f"{timetag}_{name}"
         self.savedir = os.path.join(logs_path, name, self.runname)
 
+    @property
+    def loss_filepath(self):
+        return os.path.join(self.savedir, 'losses.csv')
+
     def prepare(self, model):
         self.make_dirs()
         hypercontent = yaml.dump(self.hyper)
@@ -127,9 +132,8 @@ class LocalLogger(Logger):
             hyperfile.write(hypercontent)
 
     def log_losses(self, log_dict:dict):
-        filepath = os.path.join(self.savedir, 'losses.csv')
-        file_exists = os.path.isfile(filepath)
-        with open(filepath, 'a', newline='') as f:
+        file_exists = os.path.isfile(self.loss_filepath)
+        with open(self.loss_filepath, 'a', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=log_dict.keys())
             if not file_exists:
                 writer.writeheader()
@@ -170,16 +174,17 @@ class LocalLogger(Logger):
         if not isinstance(Xs, Sequence):
             Xs = [Xs] * len(Ys)
         
-        captions = kwargs['captions']
-        marker = kwargs.get('marker', ['', ''])
-        style = kwargs.get('linestyle', ['-', '--'])
-        width = kwargs.get('linewidth', [2, 2])
+        captions = kwargs.get('captions', '')
+        marker = kwargs.get('marker', ['', '', '', ''])
+        style = kwargs.get('linestyle', ['-', '--', '-.', ':'])
+        width = kwargs.get('linewidth', [2] * 4)
         fig, ax = plt.subplots()
         for i, (x, y) in enumerate(zip(Xs, Ys)):
             ax.plot(x, y, 
                     label=captions[i], 
-                    linestyle=style[i], 
-                    linewidth=width[i], marker=marker[i])
+                    linestyle=style[i % len(style)], 
+                    linewidth=width[i % len(width)], 
+                    marker=marker[i % len(marker)])
         ax.set_title(label)
         ax.set_xlabel(kwargs.get('xname', 'coords'))
         # ax.set_aspect('equal')
@@ -242,7 +247,33 @@ class LocalLogger(Logger):
         wandb.log({"point_cloud": wandb.Object3D(point_cloud.numpy())})
     
     def finish(self):
-        pass
+        columns = {}
+        with open(self.loss_filepath) as f:
+            reader = csv.DictReader(f)
+            captions = list(reader.fieldnames)
+            for row in reader:
+                for key in captions:
+                    value = float(row[key])
+                    try:
+                        columns[key].append(value)
+                    except KeyError:
+                        columns[key] = [value]
+        x = list(range(len(columns[captions[0]])))
+        for loss in captions:
+            self.log_graph([x], [columns[loss]], 
+                           loss,
+                           category='loss',
+                           captions=loss.split()[0],
+                           xname='epochs')
+        ys = list(columns.values())
+        xs = [x] * len(ys)
+        self.log_graph(xs, ys, 
+                       "All losses", 
+                       captions=captions,
+                       category='loss',
+                       fname='all_losses',
+                       xname='epoch')
+            
 
 class WandBLogger(Logger):
 
