@@ -499,5 +499,28 @@ class Signal1DHandler(ResultHandler):
                                   category='zoom',
                                   fname=f'zoom_{zoom_factor}x',
                                   captions=captions)
+            
+    def log_chosen_frequencies(self, model: MRNet):
+        super().log_chosen_frequencies(model)
+        nyquist_limit = self.hyper['nsamples']//4
+        all_freqs = np.arange(-nyquist_limit, nyquist_limit+1)
+        frequencies = []
+        for stage in model.stages:
+            last_stage_frequencies = stage.first_layer.linear.weight.cpu()
+            freqs = np.round(self.hyper['period'] 
+                    * last_stage_frequencies.view(-1).numpy() 
+                    / (2 * np.pi))
+            frequencies.append(freqs)
+        frequencies = np.concatenate(frequencies)
+        # print(frequencies.shape, frequencies)
+        values = np.zeros_like(all_freqs)
+        values[np.in1d(all_freqs, frequencies.astype(np.int32)).nonzero()] = 1
+        self.logger.log_graph([all_freqs],
+                              [values],
+                              "Chosen Frequencies",
+                              category='etc',
+                              captions=['chosen'],
+                              xname='freqs'
+                              )
 
 

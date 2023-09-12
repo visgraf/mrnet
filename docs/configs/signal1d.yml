@@ -11,7 +11,7 @@ out_features: 1
 hidden_layers: 1
 hidden_features: [[2, 16], [4, 32], [4, 32]]
 bias: True
-max_stages: 1
+max_stages: 3
 
 period: 2
 pmode: wrap
@@ -43,7 +43,7 @@ max_epochs_per_stage: 300
 batch_size: 128 * 128
 
 # Data
-data_path: data/arrays/cossine.npy
+data_path: data/arrays/sinusoidal.npy
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda

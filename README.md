@@ -38,7 +38,7 @@ On Linux or Mac OS systems:
 ```
     python -m venv venv
     source venv/bin/activate
-    pip install -r requirements_unix.txt
+    pip install -r requirements.txt
     pip install torch torchvision torchaudio
 ```
 
@@ -61,7 +61,15 @@ If you want to run the sample Jupyter notebooks locally, please, follow the [ins
 
 ## Testing
 
-python tests/test_image.py
+##### Image example
+```
+python docs/examples/train_image.py
+```
+
+##### 1D signal example:
+```
+python docs\examples\train_signal1d.py
+```
 
 ## Using MR-Net
 
