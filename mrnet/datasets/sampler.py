@@ -12,6 +12,7 @@ from .utils import make_grid_coords
 
 
 class Sampler:
+    """Base Sampler class"""
     def __init__(self, data, domain, attributes, batch_size, shuffle=False):
         self.data = data
         self.domain = domain
@@ -20,16 +21,24 @@ class Sampler:
                            else len(torch.flatten(data)))
         self.shuffle = shuffle
         self.batches = []
-        self.make_samples()
+        self.mask = None
 
-    def make_samples(self):
-        raise NotImplementedError()
-    
     def __len__(self):
+        # lazy initialization
+        if not self.batches:
+            self.make_samples(self.mask)
         return len(self.batches)
     
     def __getitem__(self, idx):
+        # lazy inialization
+        if not self.batches:
+            self.make_samples(self.mask)
         return self.batches[idx]
+    
+    def add_mask(self, mask):
+        self.mask = mask
+        if self.batches:
+            self.make_samples(self.mask)
     
     def data_channels(self):
         return self.data.shape[0]
@@ -37,14 +46,14 @@ class Sampler:
     def data_shape(self):
         return self.data.shape[1:]
     
+    def make_samples(self):
+        raise NotImplementedError()
+    
     def total_nsamples(self):
         raise NotImplementedError()
     
     def scheme(self):
         raise NotImplemented()
-    
-    def add_mask(self, mask):
-        self.make_samples(mask)
     
 
 class RegularSampler(Sampler):
@@ -376,7 +385,7 @@ class SamplerFactory:
     }
     def init(sampling_type:Sampling, 
              data, domain, 
-             attributes, batch_size, shuffle):
+             attributes, batch_size, shuffle) -> Sampler:
         try:
             SamplerClass = SamplerFactory.subclass[sampling_type]
         except KeyError: 

@@ -8,7 +8,6 @@ from pathlib import Path
 from .constants import SAMPLING_DICT, Sampling
 from mrnet.datasets.sampler import SamplerFactory, ProceduralSampler
 from scipy.ndimage import sobel
-from torch.utils.data import BatchSampler
 from scipy.interpolate import RegularGridInterpolator, interpn
 from mrnet.datasets.utils import (rotation_matrix, make_domain_slices, 
                             COLOR_MAPPING, make_grid_coords)
@@ -36,7 +35,6 @@ class BaseSignal(Dataset):
         self.attributes = attributes
         self.color_space = color_space
         self.data_attributes = {}
-        self.domain_mask = None
         if 'd1' in self.attributes:
             self.compute_derivatives()
         if isinstance(sampling_scheme, str):
@@ -61,7 +59,6 @@ class BaseSignal(Dataset):
         return self.data.shape
     
     def add_mask(self, mask):
-        self.domain_mask = mask
         self.sampler.add_mask(mask)
     
     @property
@@ -81,6 +78,10 @@ class BaseSignal(Dataset):
     @property
     def coords(self):
         return self.sampler.coords
+    
+    @property
+    def domain_mask(self):
+        return self.sampler.mask
     
     def type_code(self):
         return 'B'
@@ -121,17 +122,6 @@ class Signal1D(BaseSignal):
                         sampling_scheme,
                         batch_size)
     
-    def init_from_procedure(proc,
-                           sample_size,
-                           domain=[-1, 1],  
-                           attributes=[],
-                           sampling_scheme=Sampling.REGULAR,
-                           batch_size=-1):
-        data = proc(sample_size)
-        return Signal1D(data.view(1, -1), domain, 
-                        attributes, sampling_scheme, batch_size)
-        
-    
     def type_code(self):
         return "1D"
 
@@ -161,8 +151,6 @@ class ImageSignal(BaseSignal):
             img = img.resize((width, height))
         img_tensor = to_tensor(img)
         
-        # mask = (to_tensor(Image.open(maskpath).resize((width, height))) 
-        #         if maskpath else None)
         if isinstance(sampling_scheme, str):
             sampling_scheme = SAMPLING_DICT[sampling_scheme]
 
