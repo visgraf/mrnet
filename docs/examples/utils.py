@@ -13,9 +13,7 @@ def load_hyperparameters(config_path):
     
     return hyper
 
-def get_optim_handler(hyper):
-    handler_type = hyper.get('optim_handler', 'regular')
-    
+def get_optim_handler(handler_type):
     if handler_type == 'regular':
          return OptimizationHandler
     elif handler_type == 'mirror':

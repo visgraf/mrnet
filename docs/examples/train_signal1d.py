@@ -40,7 +40,7 @@ if __name__ == '__main__':
                                         hyper['pmode'])
 
     # you can substitute this line by your custom handler class
-    optim_handler = get_optim_handler(hyper)
+    optim_handler = get_optim_handler(hyper.get('optim_handler', 'regular'))
     
     mrmodel = MRFactory.from_dict(hyper)
     print("Model: ", type(mrmodel))
