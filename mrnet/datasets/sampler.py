@@ -46,7 +46,7 @@ class Sampler:
     def add_mask(self, mask):
         self.make_samples(mask)
     
-    
+
 class RegularSampler(Sampler):
 
     def make_samples(self, domain_mask=None):
@@ -54,24 +54,15 @@ class RegularSampler(Sampler):
         dimension = len(self.data_shape())
         self.coords = make_grid_coords(self.data_shape(), 
                                        *self.domain, dim=dimension)
-        self.shuffle = True #GAMB
+        
         n = len(self.coords)
-        if domain_mask is None:
+        if domain_mask:
+            raise NotImplementedError()
+            sampled_indices = torch.arange(0, n, dtype=torch.long)[domain_mask.view(-1)]
+        else:
             sampled_indices = (torch.randperm(n) if self.shuffle 
                                else torch.arange(0, n, dtype=torch.long))
-            
-            # sampled_indices = sampled_indices[tst_mask.view(-1)]
-            # mask = torch.ones(n, dtype=bool)
-            # print("AQUI", all(tst_mask.view(-1) == mask))
-        else:
-            # TODO: permute; flatten domain_mask?
-            sampled_indices = torch.arange(0, n, dtype=torch.long)[domain_mask.view(-1)]
-            print("ACOLA")
-        # soma = sum(sampled_indices - torch.arange(n)) > 0
-        # if soma:
-        #     print(soma, len(sampled_indices), "!!!!!!!")
-        #     exit()
-        # embed()
+        
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
         )
@@ -96,7 +87,8 @@ class RegularSampler(Sampler):
     def scheme(self):
         return Sampling.REGULAR
     
-
+# TODO: ponder if it should be excluded, 
+# making the reflection loss the default solution
 class ReflectSampler(RegularSampler):
     def make_samples(self, domain_mask=None):
         self.key_group = 'c0'
@@ -160,6 +152,8 @@ class ReflectSampler(RegularSampler):
     def scheme(self):
         return Sampling.REFLECT
 
+# TODO: refactor and extend to work with multiple dimensions; 
+# include in the sampler class hierarchy
 class ProceduralSampler:
     def __init__(self, procedure, 
                         domain, 
@@ -374,21 +368,25 @@ class StratifiedSampler:
     
     
 class SamplerFactory:
+    subclass = {
+        Sampling.REGULAR: RegularSampler,
+        Sampling.REFLECT: ReflectSampler,
+        Sampling.POISSON_DISC: PoissonDiscSampler,
+        Sampling.STRATIFIED: StratifiedSampler,
+    }
     def init(sampling_type:Sampling, 
              data, domain, 
              attributes, batch_size, shuffle):
-        if sampling_type==Sampling.REGULAR:
-            return RegularSampler(data, domain, attributes, batch_size, shuffle)
-        elif sampling_type==Sampling.STRATIFIED:
-            return StratifiedSampler(data, domain, 
-                                     attributes, batch_size, shuffle)
-        elif sampling_type==Sampling.POISSON_DISC:
-            return PoissonDiscSampler(data, domain, 
-                                      attributes, batch_size, shuffle)
-        elif sampling_type == Sampling.REFLECT:
-            return ReflectSampler(data, domain, attributes, batch_size, shuffle)
-        else:
+        try:
+            SamplerClass = SamplerFactory.subclass[sampling_type]
+        except KeyError: 
             raise ValueError(f"Invalid sampling type {sampling_type}")
+        return SamplerClass(data, 
+                            domain, 
+                            attributes, 
+                            batch_size,
+                            shuffle)
+            
 
         
 
