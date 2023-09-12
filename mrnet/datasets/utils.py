@@ -4,14 +4,12 @@ from typing import Sequence, Union
 from torch.utils.data import BatchSampler
 from PIL import Image
 
-# Adapted from https://github.com/makeyourownalgorithmicart/makeyourownalgorithmicart/blob/master/blog/perlin_gradient_noise/1d_perlin.ipynb
 
 RESIZING_FILTERS = {
     'nearest': Image.Resampling.NEAREST,
     'linear': Image.Resampling.BILINEAR,
     'cubic': Image.Resampling.BICUBIC,
 }
-
 
 
 def make_grid_coords(nsamples, start, end, dim, flatten=True):
@@ -192,22 +190,6 @@ INVERSE_COLOR_MAPPING = {
 if __name__ == '__main__':
     from PIL import Image
 
-    # Define texture size and cube size
-    # texture_size = 128
-    # cube_size = 16
-
-    # Combine the sine waves and threshold to create checkerboard pattern
-    # board = ((sine_x + sine_y + sine_z) > 0).astype(np.uint8) * 255
-    # print(board.shape)
-    # board = (solid_texture(texture_size, 0.4) * 255).astype(np.uint8)
-    # Image.fromarray(board[0, :, :]).save('x.png')
-    # Image.fromarray(board[:, 0, :]).save('y.png')
-    # Image.fromarray(board[:, :, 0]).save('z.png')
-    # # Convert NumPy array to PIL image
-    # image = Image.fromarray(checkerboard)
-
-    # # Save the generated texture
-    # image.save('checkerboard_sine_3d.png')
     slices = make_domain_slices(32, -1, 1, ['x', 'y', 'z', 'xy'])
     print(len(slices), slices[0].shape)
 

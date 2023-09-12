@@ -12,22 +12,9 @@ from mrnet.datasets.procedural import perlin_noise
 from utils import load_hyperparameters, get_optim_handler
 
 
-BASE_DIR = Path('.').absolute()
-DATA_PATH = BASE_DIR.joinpath('data')
-torch.manual_seed(777)
-# os.environ['WANDB_MODE'] = "offline"
-
-#-- hyperparameters in configs --#
-
-def proc_noise(hyper):
-    scale = hyper.get('scale', 10) 
-    octaves = hyper.get('octaves', 1)
-    p = hyper.get('p', 1)
-    def inner(nsamples):
-        return perlin_noise(nsamples, scale, octaves, p)
-    return inner
-
 if __name__ == '__main__':
+    torch.manual_seed(777)
+    #-- hyperparameters in configs --#
     hyper = load_hyperparameters('docs/configs/signal1d.yml')
     project_name = hyper.get('project_name', 'dev_sandbox')
 
@@ -54,19 +41,15 @@ if __name__ == '__main__':
 
     # you can substitute this line by your custom handler class
     optim_handler = get_optim_handler(hyper)
-
-    try:
-        name = os.path.basename(hyper['data_path'])
-    except KeyError:
-        name = 'procedural'
-
+    
     mrmodel = MRFactory.from_dict(hyper)
     print("Model: ", type(mrmodel))
 
+    name = os.path.basename(hyper['data_path'])
     training_listener = TrainingListener(project_name,
                                 f"{name[0:7]}{hyper['model']}{hyper['filter'][0].upper()}",
                                 hyper,
-                                Path("runs"))
+                                Path(hyper.get("log_path", "runs")))
 
     mrtrainer = MRTrainer.init_from_dict(mrmodel,
                                         train_dataset,

@@ -112,11 +112,12 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - `loss_tol`: a float (ex: 1e-10); if the loss function reaches a value below `loss_tol`, the training of the current stage will be interrupted.
 - `diff_tol`: a float (ex: 1e-7); if the difference between the values of the loss function in two successive epochs is lower than `diff_tol`, the training of the current stage will be interrupted.
 
-##### Image
-- `image_name`: the path to the image file.
+##### Data
+- `data_path`: the path to the image file or numpy array file.
+- `nsamples`: 
 - `width`: an integer value (ex: 128) representing the *width* of the image signal; if it is greater than zero, the image will be resized; otherwise, its original size will be preserved.
 - `height`: an integer value (ex: 128) representing the *height* of the image signal; if it is greater than zero, the image will be resized; otherwise, its original size will be preserved.
-- `channels`: an integer value (ex: 3) representing the number of channels in the signal; should match `out_features`.
+- `channels`: an integer value (ex: 3) representing the number of channels in the signal; should match `out_features`. Use 0 to have it automatically computed in the examples.
 - `color_space`: RGB; for valid values, see: [Pillow docs](https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes)
 
 #### Etc

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "mrnet"
 packages = ["datasets", "logs", "networks", "training"]
-version = "0.0.2"
+version = "0.0.4"
 authors = [
   { name="Hallison Paz", email="hallpaz@impa.br" },
 ]

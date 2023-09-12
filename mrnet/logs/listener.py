@@ -89,6 +89,7 @@ class TrainingListener:
         current_model.train()
         current_model.to(self.hyper['device'])
         self.handler.log_model(current_model)
+        self.handler.finish()
 
     def on_batch_finish(self, batchloss):
         pass
@@ -97,7 +98,6 @@ class TrainingListener:
         self.handler.log_losses(epochloss)
 
     def on_train_finish(self, trained_model, total_epochs):
-        self.handler.finish()
         print(f'Training finished after {total_epochs} epochs')
 
 

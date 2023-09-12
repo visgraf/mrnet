@@ -94,6 +94,7 @@ def save_texture(texture, prefix, size):
 def blend(x):
   return 6*x**5 - 15*x**4 + 10*x**3
 
+# Adapted from https://github.com/makeyourownalgorithmicart/makeyourownalgorithmicart/blob/master/blog/perlin_gradient_noise/1d_perlin.ipynb
 def noise(scale, samples):
     # create a list of 2d vectors
     angles = torch.rand(scale) * 2*np.pi

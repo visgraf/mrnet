@@ -44,7 +44,6 @@ batch_size: 128 * 128
 
 # Data
 data_path: data/arrays/cossine.npy
-nsamples: 256
 
 # Computation (Only vary between 'cpu' and 'cuda')
 device: cuda

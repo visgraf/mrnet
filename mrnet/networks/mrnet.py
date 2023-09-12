@@ -388,7 +388,7 @@ class MRFactory:
         updict = {k: checkpoint[k][0] for k in module_keys}
         singledict.update(updict)
         model = MRFactory.from_dict(singledict)
-        print(model)
+        # print(model)
         model_stages = []
         singledict['prevknowledge'] = 0
         for stage in range(checkpoint['stages']):

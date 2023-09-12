@@ -209,43 +209,6 @@ class LocalLogger(Logger):
         os.makedirs(logpath, exist_ok=True)
         MRFactory.save(model, os.path.join(logpath, filename + ".pth"))
 
-    def log_point_cloud(self, model, device):
-        scale_radius = self.hyper.get('scale_radius', 0.9)
-        if self.hyper.get('test_mesh', ""):
-            try:
-                mesh = trimesh.load_mesh(os.path.join(self.basedir, MESHES_DIR, 
-                                                    self.hyper['test_mesh']))
-                point_cloud, _ = trimesh.sample.sample_surface(
-                                        mesh, self.hyper['ntestpoints'])
-                point_cloud = torch.from_numpy(point_cloud).float()
-                # center at the origin and rescale to fit a sphere of radius
-                point_cloud = point_cloud - torch.mean(point_cloud, dim=0)
-                scale = scale_radius / torch.max(torch.abs(point_cloud))
-                point_cloud = scale * point_cloud
-            except:
-                point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
-                point_cloud = (point_cloud / torch.linalg.vector_norm(
-                                    point_cloud, dim=-1).unsqueeze(-1)) * scale_radius
-        else:
-            point_cloud = torch.rand((self.hyper['ntestpoints'], 3))
-            point_cloud = (point_cloud / torch.linalg.vector_norm(
-                                    point_cloud, dim=-1).unsqueeze(-1)) * scale_radius
-            
-        with torch.no_grad():
-            colors = output_on_batched_grid(model, 
-                                            point_cloud, 
-                                            self.hyper['batch_size'], 
-                                            device).cpu().clamp(0, 1)
-        if self.hyper['channels'] == 1:
-            colors = torch.concat([colors, colors, colors], 1)
-        else:
-            color_transform = INVERSE_COLOR_MAPPING[self.hyper.get('color_space', 'RGB')]
-            colors = color_transform(colors)
-        colors = (colors * 255).int()
-        point_cloud = torch.concat((point_cloud, colors), 1)
-
-        wandb.log({"point_cloud": wandb.Object3D(point_cloud.numpy())})
-    
     def finish(self):
         columns = {}
         with open(self.loss_filepath) as f:
@@ -273,6 +236,7 @@ class LocalLogger(Logger):
                        category='loss',
                        fname='all_losses',
                        xname='epoch')
+        print(f"All results logged to {self.savedir}")
             
 
 class WandBLogger(Logger):
@@ -340,9 +304,6 @@ class WandBLogger(Logger):
         artifact = wandb.Artifact(filename, type='model')
         artifact.add_file(logpath)
         wandb.log_artifact(artifact)
-
-    def log_pointcloud():
-        pass
 
     def finish(self):
         wandb.finish()

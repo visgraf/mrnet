@@ -51,8 +51,9 @@ class RegularSampler(Sampler):
 
     def make_samples(self, domain_mask=None):
         self.key_group = 'c0'
+        dimension = len(self.data_shape())
         self.coords = make_grid_coords(self.data_shape(), 
-                                       *self.domain, dim=len(self.data_shape()))
+                                       *self.domain, dim=dimension)
         self.shuffle = True #GAMB
         n = len(self.coords)
         if domain_mask is None:
@@ -78,7 +79,7 @@ class RegularSampler(Sampler):
                                          -1).permute((1, 0))}
         if 'd1' in self.attributes.keys():
             flatdata['d1'] = torch.sum(self.attributes['d1'], 
-                                       dim=0).view(-1, self.data_channels())
+                                       dim=0).view(-1, dimension)
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]

@@ -17,3 +17,4 @@ img/untracked/*
 runs/*
 models/*
 */tmp/*
+docs/examples/wandb/*
