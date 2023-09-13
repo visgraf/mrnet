@@ -26,7 +26,7 @@ if __name__ == '__main__':
                         attributes=hyper['attributes'],
                         batch_size=hyper['batch_size'])
     
-    hyper['nsamples'] = len(base_signal.coords)
+    hyper['nsamples'] = len(base_signal.data[1:])
 
     train_dataset = create_MR_structure(base_signal,
                                         hyper['max_stages'],

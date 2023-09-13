@@ -39,6 +39,13 @@ class Sampler:
         self.mask = mask
         if self.batches:
             self.make_samples(self.mask)
+    @property
+    def coords(self):
+        try:
+            return self._coords
+        except AttributeError:
+            self.make_samples(self.mask)
+        return self._coords
     
     def data_channels(self):
         return self.data.shape[0]
@@ -61,10 +68,10 @@ class RegularSampler(Sampler):
     def make_samples(self, domain_mask=None):
         self.key_group = 'c0'
         dimension = len(self.data_shape())
-        self.coords = make_grid_coords(self.data_shape(), 
+        self._coords = make_grid_coords(self.data_shape(), 
                                        *self.domain, dim=dimension)
         
-        n = len(self.coords)
+        n = len(self._coords)
         if domain_mask is not None:
             sampled_indices = torch.arange(0, n, dtype=torch.long)[domain_mask.view(-1)]
             if self.shuffle:
@@ -87,7 +94,7 @@ class RegularSampler(Sampler):
                                 for idx_batch in index_batches]
 
     def get_tuple_dicts(self, sel_idxs, flatdata):
-        coords_sel = self.coords[sel_idxs]
+        coords_sel = self._coords[sel_idxs]
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
         out_dict = {}
         for key in flatdata.keys():
@@ -106,17 +113,17 @@ class ReflectSampler(RegularSampler):
         # double the points
         nsamples = tuple(np.array(self.data_shape()) * 2)
         domain = tuple(np.array(self.domain) * 2)
-        self.coords = make_grid_coords(nsamples, 
+        self._coords = make_grid_coords(nsamples, 
                                        *domain,
                                        dim=len(self.data_shape()))
         
         if domain_mask is None:
-            n = len(self.coords)
+            n = len(self._coords)
             sampled_indices = (torch.randperm(n) if self.shuffle 
                                else torch.arange(0, n, dtype=torch.long))
         else:
             # TODO: permute; flatten domain_mask?
-            sampled_indices = torch.tensor(range(len(self.coords)))[domain_mask]
+            sampled_indices = torch.tensor(range(len(self._coords)))[domain_mask]
         
         index_batches = list(
             BatchSampler(sampled_indices, self.batch_size, drop_last=False)
@@ -229,10 +236,10 @@ class PoissonDiscSampler(RegularSampler):
         self.img_height = height
 
         self.sampler_poison = PoissonDisc(width, height, self.r, self.k)
-        self.coords = self.sampler_poison.sample()
-        self.coords_vis = make_grid_coords((width, height), *domain, dim=2)
+        self._coords = self.sampler_poison.sample()
+        self._coords_vis = make_grid_coords((width, height), *domain, dim=2)
 
-        self.size = len(self.coords)
+        self.size = len(self._coords)
         print(f'Num of samples: {self.size}')
 
         self.batch_index_dict = {}
@@ -243,7 +250,7 @@ class PoissonDiscSampler(RegularSampler):
         self.list_batches = self.create_batches(batch_index)
 
     def get_tuple_dicts(self,sel_idxs):
-        coords_sel = self.coords[sel_idxs]
+        coords_sel = self._coords[sel_idxs]
         list_coords = list(coords_sel)
 
         img_data_sel = [self.img_orig.getpixel( (  self.img_height*(1 +coord[1].item())/2  ,
@@ -290,7 +297,7 @@ class StratifiedSampler:
         self.grads_x_numpy, self.grads_y_numpy = np.copy(grads_x.squeeze()), np.copy(grads_y.squeeze())
 
     def get_tuple_dicts(self,sel_idxs, class_points):
-        coords_type_points = self.coords[class_points]
+        coords_type_points = self._coords[class_points]
         coords_sel = torch.tensor(coords_type_points[sel_idxs])
             
         in_dict = {'coords': coords_sel, 'idx':sel_idxs}
@@ -346,21 +353,21 @@ class StratifiedSampler:
         self.img_width = width
         self.img_height = height
 
-        self.coords = {}
-        self.coords['c0'] = PoissonDisc(width, height, self.r_d0, self.k_d0).sample()
-        self.coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
-        self.coords_vis = make_grid_coords(width, height, *domain)
+        self._coords = {}
+        self._coords['c0'] = PoissonDisc(width, height, self.r_d0, self.k_d0).sample()
+        self._coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
+        self._coords_vis = make_grid_coords(width, height, *domain)
 
         if 'd1' in self.attributes:
             self.compute_gradients()
         
         self.total_idx_sample = {}
-        self.total_idx_sample['c0'] = list(range(len(self.coords['c0'])))
-        self.total_idx_sample['c1'] = list(range(len(self.coords['c1'])))
+        self.total_idx_sample['c0'] = list(range(len(self._coords['c0'])))
+        self.total_idx_sample['c1'] = list(range(len(self._coords['c1'])))
 
         self.total_ids_in_batch = {}
-        self.total_ids_in_batch['c0'] = int(len(self.coords['c0']))
-        self.total_ids_in_batch['c1'] = int(len(self.coords['c1']))
+        self.total_ids_in_batch['c0'] = int(len(self._coords['c0']))
+        self.total_ids_in_batch['c1'] = int(len(self._coords['c1']))
         
         self.batch_index_dict = {}
         self.batch_index_dict['c0'] = self.create_batch_samples(batch_pixel_perc,self.total_idx_sample['c0'])
