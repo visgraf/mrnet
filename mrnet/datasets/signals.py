@@ -12,14 +12,6 @@ from scipy.interpolate import RegularGridInterpolator, interpn
 from mrnet.datasets.utils import (rotation_matrix, make_domain_slices, 
                             COLOR_MAPPING, make_grid_coords)
 
-def make_mask(srcpath, mask_color):
-    img = np.array(Image.open(srcpath))
-    mask = img != mask_color
-    path = Path(srcpath)
-    path = path.parent.absolute().joinpath("mask.png")
-    Image.fromarray(mask).save(path)
-    return str(path)
-
 
 class BaseSignal(Dataset):
     def __init__(self, data,

@@ -65,9 +65,11 @@ class RegularSampler(Sampler):
                                        *self.domain, dim=dimension)
         
         n = len(self.coords)
-        if domain_mask:
-            raise NotImplementedError()
+        if domain_mask is not None:
             sampled_indices = torch.arange(0, n, dtype=torch.long)[domain_mask.view(-1)]
+            if self.shuffle:
+                random_idx = torch.randperm(len(sampled_indices))
+                sampled_indices = sampled_indices[random_idx]
         else:
             sampled_indices = (torch.randperm(n) if self.shuffle 
                                else torch.arange(0, n, dtype=torch.long))
