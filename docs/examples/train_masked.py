@@ -6,7 +6,7 @@ from mrnet.training.trainer import MRTrainer
 from mrnet.datasets.signals import ImageSignal
 from mrnet.networks.mrnet import MRFactory
 from mrnet.datasets.pyramids import create_MR_structure
-from mrnet.logs.listener import TrainingListener
+from mrnet.training.listener import TrainingListener
 
 from utils import load_hyperparameters, get_optim_handler
 

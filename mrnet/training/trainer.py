@@ -7,7 +7,7 @@ from typing import Sequence, Union
 
 from mrnet.networks.mrnet import MRNet
 import mrnet.training.loss as mrloss
-from mrnet.logs.listener import TrainingListener
+from mrnet.training.listener import TrainingListener
 from mrnet.training.optimizer import OptimizationHandler
 
 
