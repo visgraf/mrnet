@@ -6,7 +6,6 @@ __pycache__/*
 */wandb/*
 */*/__pycache__/*
 *.pth
-*.npy
 logs/*
 wandb/*
 img/kodak/*
