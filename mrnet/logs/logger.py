@@ -117,9 +117,11 @@ class LocalLogger(Logger):
         except KeyError:
             self.runname = make_runname(hyper, "")
 
-        timetag = dt.now().strftime("%Y%m%d-%H%M")
+        now = dt.now()
+        timetag = now.strftime("%Y%m%d")
         name = f"{timetag}_{name}"
-        self.savedir = os.path.join(logs_path, name, self.runname)
+        self.savedir = os.path.join(logs_path, name, 
+                                    f"{now.strftime('%H%M')}_sg{self.runname}")
 
     @property
     def loss_filepath(self):

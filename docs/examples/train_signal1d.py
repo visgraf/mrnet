@@ -23,7 +23,6 @@ if __name__ == '__main__':
                         hyper['data_path'],
                         domain=hyper['domain'],
                         sampling_scheme=hyper['sampling_scheme'],
-                        attributes=hyper['attributes'],
                         batch_size=hyper['batch_size'])
     
     hyper['nsamples'] = len(base_signal.data[1:])

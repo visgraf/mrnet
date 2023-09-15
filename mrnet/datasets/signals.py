@@ -13,39 +13,50 @@ from mrnet.datasets.utils import (rotation_matrix, make_domain_slices,
                             COLOR_MAPPING, make_grid_coords)
 
 
+def compute_derivatives1D(data):
+    dims = len(data.shape[1:])
+    directions = []
+    for d in range(1, dims + 1):
+        directions.append(
+            torch.from_numpy(sobel(data, d, mode='wrap'))
+            )
+    # channels x N x dims
+    return  torch.stack(directions, dim=-1)
+
+def compute_derivatives2d(data):
+        dims = len(data.shape[1:])
+        directions = []
+        for d in range(1, dims + 1):
+            directions.append(
+                torch.from_numpy(sobel(data, d, mode='wrap'))
+                )
+        # channels x N x dims
+        # if self.color_space == 'YCbCr':
+        #     self.data_attributes = {'d1': torch.stack(directions, dim=-1)[0:1, ...]} #GAMBIARRA YCbCr
+        # else:
+        return torch.stack(directions, dim=-1)
+
 class BaseSignal(Dataset):
     def __init__(self, data,
                  domain=[-1, 1],
-                 attributes=[], 
+                 attributes={}, 
                  sampling_scheme=Sampling.REGULAR,
                  batch_size=0,
-                 color_space='RGB',
-                 shuffle=True):
+                 shuffle=True,
+                 **kwargs):
         
         self.data = data
         self.domain = domain
-        self.attributes = attributes
-        self.color_space = color_space
-        self.data_attributes = {}
-        if 'd1' in self.attributes:
-            self.compute_derivatives()
+        self.color_space = kwargs.get('color_space', 'L')
+        
         if isinstance(sampling_scheme, str):
             sampling_scheme = SAMPLING_DICT[sampling_scheme]
         self.sampler = SamplerFactory.init(sampling_scheme,
                                            self.data,
                                            self.domain,
-                                           self.data_attributes,
+                                           attributes,
                                            batch_size,
                                            shuffle)
-    def compute_derivatives(self):
-        dims = len(self.data.shape[1:])
-        directions = []
-        for d in range(1, dims + 1):
-            directions.append(
-                torch.from_numpy(sobel(self.data, d, mode='wrap'))
-                )
-        # channels x N x dims
-        self.data_attributes = {'d1': torch.stack(directions, dim=-1)}
 
     def size(self):
         return self.data.shape
@@ -72,6 +83,14 @@ class BaseSignal(Dataset):
         return self.sampler.coords
     
     @property
+    def attributes(self):
+        return self.sampler.attributes
+    
+    @attributes.setter
+    def attributes(self, value):
+        self.sampler.attributes = value
+    
+    @property
     def domain_mask(self):
         return self.sampler.mask
     
@@ -93,14 +112,14 @@ class BaseSignal(Dataset):
                     other.attributes, 
                     other.sampler.scheme(),
                     other.sampler.batch_size,
-                    other.color_space,
-                    shuffle)
+                    shuffle=shuffle,
+                    color_space=other.color_space)
         
 
 class Signal1D(BaseSignal):
     def init_fromfile(filepath, 
                       domain=[-1, 1], 
-                      attributes=[],
+                      attributes={},
                       sampling_scheme=Sampling.REGULAR,
                       batch_size=-1):
         
@@ -122,17 +141,18 @@ class ImageSignal(BaseSignal):
 
     def init_fromfile(imagepath, 
                       domain=[-1, 1],
-                      channels=3,
+                      attributes={},
                       sampling_scheme=Sampling.REGULAR,
-                      width=None, height=None,
-                      attributes=[], 
                       batch_size=0,
-                      color_space='RGB'):
+                      color_space='RGB',
+                      **kwargs):
         img = Image.open(imagepath)
         img.mode
         if color_space != img.mode:
             img = img.convert(color_space)
 
+        width = kwargs.get('width', 0)
+        height = kwargs.get('height', 0)
         if width or height:
             if not height:
                 height = img.height
@@ -148,24 +168,12 @@ class ImageSignal(BaseSignal):
 
         return ImageSignal(img_tensor,
                             domain=domain,
-                            sampling_scheme=sampling_scheme,
                             attributes=attributes,
+                            sampling_scheme=sampling_scheme,
                             batch_size=batch_size,
                             color_space=color_space)
 
-    def compute_derivatives(self):
-        dims = len(self.data.shape[1:])
-        directions = []
-        for d in range(1, dims + 1):
-            directions.append(
-                torch.from_numpy(sobel(self.data, d, mode='wrap'))
-                )
-        # channels x N x dims
-        if self.color_space == 'YCbCr':
-            self.data_attributes = {'d1': torch.stack(directions, dim=-1)[0:1, ...]} #GAMBIARRA YCbCr
-        else:
-            self.data_attributes = {'d1': torch.stack(directions, dim=-1)}
-
+    
     def load_mask(self, maskpath):
         mask = to_tensor(Image.open(maskpath)).squeeze(0).bool()
         self.add_mask(mask)
@@ -176,18 +184,6 @@ class ImageSignal(BaseSignal):
     def type_code(self):
         return "2D"
 
-    def __sub__(self,other):
-        if self.domain != other.domain:
-            raise NotImplementedError("Can only operate signals in same domain for now")
-        data_self = self.image_t
-        data_other = other.image_t
-        subtract_data = data_self - data_other
-        width,height = self.dimensions()
-        return ImageSignal(subtract_data,
-                            domain=self.domain,
-                            sampling_scheme=self.sampling_scheme,
-                            batch_samples_perc=self.batch_samples_perc,
-                            attributes=self.attributes)
     
 class VolumeSignal(BaseSignal):
 
@@ -195,7 +191,7 @@ class VolumeSignal(BaseSignal):
                       domain=[-1, 1],
                       sampling_scheme=Sampling.REGULAR,
                       width=None, height=None,
-                      attributes=[], channels=3,
+                      attributes={}, channels=3,
                       batch_size=0,
                       maskpath=None):
         volume = np.load(volumepath).astype(np.float32)
@@ -275,7 +271,7 @@ class Procedural3DSignal(Dataset):
                  dims,
                  channels,
                  domain=[-1, 1],
-                 attributes=[], 
+                 attributes={}, 
                  sampling_scheme=Sampling.PROCEDURAL,
                  batch_size=0,
                  color_space='RGB'):

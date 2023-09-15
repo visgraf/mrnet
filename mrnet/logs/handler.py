@@ -136,20 +136,31 @@ class ImageHandler(ResultHandler):
         
         self.log_fft(gray_pixels, 'FFT Ground Truth', category='gt')
 
-        if 'd1' in self.hyper['attributes']:
-            grads = test_loader.data_attributes['d1']
+        captions = []
+        attr_imgs = []
+        for key, value in test_loader.attributes.items():
+            if key == 'd1':
+                grads = value
+                # TODO: move to log_gradmagnitude; deal with other color spaces
+                if color_space == 'YCbCr':
+                        grads = grads[0, ...]
+                elif color_space == 'RGB':
+                    grads = (0.2126 * grads[0, ...] 
+                            + 0.7152 * grads[1, ...] 
+                            + 0.0722 * grads[2, ...])
+                elif color_space == 'L':
+                    grads = grads.squeeze(0)
+                
+                self.log_gradmagnitude(grads, 'Gradient Magnitude GT', category='gt')
+            elif key.endswith('mask'):
+                captions.append(key)
+                img = (255 * value.numpy()).astype(np.int32)
+                attr_imgs.append(img)
+                self.logger.log_images(attr_imgs, 
+                                       'Attributes', 
+                                       captions=captions,
+                                       category='etc')
             
-            # TODO: move to log_gradmagnitude; deal with other color spaces
-            if color_space == 'YCbCr':
-                    grads = grads[0, ...]
-            elif color_space == 'RGB':
-                grads = (0.2126 * grads[0, ...] 
-                        + 0.7152 * grads[1, ...] 
-                        + 0.0722 * grads[2, ...])
-            elif color_space == 'L':
-                grads = grads.squeeze(0)
-            
-            self.log_gradmagnitude(grads, 'Gradient Magnitude GT', category='gt')
             
         return test_loader.data.permute((1, 2, 0)
                                     ).reshape(-1, self.hyper['channels'])

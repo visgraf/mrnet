@@ -30,8 +30,8 @@ filter: gauss # vary between none, laplace and gauss
 attributes: ['d0', 'd1']
 
 # Loss
-loss_function: 'hermite'
-loss_weights: {'d0': 1, 'd1': 0.0, 'mirror': 1.0}
+loss_function: 'mse'
+loss_weights: {'d0': 1}
 optim_handler: 'regular'
 
 # Training

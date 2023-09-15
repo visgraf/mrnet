@@ -23,7 +23,6 @@ if __name__ == '__main__':
                         channels=hyper['channels'],
                         sampling_scheme=hyper['sampling_scheme'],
                         width=hyper['width'], height=hyper['height'],
-                        attributes=hyper['attributes'],
                         batch_size=hyper['batch_size'],
                         color_space=hyper['color_space'])
 

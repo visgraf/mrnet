@@ -16,7 +16,7 @@ class Sampler:
     def __init__(self, data, domain, attributes, batch_size, shuffle=False):
         self.data = data
         self.domain = domain
-        self.attributes = attributes
+        self._attributes = attributes
         self.batch_size = (batch_size if batch_size > 0 
                            else len(torch.flatten(data)))
         self.shuffle = shuffle
@@ -39,6 +39,7 @@ class Sampler:
         self.mask = mask
         if self.batches:
             self.make_samples(self.mask)
+
     @property
     def coords(self):
         try:
@@ -46,6 +47,16 @@ class Sampler:
         except AttributeError:
             self.make_samples(self.mask)
         return self._coords
+    
+    @property
+    def attributes(self):
+        return self._attributes
+    
+    @attributes.setter
+    def attributes(self, value):
+        self._attributes = value
+        if self.batches:
+            self.make_samples(self.mask)
     
     def data_channels(self):
         return self.data.shape[0]
@@ -86,9 +97,13 @@ class RegularSampler(Sampler):
         )
         flatdata = {'d0': self.data.view(self.data_channels(), 
                                          -1).permute((1, 0))}
-        if 'd1' in self.attributes.keys():
-            flatdata['d1'] = torch.sum(self.attributes['d1'], 
-                                       dim=0).view(-1, dimension)
+        # if 'd1' in self._attributes.keys():
+        #     flatdata['d1'] = torch.sum(self._attributes['d1'], 
+        #                                dim=0).view(-1, dimension)
+        nsamples = len(flatdata['d0'])
+        for key, value in self._attributes.items():
+            flatdata[key] = value.view(nsamples, -1)
+
         self.batches = [self.get_tuple_dicts(
                                 torch.Tensor(idx_batch).long(), flatdata) 
                                 for idx_batch in index_batches]
@@ -131,8 +146,8 @@ class ReflectSampler(RegularSampler):
         
         d0 = self.extend_by_reflection(self.data, (0, 1))
         flatdata = {'d0': d0.view(self.data_channels(), -1).permute((1, 0))}
-        if 'd1' in self.attributes.keys():
-            d1 = torch.sum(self.attributes['d1'], dim=0).unsqueeze(0)
+        if 'd1' in self._attributes.keys():
+            d1 = torch.sum(self._attributes['d1'], dim=0).unsqueeze(0)
             d1 = self.extend_by_reflection(d1, (0, 1)).squeeze(0).view(-1, 2)
             flatdata['d1'] = d1
         self.batches = [self.get_tuple_dicts(
@@ -180,7 +195,7 @@ class ProceduralSampler:
                         pseudo_shape) -> None:
         self.procedure = procedure
         self.domain = domain
-        self.attributes = attributes
+        self._attributes = attributes
         
         RANDOM_SEED = 777
         self.rng = np.random.default_rng(RANDOM_SEED)
@@ -217,13 +232,13 @@ class ProceduralSampler:
 
 # TODO: refactor and extend to work with multiple dimensions
 class PoissonDiscSampler(RegularSampler):
-    def __init__(self, img_data, attributes = [], 
+    def __init__(self, img_data, attributes = {}, 
                                                 k = 30, 
                                                 r = 0.5):   
         transform_to_pil = T.ToPILImage()
         self.img_orig = transform_to_pil(img_data)
 
-        self.attributes = attributes
+        self._attributes = attributes
         self.key_group = 'c0'
 
         self.k = k
@@ -268,13 +283,13 @@ class PoissonDiscSampler(RegularSampler):
 
 # TODO: refactor and extend to work with multiple dimensions
 class StratifiedSampler:
-    def __init__(self, img_data, attributes=[],
+    def __init__(self, img_data, attributes={},
                                             k_d0 = 30, 
                                             r_d0 = 0.5,
                                             k_d1 = 30, 
                                             r_d1 = 0.5):   
         self.img_data = img_data
-        self.attributes = attributes
+        self._attributes = attributes
 
         self.transform_to_pil = T.ToPILImage()
         self.img_orig = self.transform_to_pil(img_data)
@@ -358,7 +373,7 @@ class StratifiedSampler:
         self._coords['c1'] = PoissonDisc(width, height, self.r_d1, self.k_d1).sample()
         self._coords_vis = make_grid_coords(width, height, *domain)
 
-        if 'd1' in self.attributes:
+        if 'd1' in self._attributes:
             self.compute_gradients()
         
         self.total_idx_sample = {}
