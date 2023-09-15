@@ -152,14 +152,14 @@ class ImageHandler(ResultHandler):
                     grads = grads.squeeze(0)
                 
                 self.log_gradmagnitude(grads, 'Gradient Magnitude GT', category='gt')
-            elif key.endswith('mask'):
+            elif key.startswith('mask'):
                 captions.append(key)
-                img = (255 * value.numpy()).astype(np.int32)
-                attr_imgs.append(img)
+                attr_imgs.append(value)
                 self.logger.log_images(attr_imgs, 
                                        'Attributes', 
                                        captions=captions,
-                                       category='etc')
+                                       fnames=captions,
+                                       category='attr')
             
             
         return test_loader.data.permute((1, 2, 0)

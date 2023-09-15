@@ -105,6 +105,7 @@ class LocalLogger(Logger):
             logs_path = basedir.joinpath('logs')
         self.subpaths = {
             "loss": "",
+            "attr": "attr",
             "models": "models",
             "gt": "gt",
             "pred": "pred",
@@ -228,7 +229,7 @@ class LocalLogger(Logger):
             self.log_graph([x], [columns[loss]], 
                            loss,
                            category='loss',
-                           captions=loss.split()[0],
+                           captions=[loss.split()[0]],
                            xname='epochs')
         ys = list(columns.values())
         xs = [x] * len(ys)
