@@ -138,20 +138,10 @@ class ImageHandler(ResultHandler):
 
         captions = []
         attr_imgs = []
+        grads = []
         for key, value in test_loader.attributes.items():
-            if key == 'd1':
-                grads = value
-                # TODO: move to log_gradmagnitude; deal with other color spaces
-                if color_space == 'YCbCr':
-                        grads = grads[0, ...]
-                elif color_space == 'RGB':
-                    grads = (0.2126 * grads[0, ...] 
-                            + 0.7152 * grads[1, ...] 
-                            + 0.0722 * grads[2, ...])
-                elif color_space == 'L':
-                    grads = grads.squeeze(0)
-                
-                self.log_gradmagnitude(grads, 'Gradient Magnitude GT', category='gt')
+            if key.startswith('d1_'):
+                grads.append(value)
             elif key.startswith('mask'):
                 captions.append(key)
                 attr_imgs.append(value)
@@ -160,7 +150,22 @@ class ImageHandler(ResultHandler):
                                        captions=captions,
                                        fnames=captions,
                                        category='attr')
+                
+        if grads:
+            # TODO: move to log_gradmagnitude; deal with other color spaces
+            grads = torch.stack(grads)
+            if color_space == 'YCbCr':
+                    grads = grads[0, ...]
+            elif color_space == 'RGB':
+                grads = (0.2126 * grads[0, ...] 
+                        + 0.7152 * grads[1, ...] 
+                        + 0.0722 * grads[2, ...])
+            elif color_space == 'L':
+                grads = grads.squeeze(0)
             
+            self.log_gradmagnitude(grads, 
+                                   'Gradient Magnitude GT', 
+                                   category='gt')
             
         return test_loader.data.permute((1, 2, 0)
                                     ).reshape(-1, self.hyper['channels'])
@@ -206,7 +211,9 @@ class ImageHandler(ResultHandler):
 
         grads = torch.concat(grads)
         grads = grads.reshape((*datashape, 2))
-        self.log_gradmagnitude(grads, 'Gradient Magnitude Pred', category='pred')
+        self.log_gradmagnitude(grads, 
+                               'Gradient Magnitude Pred', 
+                               category='pred')
         return pixels
 
     def log_gradmagnitude(self, grads:torch.Tensor, label: str, **kw):
@@ -223,7 +230,7 @@ class ImageHandler(ResultHandler):
         for stage in model.stages:
             last_stage_frequencies = stage.first_layer.linear.weight
             frequencies.append(last_stage_frequencies)
-        frequencies = torch.cat(frequencies).cpu().numpy()
+        frequencies = torch.cat(frequencies).detach().cpu().numpy()
         frequencies = (frequencies * model.period 
                        / (2 * np.pi)).astype(np.int32)
         h, w = self.hyper['width'], self.hyper['height']
