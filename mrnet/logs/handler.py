@@ -196,6 +196,10 @@ class ImageHandler(ResultHandler):
             
         pixels = torch.concat(pixels)
         pred_pixels = pixels.reshape((*datashape, self.hyper['channels']))
+        if self.hyper.get('normalize_view', False):
+                vmax = torch.max(pred_pixels)
+                vmin = torch.min(pred_pixels)
+                pred_pixels = (pred_pixels - vmin) / (vmax - vmin)
         self.logger.log_images(pred_pixels, 'Prediction', category='pred')
         
         if color_space == 'YCbCr':
