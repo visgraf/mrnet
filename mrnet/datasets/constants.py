@@ -15,18 +15,4 @@ MULTIRESOLUTION_DICT = {
     'laplace_tower': Multiresolution.LAPLACE_TOWER,
     'signal': Multiresolution.SIGNAL
 }
-
-class Sampling(Enum):
-    REGULAR = auto()
-    POISSON_DISC = auto()
-    STRATIFIED = auto()
-    REFLECT = auto()
-    PROCEDURAL = auto()
-
-SAMPLING_DICT = {
-    'regular': Sampling.REGULAR,
-    'poisson': Sampling.POISSON_DISC,
-    'stratified' : Sampling.STRATIFIED,
-    'reflect': Sampling.REFLECT
-}
     

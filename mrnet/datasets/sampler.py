@@ -1,13 +1,10 @@
 from typing import Sequence, Union
-from IPython import embed
 import torch
 import scipy
 import numpy as np
 from torch.utils.data import BatchSampler
 import torchvision.transforms as T
 from .poisson_disc import PoissonDisc
-
-from .constants import Sampling
 from .utils import make_grid_coords
 
 
@@ -118,7 +115,7 @@ class RegularSampler(Sampler):
         return samples
     
     def scheme(self):
-        return Sampling.REGULAR
+        return "regular"
     
 # TODO: ponder if it should be excluded, 
 # making the reflection loss the default solution
@@ -183,7 +180,7 @@ class ReflectSampler(RegularSampler):
         return reflected
     
     def scheme(self):
-        return Sampling.REFLECT
+        return "reflect"
 
 # TODO: refactor and extend to work with multiple dimensions; 
 # include in the sampler class hierarchy
@@ -398,27 +395,34 @@ class StratifiedSampler:
     def get_samples(self, idx):
         return self.list_batches[idx]
 
+
+SAMPLING_CLASSES = {
+    'regular': RegularSampler,
+    'poisson': PoissonDiscSampler,
+    'stratified' : StratifiedSampler,
+    'reflect': ReflectSampler
+}
     
     
-class SamplerFactory:
-    subclass = {
-        Sampling.REGULAR: RegularSampler,
-        Sampling.REFLECT: ReflectSampler,
-        Sampling.POISSON_DISC: PoissonDiscSampler,
-        Sampling.STRATIFIED: StratifiedSampler,
-    }
-    def init(sampling_type:Sampling, 
-             data, domain, 
-             attributes, batch_size, shuffle) -> Sampler:
-        try:
-            SamplerClass = SamplerFactory.subclass[sampling_type]
-        except KeyError: 
-            raise ValueError(f"Invalid sampling type {sampling_type}")
-        return SamplerClass(data, 
-                            domain, 
-                            attributes, 
-                            batch_size,
-                            shuffle)
+# class SamplerFactory:
+#     subclass = {
+#         Sampling.REGULAR: RegularSampler,
+#         Sampling.REFLECT: ReflectSampler,
+#         Sampling.POISSON_DISC: PoissonDiscSampler,
+#         Sampling.STRATIFIED: StratifiedSampler,
+#     }
+#     def init(sampling_type:Sampling, 
+#              data, domain, 
+#              attributes, batch_size, shuffle) -> Sampler:
+#         try:
+#             SamplerClass = SamplerFactory.subclass[sampling_type]
+#         except KeyError: 
+#             raise ValueError(f"Invalid sampling type {sampling_type}")
+#         return SamplerClass(data, 
+#                             domain, 
+#                             attributes, 
+#                             batch_size,
+#                             shuffle)
             
 
         
