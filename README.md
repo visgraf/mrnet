@@ -73,9 +73,7 @@ python docs\examples\train_signal1d.py
 
 ## Using MR-Net
 
-You can find a sample notebook showing [how to use the MR-Net framework here](https://colab.research.google.com/drive/1Q88hgGa4Pvt-CsBjqI0dHs3wrEYJKMFo?usp=sharing).
-
-You can use any component of the MR-Net framework individually in your project. However, we povide a complete framework for training signals in multiresolution and a convenient way of changing the necessary hyperparameters fo a variety of experiments. An example for image representation is available in the following notebook:
+You can use any component of the MR-Net framework individually in your project. However, we povide a complete framework for training signals in multiresolution and a convenient way of changing the necessary hyperparameters fo a variety of experiments. Examples are available in the directory docs/examples:
 
 The hyperparameters are listed in an YAML file. This way, you can configure many experiments witout having to change your code.
 
