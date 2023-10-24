@@ -15,7 +15,7 @@ from mrnet.datasets.sampler import RegularSampler
 if __name__ == '__main__':
     torch.manual_seed(777)
     # -- hyperparameters in configs --#
-    hyper = load_hyperparameters('configs/image.yml')
+    hyper = load_hyperparameters('tests/configs/image.yml')
     project_name = hyper.get('project_name', 'framework-tests')
 
     base_signal = init_fromfile(
