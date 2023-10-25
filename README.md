@@ -2,7 +2,7 @@
 
 MR-Net is a framework that implements the family of neural networks described in [[1]](#1), and the components for training multi-stage architectures for multiresolution signal representation
 
-This framework has 3 big components:
+This framework has 3 major components:
 
 ### Networks
 
@@ -10,11 +10,11 @@ Here, you will find the implementations of M-Net, L-Net, and a modified version 
 
 ### Datasets
 
-In the module `signals` you will find the classes `Signal1D`, `ImageSignal`, and `VolumeSignal`. They are subclasses of PyTorch Dataset and encapsulate the data fed to the nework for training. In the module `procedural` there are helper functions to generate procedural signals such as Perlin noises adapted to our datasets classes.
+In the module `signals` you will find the classes `Signal1D` and `ImageSignal`. They are subclasses of PyTorch Dataset and encapsulate the data fed to the nework for training. In the module `procedural` there are helper functions to generate procedural signals such as Perlin noise adapted to our datasets classes.
 
-If you want to make your custom dataset, you could subclass `BaseSignal` o just use the mentioned classes as a template to guide you.
+If you want to make your custom dataset, you could subclass `BaseSignal` or just use the mentioned classes as a template to guide you.
 
-The other modules contain helper functions to sample the signals, build the multiresolution structure, or make commom operations such as color space transform.
+The other modules contain helper functions to sample the signals, build the multiresolution structure, or make common operations such as color space transform.
 
 ### Training
 
@@ -24,20 +24,32 @@ In the module `trainer`, you will find the `MRTrainer` class, which encapsulates
 
 MRNet was tested with Python3.9 and Python3.11.
 
+#### Enviroment
+
+We suggest using either Venv or Anaconda Environments.
+
+Python Venv:
+```
+    python -m venv venv
+    venv/Scripts/activate
+````
+
+Anaconda:
+```
+    conda create -n mrnet python=3.11
+    conda activate mrnet
+```
+
 #### Dependencies
 
 On windows systems:
 ```
-    python -m venv venv
-    venv/Scripts/activate
     pip install -r requirements.txt
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
 ```
 
 On Linux or Mac OS systems:
 ```
-    python -m venv venv
-    source venv/bin/activate
     pip install -r requirements.txt
     pip install torch torchvision torchaudio
 ```
@@ -47,6 +59,7 @@ After installing the dependencies, install the MR-Net package as follows:
 ```
     pip install git+https://github.com/visgraf/mrnet.git
 ```
+OBS: Note that this command installs MR-Net in your environment (Venv or Conda), therefore the files in the ./mrnet/ folder serve only as a reference for the package.
 
 #### Optional
 
@@ -73,7 +86,7 @@ python docs\examples\train_signal1d.py
 
 ## Using MR-Net
 
-You can use any component of the MR-Net framework individually in your project. However, we povide a complete framework for training signals in multiresolution and a convenient way of changing the necessary hyperparameters fo a variety of experiments. Examples are available in the directory docs/examples:
+You can use any component of the MR-Net framework individually in your project. However, we provide a complete framework for training signals in multiresolution and a convenient way of changing the necessary hyperparameters fo a variety of experiments. Examples are available in the directory docs/examples:
 
 The hyperparameters are listed in an YAML file. This way, you can configure many experiments witout having to change your code.
 
@@ -99,16 +112,16 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 
 #### Sampling
 - `domain`: a pair of numbers or a list of pairs of numbers (ex: [-1, 1] or [[-1, 1], [-2, 2]]) 
-- `sampling_scheme`: the sampling scheme used for the data; should be one of the values in: [regular, reflect, poisson, stratified]; **regular** applies regular sampling inside the domain interval; **reflect** doubles the domain interval, reflects the signal data and applies regular sampling in the extended signal; **poisson** applies Poisson disk sampling inside the domain; **stratified** (untested!) samples the critical points of the signal and some stochastic points using Poisson disck sampling.
+- `sampling_scheme`: the sampling scheme used for the data; should be one of the values in: [regular, poisson]; **regular** applies regular sampling inside the domain interval; **poisson** applies Poisson disk sampling inside the domain; 
 - `decimation`: a boolean (ex: True). if **True**, the signal will be downsampled by a factor of 2 after filtering (for pyramids); if **False**, it will not (for towers).
 - `filter`: the filter used to build a multiresolution structure (pyramid or tower); should be one of the values in [gauss, laplace, none]
 - `pmode`: determines how the signal borders are handled; should be one of the valid [values specified here](https://scikit-image.org/docs/stable/api/skimage.transform.html#skimage.transform.pyramid_gaussian).
-- `attributes`: at this moment, should be either  ['d0', 'd1']
+- `attributes`: at this moment, should be either  ['d0', 'd1']. d0 corresponds to the signal value and d1 to the signal gradient.
 
 
-#### Loss (TODO)
-- `loss_function`: 'hermite'
-- `loss_weights`: {'d0': 1, 'd1': 0.0}
+#### Loss
+- `loss_function`: one of the following, 'mse' - squared L2 norm of the signal value (d0) or 'hermite' linear combination of mse for the signal and gradient.
+- `loss_weights`: for 'hermite' use {'d0': 1, 'd1': 0.0} 
 
 ##### Training
 - `opt_method`: the optimizer class used for training; should be one of the values in: [Adam]
@@ -130,10 +143,14 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - `logger`: should be **wandb** to log results to Weights and Biases service or a path to a local directory to save the results locally. 
 - `device`: device used for computation during training (ex: cuda).
 - `eval_device`: device used for computation during inference for logging results (ex: cpu).
-- `visualize_grad`: a boolean (ex: True) representing wether it should generate visualizations of the magnitude of the gradients of the signal.
+- `visualize_grad`: a boolean (ex: True) representing whether it should generate visualizations of the magnitude of the gradients of the signal.
 - `extrapolate`: a pair of values representing an interval to visualize the learned signal (ex: [-2, 2]); in higher dimensions, you can specify a pair for each direction (ex: [[-2, 2], [-3, 3]] would be $[-2, 2] \times [-3, 3]$)
 - `zoom`: a list of number (ex: [2, 4]); for each value $z$ in the list, a visualization of the signal with a zoom factor of $z\times$ will be generated.
 - `zoom_filters`: a list of baseline filters for evaluation of the zoom quality; should have values from: `['linear', 'cubic', 'nearest']`
+
+## Development
+
+Look at documentation in the folder ./dev/
 
 ## References
 
