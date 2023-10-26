@@ -10,7 +10,8 @@ from mrnet.training.listener import TrainingListener
 
 from utils import load_hyperparameters, get_optim_handler, init_fromfile
 from mrnet.ext.stochastic_samplers import PoissonDiscSampler, JitteredSampler, UniformSampler
-from mrnet.dev.sampler import AdaptiveSamplerSIFT
+from dev.sift_sampler import AdaptiveSamplerSIFT
+
 from mrnet.datasets.sampler import RegularSampler
 
 if __name__ == '__main__':
