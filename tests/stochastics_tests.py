@@ -10,6 +10,7 @@ from mrnet.training.listener import TrainingListener
 
 from utils import load_hyperparameters, get_optim_handler, init_fromfile
 from mrnet.ext.stochastic_samplers import PoissonDiscSampler, JitteredSampler, UniformSampler
+from mrnet.dev.sampler import AdaptiveSamplerSIFT
 from mrnet.datasets.sampler import RegularSampler
 
 if __name__ == '__main__':
@@ -22,7 +23,7 @@ if __name__ == '__main__':
         hyper['data_path'],
         domain=hyper['domain'],
         channels=hyper['channels'],
-        sampler_class=PoissonDiscSampler,
+        sampler_class=AdaptiveSamplerSIFT,
         width=hyper['width'], height=hyper['height'],
         batch_size=hyper['batch_size'],
         color_space=hyper['color_space'])
