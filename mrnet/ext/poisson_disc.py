@@ -8,7 +8,7 @@ import math
 
 
 class PoissonDisc():
-    def __init__(self, dimensions, folder_name='poisson_cache', verbose=False):
+    def __init__(self, dimensions, folder_name='poisson_cache', verbose=True):
 
         width = min(dimensions)
         self.tensor_Len = len(dimensions)
@@ -27,14 +27,17 @@ class PoissonDisc():
     def sample(self):
         string_name = os.path.join(
             self.folder_name, f'poisson_radius_{self.width}.npy')
-        if os.path.exists(string_name):
+        
+        if not os.path.exists(self.folder_name):
+            os.makedirs(self.folder_name)
 
             if self.verbose:
                 print("Loading poisson points from cache")
             self.samples = np.load(string_name)
         else:
 
-            print("We will compute the poisson points")
+            if self.verbose:
+                print("We will compute the poisson points")
             self.samples = self.sample_points()
             np.save(string_name, self.samples)
 
