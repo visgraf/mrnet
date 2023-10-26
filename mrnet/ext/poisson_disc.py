@@ -8,7 +8,7 @@ import math
 
 
 class PoissonDisc():
-    def __init__(self, dimensions, folder_name='poisson_cache', verbose=True):
+    def __init__(self, dimensions, folder_name='poisson_cache/', verbose=True):
 
         width = min(dimensions)
         self.tensor_Len = len(dimensions)
@@ -27,8 +27,11 @@ class PoissonDisc():
     def sample(self):
         string_name = os.path.join(
             self.folder_name, f'poisson_radius_{self.width}.npy')
-        
+
         if not os.path.exists(self.folder_name):
+            if self.verbose:
+                print("Creating cache folder")
+
             os.makedirs(self.folder_name)
 
             if self.verbose:
