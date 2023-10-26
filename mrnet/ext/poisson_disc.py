@@ -34,9 +34,11 @@ class PoissonDisc():
 
             os.makedirs(self.folder_name)
 
+        if os.path.exists(string_name):
             if self.verbose:
                 print("Loading poisson points from cache")
             self.samples = np.load(string_name)
+
         else:
 
             if self.verbose:
