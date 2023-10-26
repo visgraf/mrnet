@@ -9,6 +9,7 @@ from typing import Sequence
 from mrnet.datasets.sampler import Sampler
 import numpy as np
 
+
 def make_grid_coords(nsamples, start, end, dim, flatten=True):
     if not isinstance(nsamples, Sequence):
         nsamples = dim * [nsamples]
@@ -43,7 +44,6 @@ def get_interpolated_values(img_data, coords, orig_coords):
 
     interpolated_pixel = griddata(orig_coords, img_data, coords)
     return interpolated_pixel
-
 
 
 class StochasticSampler(Sampler):
@@ -131,17 +131,3 @@ class UniformSampler(StochasticSampler):
         random_samples = 1 - 2*random_samples
 
         return random_samples
-
-
-class AdaptiveSamplerSIFT(StochasticSampler):
-    def stochastic_sample_method(self, coords_orig):
-
-        sift_points = get_samples_sift(self.data.numpy())
-        sift_points = torch.tensor(sift_points).float()
-
-        poisson_disc = PoissonDisc(self.data_shape())
-        coords_poisson = poisson_disc.sample()
-
-        points_sampled = torch.cat([coords_poisson, sift_points])
-
-        return points_sampled
