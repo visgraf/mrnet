@@ -21,10 +21,3 @@ def get_optim_handler(handler_type):
     else:
          raise ValueError(f"Invalid handler_type")
     
-def make_mask(srcpath, mask_color):
-    img = np.array(Image.open(srcpath))
-    mask = img != mask_color
-    path = Path(srcpath)
-    path = path.parent.absolute().joinpath("mask.png")
-    Image.fromarray(mask).save(path)
-    return str(path)

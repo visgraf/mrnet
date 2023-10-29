@@ -7,8 +7,10 @@ from mrnet.networks.mrnet import MRFactory
 from mrnet.datasets.pyramids import create_MR_structure
 from mrnet.training.listener import TrainingListener
 
-from utils import load_hyperparameters, get_optim_handler, init_fromfile
-from ext.my_sampler import MyUniformSampler
+from mrnet.training.utils import load_hyperparameters, get_optim_handler
+
+from devel.ext.utils import init_fromfile
+from devel.ext.my_sampler import MyUniformSampler
 
 from mrnet.datasets.sampler import RegularSampler
 

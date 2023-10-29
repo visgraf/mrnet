@@ -72,17 +72,6 @@ If you want to log your results to [Weights and Biases](https://wandb.ai), you s
 If you want to run the sample Jupyter notebooks locally, please, follow the [installation instruction from the Jupyter project page](https://jupyter.org/install).
 
 
-## Testing
-
-##### Image example
-```
-python docs/examples/train_image.py
-```
-
-##### 1D signal example:
-```
-python docs\examples\train_signal1d.py
-```
 
 ## Using MR-Net
 
@@ -133,7 +122,7 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 
 ##### Data
 - `data_path`: the path to the image file or numpy array file.
-- `nsamples`: 
+- `nsamples`: a number (applies only for 1D signals).
 - `width`: an integer value (ex: 128) representing the *width* of the image signal; if it is greater than zero, the image will be resized; otherwise, its original size will be preserved.
 - `height`: an integer value (ex: 128) representing the *height* of the image signal; if it is greater than zero, the image will be resized; otherwise, its original size will be preserved.
 - `channels`: an integer value (ex: 3) representing the number of channels in the signal; should match `out_features`. Use 0 to have it automatically computed in the examples.
@@ -148,10 +137,47 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 - `zoom`: a list of number (ex: [2, 4]); for each value $z$ in the list, a visualization of the signal with a zoom factor of $z\times$ will be generated.
 - `zoom_filters`: a list of baseline filters for evaluation of the zoom quality; should have values from: `['linear', 'cubic', 'nearest']`
 
+
+## Testing MR-Net
+
+Testing MR-Net involves training a signal and inference of the model.
+
+### Training
+
+Training MR-Net to reconstruct a signal (1D, or image) consists in providing input data samples (i.e., pairs of coordinate, atribute values) in order to produce a continuos model representation given by the MR-Net.
+
+Examples of python code to train signals with MR-Net can be found in the directory ./docs/examples. These examples use configuration files in ./docs/configs.
+
+##### 1D signal example:
+```
+python docs\examples\train_signal1d.py
+```
+##### Image example:
+```
+python docs/examples/train_image.py
+```
+The trained model is stored locally in the directory ./runs/logs/{model-name-dir}. 
+
+### Inference
+
+After training with MR-Net to create a representation of a signal, the model can be used to reconstruct the signal by evaluating the network at any continuous location in space and scale.
+
+The jupyter notebook in ./docs/examples/ exemplifies the evaluation capabilities of MR-Net.
+
+##### Evaluation example:
+```
+jupyter notebook
+   (open docs\examples\eval-net.ipynb)
+```
+The notebook asks for the location of the configuration file and the trained model.
+
 ## Development
 
+MR-Net can be extended by creating subclasses of the main classes, such as Signal, Sampler, OptimizationHandler and ResultHandler.
 
-Look at implementation in the folder ./devel/
+An example of extending MR-Net with a new Sampler is given in the directory ./devel/. 
+
+The implementation of MyUniformSampler is in ./devel/ext/my_sampler.py. The test of using this new sampler to train MR-Net is in ./devel/my_test.py.
 
 ## References
 
