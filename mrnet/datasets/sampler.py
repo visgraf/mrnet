@@ -237,23 +237,3 @@ SAMPLING_CLASSES = {
     'reflect': ReflectSampler
 }
 
-
-# class SamplerFactory:
-#     subclass = {
-#         Sampling.REGULAR: RegularSampler,
-#         Sampling.REFLECT: ReflectSampler,
-#         Sampling.POISSON_DISC: PoissonDiscSampler,
-#         Sampling.STRATIFIED: StratifiedSampler,
-#     }
-#     def init(sampling_type:Sampling,
-#              data, domain,
-#              attributes, batch_size, shuffle) -> Sampler:
-#         try:
-#             SamplerClass = SamplerFactory.subclass[sampling_type]
-#         except KeyError:
-#             raise ValueError(f"Invalid sampling type {sampling_type}")
-#         return SamplerClass(data,
-#                             domain,
-#                             attributes,
-#                             batch_size,
-#                             shuffle)

@@ -8,21 +8,21 @@ from mrnet.datasets.pyramids import create_MR_structure
 from mrnet.training.listener import TrainingListener
 
 from utils import load_hyperparameters, get_optim_handler, init_fromfile
-from dev.sift_sampler import AdaptiveSamplerSIFT
+from ext.my_sampler import MyUniformSampler
 
 from mrnet.datasets.sampler import RegularSampler
 
 if __name__ == '__main__':
     torch.manual_seed(777)
     # -- hyperparameters in configs --#
-    hyper = load_hyperparameters('tests/configs/image.yml')
+    hyper = load_hyperparameters('devel/configs/image.yml')
     project_name = hyper.get('project_name', 'framework-tests')
 
     base_signal = init_fromfile(
         hyper['data_path'],
         domain=hyper['domain'],
         channels=hyper['channels'],
-        sampler_class=AdaptiveSamplerSIFT,
+        sampler_class=MyUniformSampler,
         width=hyper['width'], height=hyper['height'],
         batch_size=hyper['batch_size'],
         color_space=hyper['color_space'])
@@ -72,3 +72,4 @@ if __name__ == '__main__':
                                          hyper,
                                          optim_handler=optim_handler)
     mrtrainer.train(hyper['device'])
+    print("Done Training")

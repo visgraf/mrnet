@@ -17,4 +17,4 @@ runs/*
 models/*
 */tmp/*
 docs/examples/wandb/*
-poisson_cache/
+cache/*

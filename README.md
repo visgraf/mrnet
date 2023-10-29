@@ -150,7 +150,8 @@ The hyperparameters are listed in an YAML file. This way, you can configure many
 
 ## Development
 
-Look at documentation in the folder ./dev/
+
+Look at implementation in the folder ./devel/
 
 ## References
 
