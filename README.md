@@ -162,7 +162,7 @@ The trained model is stored locally in the directory ./runs/logs/{model-name-dir
 
 After training with MR-Net to create a signal representation, the model can be used to reconstruct the signal by evaluating the network at any continuous location in space and scale.
 
-The jupyter notebook in ./docs/examples/ exemplifies the evaluation capabilities of MR-Net.
+The jupyter notebook in ./docs/examples/ exemplifies the evaluation capabilities of MR-Net image model.
 
 ##### Evaluation example:
 ```

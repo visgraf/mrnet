@@ -161,9 +161,6 @@ class ImageSignal(BaseSignal):
                             color_space=color_space)
 
     
-    def load_mask(self, maskpath):
-        mask = to_tensor(Image.open(maskpath)).squeeze(0).bool()
-        self.add_mask(mask)
 
     def image_pil(self):
         return to_pil_image(self.data)
