@@ -45,7 +45,7 @@ Anaconda:
 On Windows systems:
 ```
     pip install -r requirements.txt
-    pip install torch torchvision torchaudio --index-URL https://download.pytorch.org/whl/cu117
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
 ```
 
 On Linux or Mac OS systems:
