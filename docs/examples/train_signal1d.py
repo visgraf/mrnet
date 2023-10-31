@@ -9,7 +9,7 @@ from mrnet.datasets.pyramids import create_MR_structure
 from mrnet.training.listener import TrainingListener
 from mrnet.datasets.procedural import perlin_noise
 
-from utils import load_hyperparameters, get_optim_handler
+from mrnet.training.utils import load_hyperparameters, get_optim_handler
 
 
 if __name__ == '__main__':

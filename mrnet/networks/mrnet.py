@@ -42,15 +42,7 @@ class MRModule(nn.Module):
                           is_first=False, omega_0=hidden_omega_0)
             )
             hidden_idx += 1
-        # middle.append(
-        #     SineLayer(prevknowledge + hidden_features[hidden_idx],
-        #                hidden_features[hidden_idx + 1], bias=True,
-        #                         is_first=False, omega_0=hidden_omega_0)
-        # )
-        # for i in range(hidden_layers - 1):
-        #     middle.append(SineLayer(hidden_features, hidden_features, bias=True,
-        #                               is_first=False, omega_0=hidden_omega_0))
-        
+       
         self.middle_layers = nn.Sequential(*middle)
         
         self.final_linear = nn.Linear(hidden_features[hidden_idx], out_features)
@@ -77,7 +69,6 @@ class MRModule(nn.Module):
 
     @property
     def hidden_features(self):
-        # return self.first_layer.out_features
         hf = [self.middle_layers[0].linear.in_features]
         for layer in self.middle_layers:
             hf.append(layer.linear.out_features)
@@ -202,14 +193,7 @@ class MRNet(nn.Module):
             concatenated = torch.concat(mroutputs, 1)
             weighted = torch.mul(concatenated, mrweights)
             return torch.sum(weighted, 1).unsqueeze(-1)
-        # Same weights for all samples
-        # aggr_layer = nn.Linear(self.n_stages(), self.out_features, 
-        #                         bias=bias, device=device)
-        # for i in range(self.out_features):
-        #     with torch.no_grad():
-        #         aggr_layer.weight[i] = mrweights
-       
-        # aggregated = aggr_layer(torch.stack(mroutputs, dim=-1)).squeeze(-1)
+
         dims = [1] * len(mroutputs[0].shape)
         return (mrweights.view(self.n_stages(), 
                                *dims) * torch.stack(mroutputs)).sum(dim=0)
