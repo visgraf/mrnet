@@ -19,3 +19,4 @@ models/*
 docs/examples/wandb/*
 docs/examples/.ipynb_checkpoints
 cache/*
+poisson_cache/
