@@ -444,19 +444,24 @@ class Signal1DHandler(ResultHandler):
             
     def log_chosen_frequencies(self, model: MRNet):
         super().log_chosen_frequencies(model)
+        if model.period <= 0:
+            return
         nyquist_limit = self.hyper['nsamples']//4
         all_freqs = np.arange(-nyquist_limit, nyquist_limit+1)
         frequencies = []
         for stage in model.stages:
             last_stage_frequencies = stage.first_layer.linear.weight.cpu()
             freqs = np.round(self.hyper['period'] 
-                    * last_stage_frequencies.view(-1).numpy() 
+                    * last_stage_frequencies.view(-1).detach().numpy() 
                     / (2 * np.pi))
+            print(freqs, "FREQS")
             frequencies.append(freqs)
         frequencies = np.concatenate(frequencies)
         # print(frequencies.shape, frequencies)
         values = np.zeros_like(all_freqs)
         values[np.in1d(all_freqs, frequencies.astype(np.int32)).nonzero()] = 1
+        print(all_freqs, "ALLFREQS")
+        print(values, "VALUES")
         self.logger.log_graph([all_freqs],
                               [values],
                               "Chosen Frequencies",
