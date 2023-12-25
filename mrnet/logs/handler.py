@@ -144,7 +144,7 @@ class ImageHandler(ResultHandler):
                 grads.append(value)
             elif key.startswith('mask'):
                 captions.append(key)
-                attr_imgs.append(value)
+                attr_imgs.append(value.permute((1, 2, 0)))
                 self.logger.log_images(attr_imgs, 
                                        'Attributes', 
                                        captions=captions,
