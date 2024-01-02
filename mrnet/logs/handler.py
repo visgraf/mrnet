@@ -141,10 +141,17 @@ class ImageHandler(ResultHandler):
         grads = []
         for key, value in test_loader.attributes.items():
             if key.startswith('d1_'):
-                grads.append(value)
+                if color_space == 'YCbCr':
+                    grads.append(value[0, ...])
+                elif color_space == 'RGB':
+                    grads.append(0.2126 * value[0, ...] 
+                                 + 0.7152 * value[1, ...] 
+                                 + 0.0722 * value[2, ...])
+                elif color_space == 'L':
+                    grads.append(value.squeeze(0))
             elif key.startswith('mask'):
                 captions.append(key)
-                attr_imgs.append(value)
+                attr_imgs.append(value.permute((1, 2, 0)))
                 self.logger.log_images(attr_imgs, 
                                        'Attributes', 
                                        captions=captions,
@@ -152,17 +159,7 @@ class ImageHandler(ResultHandler):
                                        category='attr')
                 
         if grads:
-            # TODO: move to log_gradmagnitude; deal with other color spaces
-            grads = torch.stack(grads)
-            if color_space == 'YCbCr':
-                    grads = grads[0, ...]
-            elif color_space == 'RGB':
-                grads = (0.2126 * grads[0, ...] 
-                        + 0.7152 * grads[1, ...] 
-                        + 0.0722 * grads[2, ...])
-            elif color_space == 'L':
-                grads = grads.squeeze(0)
-            
+            grads = torch.stack(grads, dim=-1)
             self.log_gradmagnitude(grads, 
                                    'Gradient Magnitude GT', 
                                    category='gt')
@@ -221,6 +218,7 @@ class ImageHandler(ResultHandler):
         return pixels
 
     def log_gradmagnitude(self, grads:torch.Tensor, label: str, **kw):
+        # embed()
         mag = np.hypot(grads[:, :, 0].squeeze(-1).numpy(),
                         grads[:, :, 1].squeeze(-1).numpy())
         gmin, gmax = np.min(mag), np.max(mag)
@@ -467,5 +465,3 @@ class Signal1DHandler(ResultHandler):
                               captions=['chosen'],
                               xname='freqs'
                               )
-
-
