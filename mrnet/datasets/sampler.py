@@ -95,12 +95,9 @@ class RegularSampler(Sampler):
         )
         flatdata = {'d0': self.data.view(self.data_channels(),
                                          -1).permute((1, 0))}
-        # if 'd1' in self._attributes.keys():
-        #     flatdata['d1'] = torch.sum(self._attributes['d1'],
-        #                                dim=0).view(-1, dimension)
         nsamples = len(flatdata['d0'])
         for key, value in self._attributes.items():
-            flatdata[key] = value.view(nsamples, -1)
+            flatdata[key] = value.view(self.data_channels(), -1).permute((1, 0))
 
         self.batches = [self.get_tuple_dicts(
             torch.Tensor(idx_batch).long(), flatdata)
