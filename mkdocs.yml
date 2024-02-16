@@ -1,3 +1,35 @@
 site_name: MR-Net - Multiresolution Sinusoidal Neural Networks
 site_url: https://visgraf.github.io/mrnet
-theme: flatly
+theme:
+  name: material
+  # logo: assets/logo.png
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: black
+      accent: cyan
+      # toggle:
+      #   icon: material/brightness-7 
+      #   name: Switch to dark mode
+    # Palette toggle for dark mode
+    # - scheme: slate
+    #   primary: teal
+    #   accent: indigo
+    #   toggle:
+    #     icon: material/brightness-4
+    #     name: Switch to light mode
+  features:
+    - navigation.tabs
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
+nav:
+  - HOME: index.md
+  - Installation:
+    - installation.md
+  - Using MR-Net:
+    - usage.md
+  - Developer Guide:
+    - developer.md
