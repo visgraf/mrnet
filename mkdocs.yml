@@ -31,5 +31,6 @@ nav:
     - installation.md
   - Using MR-Net:
     - usage.md
+    - tutorial/trainimage.md
   - Developer Guide:
     - developer.md
