@@ -16,7 +16,7 @@ from mrnet.training.listener import TrainingListener
 from mrnet.training.utils import load_hyperparameters, get_optim_handler
 ```
 
-Setting a random seed for reproducibility and reading hyperparameters.
+We set a random seed for reproducibility, and read the hyperparameters from a YAML file to the `hyper` dictionary.
 
 ```python
 torch.manual_seed(777)
@@ -38,7 +38,7 @@ base_signal = ImageSignal.init_fromfile(
                     color_space=hyper['color_space'])
 ```
 
-MR-Net 
+The training set for MR-Net is specified as a MR-Structure, which is basically any sequential data-structure that holds a multiresolution representation of the signal. In this case, a Gaussian (`filter`) Pyramid (`decimation`) with `max_stages` levels is built as the `train_dataset`. The `pmode` parameter specifies how to handle the borders on filtering. The `test_dataset` is also a MR-Structure, but in this case, we don't subsample the data after filtering, building a "Gaussian Tower". This way, the model will be trained in the subsampled dataset, but compared against the full resolution grid at all levels.
 
 ```python
 train_dataset = create_MR_structure(base_signal,
