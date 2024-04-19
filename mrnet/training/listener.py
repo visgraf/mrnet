@@ -51,10 +51,15 @@ class TrainingListener:
                                     settings=self.settings)
         logger.prepare(current_model)
         self.handler.logger = logger
+        self.stage_time = time.time()
 
     def on_stage_trained(self, current_model: MRNet,
                                 train_loader,
                                 test_loader):
+        self.stage_time = time.time() - self.stage_time
+        self.handler.logger.log_metric("training_time", 
+                                       self.stage_time,
+                                       "stage_time")
         device = self.hyper.get('eval_device', 'cpu')
         current_stage = current_model.n_stages()
         current_model.eval()

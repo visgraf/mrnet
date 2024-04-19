@@ -66,7 +66,9 @@ class ResultHandler:
         self.logger.log_metric("psnr", psnr, label)
 
     def log_model(self, model:MRNet):
-        print(f'Total model parameters = ', model.total_parameters())
+        model_size = model.total_parameters()
+        print(f'Total model parameters = ', model_size)
+        self.logger.log_metric("model_size", model_size, "n_parameters")
         name = f"{model.class_code()}_stg{model.n_stages()}"
         self.logger.log_model(model, path='tmp', fname=name)
 
