@@ -24,7 +24,7 @@ def make_grid_coords(nsamples, start, end, dim, flatten=True):
     
     dir_samples = tuple([torch.linspace(start[i], end[i], steps=nsamples[i]) 
                    for i in range(dim)])
-    grid = torch.stack(torch.meshgrid(*dir_samples, indexing='ij'), dim=-1)
+    grid = torch.stack(torch.meshgrid(*dir_samples, indexing='xy'), dim=-1)
     return grid.reshape(-1, dim) if flatten else grid
 
 # only works for plane slices in 3D for now

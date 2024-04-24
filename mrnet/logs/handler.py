@@ -169,10 +169,8 @@ class ImageHandler(ResultHandler):
 
     def log_prediction(self, model, test_loader, device):
         datashape = test_loader.shape[1:]
-        
-        coords = make_grid_coords(datashape, 
-                                  *self.hyper['domain'],
-                                  len(datashape))
+        h, w = datashape
+        coords = make_grid_coords((w, h), *self.hyper['domain'], len(datashape))
         pixels = []
         grads = []
         color_space = self.hyper['color_space']
