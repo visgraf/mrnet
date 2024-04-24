@@ -8,6 +8,7 @@ from PIL import Image
 from pathlib import Path
 from scipy.fft import fft, fftfreq
 from torch.utils.data import BatchSampler
+from typing import Sequence
 from mrnet.datasets.signals import Signal1D
 from mrnet.training.loss import gradient
 from mrnet.datasets.sampler import make_grid_coords
@@ -89,7 +90,7 @@ class ResultHandler:
         raise NotImplementedError
     
     def log_chosen_frequencies(self, model: MRNet):
-        if model.period <= 0:
+        if model.period != 0:
             return
     
     def log_zoom(self, model, test_loader, device):
@@ -171,10 +172,8 @@ class ImageHandler(ResultHandler):
 
     def log_prediction(self, model, test_loader, device):
         datashape = test_loader.shape[1:]
-        
-        coords = make_grid_coords(datashape, 
-                                  *self.hyper['domain'],
-                                  len(datashape))
+        h, w = datashape
+        coords = make_grid_coords((w, h), *self.hyper['domain'], len(datashape))
         pixels = []
         grads = []
         color_space = self.hyper['color_space']
@@ -235,13 +234,19 @@ class ImageHandler(ResultHandler):
             last_stage_frequencies = stage.first_layer.linear.weight
             frequencies.append(last_stage_frequencies)
         frequencies = torch.cat(frequencies).detach().cpu().numpy()
-        frequencies = (frequencies * model.period 
+        frequencies = (frequencies * np.array(model.period) 
                        / (2 * np.pi)).astype(np.int32)
-        h, w = self.hyper['width'], self.hyper['height']
-        frequencies = frequencies + np.array((h//2, w//2))
-        img = Image.new('L', (h, w))
+        w, h = self.hyper['width'], self.hyper['height']
+        frequencies = frequencies + np.array((w//2, h//2))
+        img = Image.new('L', (w, h))
+        
         for f in frequencies:
-            img.putpixel(f, 255)
+            try:
+                img.putpixel(f, 255)
+            except Exception as e:
+                print(e)
+                print(img.width, img.height, f)
+
         
         self.logger.log_images([img], "Chosen Frequencies", category='etc')
 
@@ -263,12 +268,27 @@ class ImageHandler(ResultHandler):
             interval = self.hyper['extrapolate']
         except KeyError:
             return
-        w, h = test_loader.size()[1:]
-        start, end = interval[0], interval[1]
-        scale = (end - start) // 2
-        neww, newh = int(scale * w), int(scale * h)
+        h, w = test_loader.size()[1:]
+
+        def compute_interval_length(domain):
+            start, end = domain
+            if isinstance(start, Sequence):
+                xlength = end[0] - start[0]
+                ylength = end[1] - start[1]
+            else:
+                xlength = ylength = end - start
+            return xlength, ylength
+
+        newx_length, newy_length = compute_interval_length(interval)
+        oldx_length, oldy_length = compute_interval_length(self.hyper['domain'])
+        scalex = newx_length / oldx_length
+        scaley = newy_length / oldy_length
         
-        ext_domain = make_grid_coords((neww, newh), start, end, dim=2)
+        neww = int(scalex * w)
+        newh = int(scaley * h)
+        
+        ext_domain = make_grid_coords((neww, newh), 
+                                      interval[0], interval[1], dim=2)
         with torch.no_grad():
             pixels = output_on_batched_grid(model, 
                                             ext_domain, 
@@ -279,7 +299,7 @@ class ImageHandler(ResultHandler):
         self.logger.log_images([pixels], 'Extrapolation', [f"{interval}"], category='pred')
 
     def log_zoom(self, model, test_loader, device):
-        w, h = test_loader.shape[1:]
+        h, w = test_loader.shape[1:]
         domain = self.hyper.get('domain', [-1, 1])
         zoom = self.hyper.get('zoom', [])
         for zoom_factor in zoom:
