@@ -60,6 +60,19 @@ class Sampler:
 
     def data_shape(self):
         return self.data.shape[1:]
+    
+    def grid_shape(self):
+        value = self.data_shape()
+        if len(value) == 1:
+            return value
+        elif len(value) == 2:
+            h, w = value
+            return (w, h)
+        elif len(value) == 3:
+            h, w, d = value
+            return (w, h, d)
+        else:
+            raise NotImplementedError("grid_shape Not implemented for Dimension > 3")
 
     def make_samples(self):
         raise NotImplementedError()
@@ -76,7 +89,7 @@ class RegularSampler(Sampler):
     def make_samples(self, domain_mask=None):
         self.key_group = 'c0'
         dimension = len(self.data_shape())
-        self._coords = make_grid_coords(self.data_shape(),
+        self._coords = make_grid_coords(self.grid_shape(),
                                         *self.domain, dim=dimension)
 
         n = len(self._coords)
