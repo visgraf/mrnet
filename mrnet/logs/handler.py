@@ -55,7 +55,7 @@ class ResultHandler:
         ssim = skimage.metrics.structural_similarity(
                         (transform(gt).cpu().numpy() * 255).astype(np.uint8), 
                         (transform(pred).clamp(0, 1).cpu().numpy() * 255).astype(np.uint8),
-                        data_range=1, channel_axis=-1)
+                        channel_axis=-1)
         label = f"Stage {self.hyper['stage']}"
         self.logger.log_metric("ssim", ssim, label)
 
