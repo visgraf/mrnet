@@ -69,10 +69,12 @@ class MRModule(nn.Module):
 
     @property
     def hidden_features(self):
-        hf = [self.middle_layers[0].linear.in_features]
-        for layer in self.middle_layers:
-            hf.append(layer.linear.out_features)
-        return hf
+        if self.middle_layers:
+            hf = [self.middle_layers[0].linear.in_features]
+            for layer in self.middle_layers:
+                hf.append(layer.linear.out_features)
+            return hf
+        return [0]
 
     @property
     def hidden_layers(self):
@@ -84,12 +86,18 @@ class MRModule(nn.Module):
     
     @property
     def omega_G(self):
-        return self.middle_layers[0].omega_0
+        try:
+            return self.middle_layers[0].omega_0
+        except IndexError:
+            return 0
 
     def forward(self, coords, prevbasis=None):
         proj = self.first_layer(coords)
-        basis = (self.middle_layers(proj) if prevbasis is None 
+        if self.middle_layers:
+            basis = (self.middle_layers(proj) if prevbasis is None 
                 else self.middle_layers(torch.cat([proj, prevbasis], dim=-1)) )
+        else: # S-Net
+            basis = proj
         out = self.final_linear(basis)
         return out, basis
 
@@ -285,10 +293,7 @@ class LNet(MRNet):
     def class_code(self):
         return 'L'
 
-class SNet(MRNet):
-
-    def init_from_dict(hyper):
-        raise NotImplementedError
+class SNet(LNet):
 
     def class_code(self):
         return 'S'
@@ -304,7 +309,7 @@ class MRFactory:
         elif hyper['model'] == 'S':
             MRClass = SNet
         else:
-            raise ValueError("model should be in ['M','L','M1']")
+            raise ValueError("model should be in ['M','L','S']")
 
         hfeat, hlayers = hyper['hidden_features'], hyper['hidden_layers']
         # TODO: remove in future versions; for compatibility only (periodic->period).
