@@ -17,17 +17,17 @@ from mrnet.networks.mrnet import MRNet, MRFactory
 def make_runname(hyper, name):
     w0 = f"w{hyper['omega_0']}{'T' if hyper['superposition_w0'] else 'F'}"
     hl = f"hl{hyper['hidden_layers']}"
-    epochs = f"MEp{hyper['max_epochs_per_stage']}"
+    epochs = f"Ep{hyper['max_epochs_per_stage']}"
     if isinstance(hyper['hidden_features'], Sequence):
         hf = ''.join([str(v) for v in hyper['hidden_features']])
     else:
         hf = hyper['hidden_features']
     hf = f"hf{hf}"
-    per = f"pr{hyper['period']}"
+    per = f"pr{hyper['period']}" if hyper['period'] > 0 else ""
     stage = f"{hyper['stage']}-{hyper['max_stages']}"
     if name:
-        return f"{name}_{stage}_{w0}_{hf}_{epochs}_{hl}_{per}"
-    return f"{stage}_{w0}_{hf}_{epochs}_{hl}_{per}"
+        return f"{name}_{stage}_{w0}{per}_{hl}_{hf}_{epochs}"
+    return f"{stage}_{w0}{per}_{hl}_{hf}_{epochs}"
 
 def get_incremental_name(path):
     names = [nm.split()[0][-3:] for nm in os.listdir(path)]
@@ -122,7 +122,7 @@ class LocalLogger(Logger):
         timetag = now.strftime("%Y%m%d")
         name = f"{timetag}_{name}"
         self.savedir = os.path.join(logs_path, name, 
-                                    f"{now.strftime('%H%M')}_sg{self.runname}")
+                                    f"{now.strftime('%H%M')}st{self.runname}")
 
     @property
     def loss_filepath(self):

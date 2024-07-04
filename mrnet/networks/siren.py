@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from torch import nn
+from typing import Sequence
 from collections import OrderedDict
 
 RANDOM_SEED = 777
@@ -40,7 +41,7 @@ class SineLayer(nn.Module):
         self.init_weights()
 
     def init_weights(self):
-        if self.period > 0:
+        if self.period != 0:
             self.init_periodic_weights()
         else:
             with torch.no_grad():
@@ -58,13 +59,20 @@ class SineLayer(nn.Module):
             discarded_freqs = set()
         discarded_freqs = discarded_freqs.union(set(used_weights))
 
+        if isinstance(self.period, Sequence):
+            # TODO: make it work to dimension > 2
+            aspect_ratio = self.period[0] / self.period[1]
+        else:
+            aspect_ratio = 1
+
         with torch.no_grad():
             if self.is_first:
                 rng = np.random.default_rng(RANDOM_SEED)
                 if self.in_features == 2:
                     possible_frequencies = cartesian_product(
                         np.arange(0, self.omega_0 + 1), 
-                        np.arange(-self.omega_0, self.omega_0 + 1))
+                        np.arange(int(-self.omega_0 / aspect_ratio), 
+                                  int(self.omega_0 / aspect_ratio) + 1))
                 else:
                     possible_frequencies = cartesian_product(
                         *(self.in_features * [np.array(range(-self.omega_0,
@@ -79,12 +87,13 @@ class SineLayer(nn.Module):
                 )
 
                 self.linear.weight = nn.Parameter(
-                    chosen_frequencies.float() * 2 * torch.pi / self.period)
+                    chosen_frequencies.float() * 2 * torch.pi 
+                    / torch.tensor(self.period))
                 # first layer will not be updated during training
                 self.linear.weight.requires_grad = False
 
     def forward(self, input):
-        if self.period > 0 and self.is_first:
+        if self.period != 0 and self.is_first:
             x = self.linear(input)
         else:
             x = self.omega_0 * self.linear(input)
