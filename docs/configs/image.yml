@@ -13,15 +13,14 @@ hidden_features: [[64, 128], [128, 192], [192, 256]]
 bias: True
 max_stages: 3
 
-period: 2
 pmode: wrap
 domain: [-1, 1]
 # mask_color: 130
 
 # Frequency Initialization
-omega_0: [6, 12, 32]
+omega_0: [8, 16, 32]
 hidden_omega_0: 30
-superposition_w0: False
+superposition_w0: True
 
 # Sampling
 sampling_scheme: regular
