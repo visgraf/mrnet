@@ -23,7 +23,8 @@ def make_runname(hyper, name):
     else:
         hf = hyper['hidden_features']
     hf = f"hf{hf}"
-    per = f"pr{hyper['period']}" if hyper['period'] > 0 else ""
+    period = hyper.get('period', 0)
+    per = f"pr{period}" if period > 0 else ""
     stage = f"{hyper['stage']}-{hyper['max_stages']}"
     if name:
         return f"{name}_{stage}_{w0}{per}_{hl}_{hf}_{epochs}"
