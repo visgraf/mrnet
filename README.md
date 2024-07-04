@@ -1,12 +1,12 @@
 # MR-Net - Multiresolution Sinusoidal Neural Networks
 
-MR-Net is a framework that implements the family of neural networks described in [[1]](#1), and the components for training multi-stage architectures for multiresolution signal representation
+MR-Net is a framework that implements the family of neural networks detailed in [[1]](#1), and the components for training multi-stage architectures for multiresolution signal representation. These networks were first presented in [[2]](#2).
 
 This framework has three major components:
 
 ### Networks
 
-Here, you will find the implementations of M-Net, L-Net, and a modified version of Siren [[2]](#2) as we build on top of their sinusoidal layer. You can create instances of the MR-Net subclasses directly importing them from the `mrnet` module.
+Here, you will find the implementations of M-Net, L-Net, S-Net, and a modified version of Siren [[3]](#3) as we build on top of their sinusoidal layer. You can create instances of the MR-Net subclasses directly importing them from the `mrnet` module.
 
 ### Datasets
 
@@ -183,7 +183,9 @@ The implementation of MyUniformSampler is in ./devel/ext/my_sampler.py. The test
 
 <a id="1">[1]</a> Hallison Paz, Daniel Perazzo, Tiago Novello, Guilherme Schardong, Luiz Schirmer, Vinícius da Silva, Daniel Yukimura, Fabio Chagas, Hélio Lopes, Luiz Velho. MR-Net: Multiresolution sinusoidal neural networks. Computers & Graphics, Volume 114, 2023, Pages 387-400.
 
-<a id="2">[2]</a> Vincent Sitzmann, Julien N.P. Martel, Alexander W. Bergman, David B. Lindell, and Gordon Wetzstein. Implicit neural representations with periodic activation functions. In Proc. NeurIPS, 2020.
+<a id="2">[2]</a> Hallison Paz, Tiago Novello, Vinicius Silva, Guilherme Shardong, Luiz Schirmer, Fabio Chagas, Helio Lopes, and Luiz Velho. "Multiresolution Neural Networks for Imaging". In Proceedings of SIBGRAPI, 2022.
+
+<a id="3">[3]</a> Vincent Sitzmann, Julien N.P. Martel, Alexander W. Bergman, David B. Lindell, and Gordon Wetzstein. Implicit neural representations with periodic activation functions. In Proc. NeurIPS, 2020.
 
 
 ## Citing
