@@ -180,21 +180,32 @@ class LocalLogger(Logger):
         
         captions = kwargs.get('captions', '')
         marker = kwargs.get('marker', ['', '', '', ''])
-        style = kwargs.get('linestyle', ['-', '--', '-.', ':'])
+        colors = kwargs.get('color', ["#cbd6e4", "#c86558", "#b3bfd1", "#a4a2a8"])
+        style = kwargs.get('linestyle', ['-', '-', '--', '-.', ':'])
         width = kwargs.get('linewidth', [2] * 4)
+        
         fig, ax = plt.subplots()
         for i, (x, y) in enumerate(zip(Xs, Ys)):
-            ax.plot(x, y, 
-                    label=captions[i], 
-                    linestyle=style[i % len(style)], 
-                    linewidth=width[i % len(width)], 
+            ax.plot(x, y,
+                    label=captions[i] if captions else None,
+                    color=colors[i],
+                    linestyle=style[i % len(style)],
+                    linewidth=width[i % len(width)],
                     marker=marker[i % len(marker)])
         ax.set_title(label)
         ax.set_xlabel(kwargs.get('xname', 'coords'))
+        ax.set_ylabel(kwargs.get('yname', 'amplitude'))
+        # Hide the all but the bottom spines (axis lines)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+        # Only show ticks on the left and bottom spines
+        ax.yaxis.set_ticks_position("left")
+        ax.xaxis.set_ticks_position("bottom")
+        ax.spines["bottom"].set_bounds(min(x), max(x))
         # ax.set_aspect('equal')
-        ax.grid(True, which='both')
-        # seaborn.despine(ax=ax, offset=0)
-        ax.legend()
+        ax.grid(True, which='both', axis='both')
+        ax.legend(frameon=False, loc='upper right', ncols=2)
         fig.savefig(os.path.join(path, filename))
         plt.close()
 

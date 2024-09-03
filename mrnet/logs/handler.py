@@ -1,11 +1,8 @@
 from IPython import embed
 import numpy as np
-import os
 import skimage
-import time
 import torch
 from PIL import Image
-from pathlib import Path
 from scipy.fft import fft, fftfreq
 from torch.utils.data import BatchSampler
 from typing import Sequence
@@ -15,11 +12,12 @@ from mrnet.datasets.sampler import make_grid_coords
 from mrnet.datasets.utils import (output_on_batched_dataset, 
                             output_on_batched_grid, rgb_to_grayscale, ycbcr_to_rgb, RESIZING_FILTERS, INVERSE_COLOR_MAPPING)
 from mrnet.networks.mrnet import MRNet, MRFactory
-from mrnet.logs.logger import LocalLogger, Logger, WandBLogger
+from mrnet.logs.logger import Logger
 
 
 MODELS_DIR = 'models'
 MESHES_DIR = 'meshes'
+DEFAULT_COLORS = ["#cbd6e4", "#c86558", "#b3bfd1", "#a4a2a8"]
 
 
 class ResultHandler:
@@ -354,10 +352,12 @@ class Signal1DHandler(ResultHandler):
         if dataset.domain_mask is not None:
             raise NotImplementedError()
         
-        captions = [f"{list(dataset.shape)}"]
-        self.logger.log_graph([X], [Y], 'Train Data',
-                              captions=captions,
-                              category='gt')
+        # captions = [f"Train samples ({dataset.shape[-1]})"]
+        self.logger.log_graph([X], [Y], 
+                              f'Train signal ({dataset.shape[-1]} samples)',
+                              category='gt',
+                              color=self.hyper.get('single_color', ["#b3bfd1"]),
+                              fnames='train_signal')
         
     def log_groundtruth(self, test_loader, train_loader, **kwargs):
         self.log_traindata(train_loader, **kwargs)
@@ -372,6 +372,7 @@ class Signal1DHandler(ResultHandler):
                               captions=captions,
                               category='gt',
                               fname='ground_truth',
+                              color=self.hyper.get('color_scheme', DEFAULT_COLORS),
                               **kwargs)
 
         self.log_fft({'train': trainY, 'test': testY}, 
@@ -379,6 +380,7 @@ class Signal1DHandler(ResultHandler):
                      category='gt',
                      label="FFT Test vs Train samples", 
                      fname='fft_test_train',
+                     color=self.hyper.get('color_scheme', DEFAULT_COLORS),
                      **kwargs)
         
         return torch.from_numpy(testY)
@@ -395,13 +397,15 @@ class Signal1DHandler(ResultHandler):
                               "Prediction vs Test signal",
                               captions=captions,
                               category='pred',
-                              fname='pred_test')
+                              fname='pred_test',
+                              color=self.hyper.get('color_scheme', DEFAULT_COLORS))
         
         self.log_fft({'test': testY, 'pred': pred},
                      label="FFT Prediction vs Test signal",
                      captions=captions,
                      category='pred',
-                     fname='fft_pred_test')
+                     fname='fft_pred_test',
+                     color=self.hyper.get('color_scheme', DEFAULT_COLORS))
         return torch.from_numpy(pred)
         
     def log_extrapolation(self, model, test_loader, device='cpu'):
@@ -420,16 +424,17 @@ class Signal1DHandler(ResultHandler):
         out_dict = model(ext_x.view(-1, 1).to(device))
         ext_y = out_dict['model_out'].cpu().view(-1).detach()
 
-        captions = ["TEST data", "Prediction"]
+        captions = ["Test signal", "Prediction"]
         self.logger.log_graph([X.numpy(), ext_x.numpy()], 
                               [Y.numpy(), ext_y.numpy()],
                               fname='extrapolation',
                               label="Extrapolation Prediction",
                               captions=captions,
-                              category='pred')
+                              category='pred',
+                              color=self.hyper.get('color_scheme', DEFAULT_COLORS))
 
     def log_fft(self, data, **kwargs):
-        ##FFT plot
+        # FFT plot
         Xs, Ys = [], []
         for key, value in data.items():
             N = len(value)
@@ -450,17 +455,18 @@ class Signal1DHandler(ResultHandler):
                 output_dict = model(zoom_coords.to(device))
                 values = output_dict['model_out'].cpu().view(-1)
             
-            captions = ["Model - refined grid", "Naive - old grid"]
+            captions = ["Naive - old grid", "Model - refined grid"]
             c1 = nsamples * (zoom_factor - 1) // (2 * zoom_factor)
             c2 = nsamples * (zoom_factor + 1) // (2 * zoom_factor)
             X = test_loader.coords.view(-1)[c1:c2]
             Y = test_loader.data.view(-1)[c1:c2]
-            self.logger.log_graph([zoom_coords, X],
-                                  [values, Y],
-                                  f"{zoom_factor}x Zoom - Model vs Naive",
+            self.logger.log_graph([X, zoom_coords],
+                                  [Y, values],
+                                  f"{zoom_factor}x Zoom - Naive vs Model",
                                   category='zoom',
                                   fname=f'zoom_{zoom_factor}x',
-                                  captions=captions)
+                                  captions=captions,
+                                  color=self.hyper.get('color_scheme', DEFAULT_COLORS))
             
     def log_chosen_frequencies(self, model: MRNet):
         super().log_chosen_frequencies(model)
@@ -485,5 +491,6 @@ class Signal1DHandler(ResultHandler):
                               "Chosen Frequencies",
                               category='etc',
                               captions=['chosen'],
-                              xname='freqs'
+                              xname='freqs',
+                              color=self.hyper.get('color_scheme', DEFAULT_COLORS)
                               )
