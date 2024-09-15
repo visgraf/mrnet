@@ -204,9 +204,13 @@ class LocalLogger(Logger):
         ax.xaxis.set_ticks_position("bottom")
         ax.spines["bottom"].set_bounds(min(x), max(x))
         # ax.set_aspect('equal')
-        ax.grid(True, which='both', axis='both')
+        ax.grid(True, which='both', axis='both', alpha=0.3)
         ax.legend(frameon=False, loc='upper right', ncols=2)
-        fig.savefig(os.path.join(path, filename))
+        fig.savefig(os.path.join(
+                        path, 
+                        f"{filename}.{self.hyper.get('img_format', 'png')}"), 
+                    dpi=300,
+                    bbox_inches='tight')
         plt.close()
 
 
@@ -288,7 +292,7 @@ class WandBLogger(Logger):
         wandb.log({label: images})
 
     def log_graph(self, Xs, Ys, label, **kwargs):
-        captions = kwargs['captions']
+        captions = kwargs.get('captions', None)
         name = kwargs.get('fname', slugfy(label))
         # embed()
         wandb.log({
